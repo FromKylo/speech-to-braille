@@ -412,10 +412,15 @@
                 brailleSymbolElement.textContent = result.braille;
                 
                 // Format the array for display
-                const arrayDisplay = Array.isArray(result.array[0]) 
-                    ? JSON.stringify(result.array) // Nested array
-                    : JSON.stringify(result.array); // Simple array
-                    
+                let arrayDisplay;
+                if (Array.isArray(result.array[0])) {
+                    // Nested array format for contractions (like {{1,2},{3,4}})
+                    arrayDisplay = '{{' + result.array.map(subArray => subArray.join(',')).join('},{') + '}}';
+                } else {
+                    // Single array format (like {1,2,3})
+                    arrayDisplay = '{' + result.array.join(',') + '}';
+                }
+                
                 brailleArrayElement.textContent = arrayDisplay;
             } else {
                 // No match found
