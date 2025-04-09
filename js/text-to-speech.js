@@ -8,6 +8,50 @@ class TextToSpeech {
         this.speakingIndicator = document.getElementById('speaking-indicator');
         this.isSpeaking = false;
         this.hasSpokenWelcome = false;
+        this.voices = [];
+        this.isInitialized = false;
+        
+        // Check if speech synthesis is available
+        if (!this.synth) {
+            console.error("Speech synthesis not supported in this browser");
+            return;
+        }
+        
+        // Initialize voices when they are available
+        if (this.synth.onvoiceschanged !== undefined) {
+            this.synth.onvoiceschanged = this.initVoices.bind(this);
+        } else {
+            // For browsers that don't fire onvoiceschanged
+            setTimeout(() => this.initVoices(), 500);
+        }
+    }
+    
+    /**
+     * Initialize available voices
+     */
+    initVoices() {
+        if (this.isInitialized) return;
+        
+        try {
+            this.voices = this.synth.getVoices();
+            if (this.voices.length > 0) {
+                this.isInitialized = true;
+                console.log(`Initialized ${this.voices.length} voices for speech synthesis`);
+                
+                // Select the best voice for English (if available)
+                this.selectedVoice = this.voices.find(voice => 
+                    voice.lang.includes('en') && voice.localService
+                ) || this.voices[0];
+                
+                console.log(`Selected voice: ${this.selectedVoice.name}`);
+            } else {
+                console.warn("No voices available yet, will retry");
+                // Retry after a delay if no voices found
+                setTimeout(() => this.initVoices(), 1000);
+            }
+        } catch (error) {
+            console.error("Error initializing voices:", error);
+        }
     }
 
     /**
@@ -17,32 +61,64 @@ class TextToSpeech {
     speak(text) {
         if (!text || this.isSpeaking) return;
         
-        // Create speech utterance
-        const utterance = new SpeechSynthesisUtterance(text);
+        // Check if speech synthesis is available
+        if (!this.synth) {
+            console.error("Speech synthesis not supported");
+            return;
+        }
         
-        // Set speaking properties
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        
-        // Show speaking indicator
-        this.showSpeakingIndicator();
-        
-        // Handle events
-        utterance.onend = () => {
-            this.hideSpeakingIndicator();
+        try {
+            // Create speech utterance
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Set speaking properties
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            // Use selected voice if available
+            if (this.selectedVoice) {
+                utterance.voice = this.selectedVoice;
+            }
+            
+            // Show speaking indicator
+            this.showSpeakingIndicator();
+            
+            // Handle events
+            utterance.onend = () => {
+                this.hideSpeakingIndicator();
+                this.isSpeaking = false;
+                console.log(`Finished speaking: "${text}"`);
+            };
+            
+            utterance.onerror = (event) => {
+                console.error('Speech synthesis error:', event);
+                this.hideSpeakingIndicator();
+                this.isSpeaking = false;
+            };
+            
+            // Start speaking
+            this.isSpeaking = true;
+            
+            // Ensure speech synthesis is in a valid state
+            if (this.synth.speaking || this.synth.pending) {
+                this.synth.cancel();
+            }
+            
+            console.log(`Speaking: "${text}"`);
+            this.synth.speak(utterance);
+            
+            // Safari/iOS workaround - sometimes speech won't start without this
+            if (this.isIOS() || this.isSafari()) {
+                setTimeout(() => {
+                    if (this.synth.paused) this.synth.resume();
+                }, 100);
+            }
+        } catch (error) {
+            console.error("Error speaking text:", error);
             this.isSpeaking = false;
-        };
-        
-        utterance.onerror = (event) => {
-            console.error('Speech synthesis error:', event);
             this.hideSpeakingIndicator();
-            this.isSpeaking = false;
-        };
-        
-        // Start speaking
-        this.isSpeaking = true;
-        this.synth.speak(utterance);
+        }
     }
     
     /**
@@ -57,10 +133,15 @@ class TextToSpeech {
         // Welcome message
         const welcomeMessage = "Speech to Braille Refreshable Display. Let's learn braille!";
         
-        // Use setTimeout to let the page fully load first
+        // Use setTimeout to let the page fully load first and voices initialize
         setTimeout(() => {
-            this.speak(welcomeMessage);
-        }, 1000);
+            if (!this.isInitialized) {
+                this.initVoices();
+                setTimeout(() => this.speak(welcomeMessage), 1000);
+            } else {
+                this.speak(welcomeMessage);
+            }
+        }, 1500);
     }
     
     /**
@@ -91,13 +172,63 @@ class TextToSpeech {
             this.isSpeaking = false;
         }
     }
+    
+    /**
+     * Check if the browser is Safari
+     */
+    isSafari() {
+        return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    }
+    
+    /**
+     * Check if the device is iOS
+     */
+    isIOS() {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    }
+    
+    /**
+     * Debug method to test speech synthesis
+     */
+    testSpeech() {
+        console.log("Testing speech synthesis...");
+        
+        if (!this.synth) {
+            console.error("Speech synthesis not supported in this browser");
+            return false;
+        }
+        
+        console.log("Available voices:", this.voices.map(v => `${v.name} (${v.lang})`).join(', '));
+        
+        this.speak("This is a test of the speech synthesis system");
+        return true;
+    }
 }
 
 // Create global instance
 const textToSpeech = new TextToSpeech();
 
+// Add a test function for debugging
+window.testSpeech = function() {
+    console.log("Manual speech test triggered");
+    textToSpeech.testSpeech();
+};
+
 // Set up welcome message when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Speak welcome message when page is loaded
-    textToSpeech.speakWelcome();
+    // Add a debug button to help diagnose TTS issues
+    setTimeout(() => {
+        const container = document.querySelector('.card:first-of-type');
+        if (container) {
+            const debugButton = document.createElement('button');
+            debugButton.textContent = 'Test Speech';
+            debugButton.style.backgroundColor = '#9c27b0';
+            debugButton.style.margin = '10px 0';
+            debugButton.addEventListener('click', window.testSpeech);
+            container.appendChild(debugButton);
+        }
+        
+        // Speak welcome message when page is loaded
+        textToSpeech.speakWelcome();
+    }, 1000);
 });
