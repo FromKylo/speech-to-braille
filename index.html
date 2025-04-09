@@ -263,9 +263,12 @@
             try {
                 console.log(`Starting speech recognition with method: ${selectedMethod}`);
                 
-                if (selectedMethod === 'local' && (!speechRecognition || !speechRecognition.localRecognition)) {
-                    alert('Please load the local model first by clicking the "Load Local Model" button.');
-                    return;
+                if (selectedMethod === 'local') {
+                    // Check if the model badge indicates the model is loaded
+                    if (modelBadge.textContent !== 'Local Model') {
+                        alert('Please load the local model first by clicking the "Load Local Model" button.');
+                        return;
+                    }
                 }
                 
                 await speechRecognition.start(selectedMethod);
