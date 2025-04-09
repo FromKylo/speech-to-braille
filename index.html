@@ -138,6 +138,26 @@
         startButton.style.margin = '1rem 0';
         document.querySelector('main').appendChild(startButton);
 
+        const loadModelButton = document.createElement('button');
+        loadModelButton.textContent = 'Load Speech Recognition Model';
+        loadModelButton.style.margin = '1rem 0';
+        document.querySelector('main').appendChild(loadModelButton);
+
+        loadModelButton.addEventListener('click', async () => {
+            loadModelButton.disabled = true;
+            loadModelButton.textContent = 'Loading Model...';
+            try {
+                await initializeVosk();
+                loadModelButton.textContent = 'Model Loaded';
+                loadModelButton.style.backgroundColor = '#4CAF50'; // Green color for success
+            } catch (error) {
+                console.error('Error loading Vosk model:', error);
+                loadModelButton.textContent = 'Load Model';
+                loadModelButton.disabled = false;
+                alert('Failed to load the speech recognition model. Please check your connection.');
+            }
+        });
+
         async function initializeVosk() {
             try {
                 const model = new vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
