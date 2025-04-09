@@ -65,5 +65,13 @@
       "url": "/index.html",
       "icons": [{ "src": "images/icons/icon-192x192.png", "sizes": "192x192" }]
     }
+  ],
+  "categories": ["utilities", "speech recognition"],
+  "related_applications": [
+    {
+      "platform": "web",
+      "url": "https://alphacephei.com/vosk/",
+      "id": "com.vosk.api"
+    }
   ]
 }
