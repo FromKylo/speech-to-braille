@@ -76,6 +76,38 @@
             </div>
         </div>
         
+        <!-- New Braille Translator Card -->
+        <div class="card">
+            <h2>Braille Translation</h2>
+            <p>Matches from your speech are converted to Braille:</p>
+            
+            <div id="braille-status" class="status">
+                Loading Braille database...
+            </div>
+            
+            <div id="braille-result" class="braille-result hidden">
+                <div class="braille-match-info">
+                    <h3>Matched Word: <span id="matched-word">None</span></h3>
+                    <p>Language: <span id="braille-language">N/A</span></p>
+                </div>
+                <div class="braille-display">
+                    <div class="braille-symbol-container">
+                        <h4>Braille Symbol:</h4>
+                        <div id="braille-symbol" class="braille-symbol">⠿</div>
+                    </div>
+                    <div class="braille-array-container">
+                        <h4>Braille Array:</h4>
+                        <pre id="braille-array" class="braille-array">[1,2,3,4,5,6]</pre>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="no-match-info" class="braille-no-match hidden">
+                <p>No matching words found in the current sentence.</p>
+                <p>Try speaking a different phrase containing words from the Braille database.</p>
+            </div>
+        </div>
+        
         <div class="card">
             <h2>Dynamic Content</h2>
             <p>This section displays the cached resources in this application:</p>
@@ -93,6 +125,9 @@
     <!-- Import our custom speech recognition implementation -->
     <script src="js/alternatives/speech-recognition.js"></script>
     
+    <!-- Import our Braille translator module -->
+    <script src="js/braille-translator.js"></script>
+    
     <script>
         // Speech recognition functionality
         let recognitionActive = false;
@@ -109,6 +144,15 @@
         const loadingContainer = document.getElementById('loading-container');
         const progressBar = document.getElementById('progress-bar');
         const progressStatus = document.getElementById('progress-status');
+        
+        // Braille translation elements
+        const brailleStatus = document.getElementById('braille-status');
+        const brailleResult = document.getElementById('braille-result');
+        const matchedWordElement = document.getElementById('matched-word');
+        const brailleLanguageElement = document.getElementById('braille-language');
+        const brailleSymbolElement = document.getElementById('braille-symbol');
+        const brailleArrayElement = document.getElementById('braille-array');
+        const noMatchInfo = document.getElementById('no-match-info');
         
         // Remove any old buttons that were added programmatically
         const oldButtons = document.querySelectorAll('main > button');
@@ -134,7 +178,7 @@
         }
         
         // Set initial state based on Web Speech API availability
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             if (typeof speechRecognition !== 'undefined' && speechRecognition.isSupported()) {
                 if (speechRecognition.webSpeechRecognition) {
                     updateModelStatus('webspeech');
@@ -153,6 +197,32 @@
                 loadModelBtn.disabled = true;
                 startSpeechBtn.disabled = true;
                 console.error('Speech recognition is not supported');
+            }
+            
+            // Initialize Braille translator
+            if (typeof brailleTranslator !== 'undefined') {
+                brailleStatus.textContent = 'Loading Braille database...';
+                brailleStatus.className = 'status';
+                
+                try {
+                    const success = await brailleTranslator.init();
+                    if (success) {
+                        const dbSize = brailleTranslator.getDatabaseSize();
+                        brailleStatus.textContent = `Braille database loaded with ${dbSize} entries`;
+                        brailleStatus.className = 'status online';
+                    } else {
+                        brailleStatus.textContent = 'Failed to load Braille database';
+                        brailleStatus.className = 'status offline';
+                    }
+                } catch (error) {
+                    console.error('Error initializing Braille translator:', error);
+                    brailleStatus.textContent = 'Error loading Braille database';
+                    brailleStatus.className = 'status offline';
+                }
+            } else {
+                console.error('Braille translator module is not loaded');
+                brailleStatus.textContent = 'Braille translator not available';
+                brailleStatus.className = 'status offline';
             }
         });
         
@@ -221,6 +291,38 @@
             }
         }
         
+        // Function to process speech results for Braille matching
+        function processSpeechForBraille(text) {
+            if (!brailleTranslator.isDatabaseLoaded()) {
+                console.warn('Braille database not loaded yet');
+                return;
+            }
+            
+            const result = brailleTranslator.processText(text);
+            
+            if (result) {
+                // We found a match!
+                noMatchInfo.classList.add('hidden');
+                brailleResult.classList.remove('hidden');
+                
+                // Update UI with match details
+                matchedWordElement.textContent = result.word;
+                brailleLanguageElement.textContent = result.language;
+                brailleSymbolElement.textContent = result.braille;
+                
+                // Format the array for display
+                const arrayDisplay = Array.isArray(result.array[0]) 
+                    ? JSON.stringify(result.array) // Nested array
+                    : JSON.stringify(result.array); // Simple array
+                    
+                brailleArrayElement.textContent = arrayDisplay;
+            } else {
+                // No match found
+                brailleResult.classList.add('hidden');
+                noMatchInfo.classList.remove('hidden');
+            }
+        }
+        
         // Make sure the speech recognition object is available before setting up event handlers
         if (typeof speechRecognition !== 'undefined') {
             // Set up event handlers for our speech recognition service
@@ -237,6 +339,9 @@
             speechRecognition.on('result', (text) => {
                 console.log('Speech recognition final result:', text);
                 finalTextElement.textContent += text + ' ';
+                
+                // Process the new text for Braille matching
+                processSpeechForBraille(text);
             });
             
             speechRecognition.on('partialresult', (text) => {

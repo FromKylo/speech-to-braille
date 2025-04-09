@@ -7,6 +7,8 @@ const CACHE_URLS = [
   '/css/style.css',
   '/js/vosk-worker.js',
   '/js/alternatives/speech-recognition.js',
+  '/js/braille-translator.js',
+  '/ueb-philb-braille-database.csv',
   '/manifest.json',
   '/images/icons/icon-72x72.png',
   '/images/icons/icon-96x96.png',

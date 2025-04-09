@@ -260,6 +260,90 @@ footer {
     text-align: center;
 }
 
+/* Braille Translation Styles */
+.braille-result {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    border: 1px solid #e2e8f0;
+}
+
+.braille-match-info h3 {
+    margin-top: 0;
+    color: #4285f4;
+}
+
+.braille-match-info p {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.braille-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.braille-symbol-container, 
+.braille-array-container {
+    flex: 1;
+    min-width: 200px;
+}
+
+.braille-symbol-container h4,
+.braille-array-container h4 {
+    margin-top: 0;
+    color: #555;
+    font-size: 1rem;
+}
+
+.braille-symbol {
+    font-size: 5rem;
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: #f0f4f8;
+    border: 1px solid #d0d7de;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.braille-array {
+    padding: 1rem;
+    background-color: #f0f4f8;
+    border-radius: 8px;
+    border: 1px solid #d0d7de;
+    font-family: monospace;
+    font-size: 1rem;
+    min-height: 120px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    display: flex;
+    align-items: center;
+}
+
+.braille-no-match {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+}
+
+.hidden {
+    display: none;
+}
+
 /* Cache Display Styles */
 .cache-summary {
     background-color: #f0f0f0;
