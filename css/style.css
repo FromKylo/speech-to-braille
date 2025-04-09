@@ -75,6 +75,7 @@ footer {
 /* Speech Recognition Styles */
 #speech-controls {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 1rem;
     margin-bottom: 1rem;
@@ -121,6 +122,57 @@ footer {
 #final-text {
     font-weight: 500;
     margin-top: 0.5rem;
+}
+
+/* Speech Method Selector Styles */
+.speech-method-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.speech-method-selector label {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.speech-method-selector select {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: white;
+    font-size: 0.9rem;
+}
+
+#start-speech-btn {
+    background-color: #34a853;
+}
+
+#start-speech-btn:hover {
+    background-color: #2d9144;
+}
+
+#stop-speech-btn {
+    background-color: #ea4335;
+}
+
+#stop-speech-btn:hover {
+    background-color: #d33426;
+}
+
+#stop-speech-btn:disabled,
+#start-speech-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+#load-model-btn {
+    background-color: #fbbc05;
+    color: #333;
+}
+
+#load-model-btn:hover {
+    background-color: #f0b400;
 }
 
 /* Model Status Indicator Styles */

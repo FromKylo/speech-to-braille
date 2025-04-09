@@ -45,7 +45,17 @@
             <div id="speech-controls">
                 <button id="start-speech-btn">Start Speaking</button>
                 <button id="stop-speech-btn" disabled>Stop</button>
-                <button id="load-model-btn">Load Speech Model</button>
+                
+                <!-- New selection for speech recognition method -->
+                <div class="speech-method-selector">
+                    <label for="speech-method">Recognition Method:</label>
+                    <select id="speech-method">
+                        <option value="webspeech">Web Speech API</option>
+                        <option value="local">Local Recognition</option>
+                    </select>
+                </div>
+                
+                <button id="load-model-btn">Load Local Model</button>
                 <div id="recording-indicator" class="recording-off">● Recording</div>
             </div>
             
@@ -80,23 +90,18 @@
         <p>Progressive Web App Template &copy; 2025</p>
     </footer>
 
-    <script src="node_modules/vosk-browser/dist/vosk.js"></script>
+    <!-- Import our custom speech recognition implementation -->
+    <script src="js/alternatives/speech-recognition.js"></script>
+    
     <script>
         // Speech recognition functionality
         let recognitionActive = false;
-        let audioStream = null;
-        let recognizer = null;
-        let audioContext = null;
-        let processor = null;
-        let source = null;
-        let modelLoaded = false;
-        let voskWorker = null;
-        let modelLoadingProgress = 0;
         
         // DOM elements
         const startSpeechBtn = document.getElementById('start-speech-btn');
         const stopSpeechBtn = document.getElementById('stop-speech-btn');
         const loadModelBtn = document.getElementById('load-model-btn');
+        const speechMethodSelect = document.getElementById('speech-method');
         const recordingIndicator = document.getElementById('recording-indicator');
         const interimTextElement = document.getElementById('interim-text');
         const finalTextElement = document.getElementById('final-text');
@@ -122,6 +127,26 @@
             }
         }
         
+        // Set initial state based on Web Speech API availability
+        document.addEventListener('DOMContentLoaded', function() {
+            if (speechRecognition.isSupported()) {
+                if (speechRecognition.webSpeechRecognition) {
+                    updateModelStatus('webspeech');
+                    modelBadge.textContent = 'Web Speech API Available';
+                    loadModelBtn.textContent = 'Load Local Model';
+                } else {
+                    updateModelStatus('none');
+                    modelBadge.textContent = 'No Recognition Available';
+                    loadModelBtn.textContent = 'Load Local Model';
+                }
+            } else {
+                updateModelStatus('none');
+                modelBadge.textContent = 'Not Available';
+                loadModelBtn.disabled = true;
+                startSpeechBtn.disabled = true;
+            }
+        });
+        
         // Load model button setup
         loadModelBtn.addEventListener('click', async () => {
             loadModelBtn.disabled = true;
@@ -132,11 +157,15 @@
             updateLoadingProgress(0, 'Preparing to download model...');
             
             try {
-                await initializeVosk();
+                // Load local model for speech recognition
+                await speechRecognition.loadLocalModel({
+                    progressCallback: updateLoadingProgress
+                });
+                
+                // Update button state
                 loadModelBtn.textContent = 'Model Loaded';
                 loadModelBtn.style.backgroundColor = '#4CAF50'; // Green color for success
-                modelLoaded = true;
-                updateModelStatus('vosk');
+                updateModelStatus('local');
                 
                 // Complete the progress bar and hide after a delay
                 updateLoadingProgress(100, 'Model loaded successfully!');
@@ -145,8 +174,8 @@
                 }, 2000);
                 
             } catch (error) {
-                console.error('Error loading Vosk model:', error);
-                loadModelBtn.textContent = 'Load Model';
+                console.error('Error loading local model:', error);
+                loadModelBtn.textContent = 'Load Local Model';
                 loadModelBtn.disabled = false;
                 updateModelStatus('none');
                 
@@ -159,127 +188,10 @@
                     progressBar.style.backgroundColor = '#4285f4'; // Reset color
                 }, 5000);
                 
-                alert('Failed to load the speech recognition model. Please check your connection.');
+                alert('Failed to load the speech recognition model. Please try the Web Speech API option instead.');
             }
         });
 
-        // Initialize Vosk model
-        async function initializeVosk() {
-            try {
-                // Create audio context for sample rate
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const sampleRate = audioContext.sampleRate;
-                
-                // Create and initialize Web Worker for Vosk processing
-                if (voskWorker) {
-                    voskWorker.terminate();
-                }
-                
-                voskWorker = new Worker('js/vosk-worker.js');
-                
-                // Set up worker message handler
-                voskWorker.onmessage = function(event) {
-                    const message = event.data;
-                    switch(message.status) {
-                        case 'workerReady':
-                            console.log('Vosk worker is ready');
-                            updateLoadingProgress(5, 'Worker initialized');
-                            break;
-                            
-                        case 'loading':
-                            loadModelBtn.textContent = 'Downloading...';
-                            updateLoadingProgress(10, message.message || 'Downloading model...');
-                            // Start the progress simulation for download phase
-                            simulateProgressDuringPhase(10, 70, 'Downloading model...', 5000);
-                            break;
-                            
-                        case 'init':
-                            loadModelBtn.textContent = 'Initializing...';
-                            updateLoadingProgress(70, message.message || 'Initializing model...');
-                            // Start the progress simulation for initialization phase
-                            simulateProgressDuringPhase(70, 95, 'Initializing model...', 3000);
-                            break;
-                            
-                        case 'ready':
-                            console.log('Vosk model loaded successfully');
-                            modelLoaded = true;
-                            updateLoadingProgress(100, 'Model ready!');
-                            break;
-                            
-                        case 'error':
-                            console.error('Vosk error:', message.message);
-                            loadModelBtn.textContent = 'Load Model';
-                            loadModelBtn.disabled = false;
-                            updateLoadingProgress(100, `Error: ${message.message}`);
-                            progressBar.style.backgroundColor = '#ea4335'; // Red for error
-                            throw new Error(message.message);
-                            
-                        case 'result':
-                            if (message.type === 'partial') {
-                                interimTextElement.textContent = message.text;
-                            } else {
-                                finalTextElement.textContent += message.text + ' ';
-                                interimTextElement.textContent = '';
-                            }
-                            break;
-                            
-                        case 'progress':
-                            if (message.percent) {
-                                updateLoadingProgress(message.percent, message.message);
-                            }
-                            break;
-                    }
-                };
-                
-                // Function to simulate progress between phases since we don't get actual progress events
-                function simulateProgressDuringPhase(start, end, message, duration) {
-                    const stepSize = 1;
-                    const steps = (end - start) / stepSize;
-                    const interval = duration / steps;
-                    let currentProgress = start;
-                    
-                    const progressInterval = setInterval(() => {
-                        currentProgress += stepSize;
-                        if (currentProgress >= end) {
-                            clearInterval(progressInterval);
-                            return;
-                        }
-                        updateLoadingProgress(currentProgress, message);
-                    }, interval);
-                }
-                
-                // Load the model in the worker
-                updateLoadingProgress(5, 'Initializing Web Worker...');
-                voskWorker.postMessage({ 
-                    command: 'loadModel',
-                    sampleRate: sampleRate,
-                    modelUrl: 'https://cdn.jsdelivr.net/gh/ccoreilly/vosk-browser@master/public/models/vosk-model-small-en-us-0.15'
-                });
-                
-                // Wait for model to be ready
-                return new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => {
-                        reject(new Error('Model loading timeout after 30 seconds'));
-                    }, 30000);
-                    
-                    voskWorker.addEventListener('message', function handler(event) {
-                        if (event.data.status === 'ready') {
-                            clearTimeout(timeout);
-                            voskWorker.removeEventListener('message', handler);
-                            resolve(true);
-                        } else if (event.data.status === 'error') {
-                            clearTimeout(timeout);
-                            voskWorker.removeEventListener('message', handler);
-                            reject(new Error(event.data.message));
-                        }
-                    });
-                });
-            } catch (error) {
-                console.error('Error initializing Vosk:', error);
-                throw error;
-            }
-        }
-        
         // Update model status indicator  
         function updateModelStatus(model) {
             modelBadge.className = 'model-badge';
@@ -289,9 +201,9 @@
                     modelBadge.classList.add('web-speech');
                     modelBadge.textContent = 'Web Speech API';
                     break;
-                case 'vosk':
+                case 'local':
                     modelBadge.classList.add('vosk-model');
-                    modelBadge.textContent = 'Vosk Model';
+                    modelBadge.textContent = 'Local Model';
                     break;
                 default:
                     modelBadge.classList.add('no-model');
@@ -299,172 +211,57 @@
             }
         }
         
-        // Speech recognition initialization
-        async function initializeSpeechRecognition() {
-            // First try to use Web Speech API if available (better for real-time results)
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                console.log('Using Web Speech API for speech recognition');
-                updateModelStatus('webspeech');
-                
-                // Create speech recognition object
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                const recognition = new SpeechRecognition();
-                
-                // Configure recognition
-                recognition.continuous = true;
-                recognition.interimResults = true;
-                recognition.lang = 'en-US';
-                
-                // Set up event handlers
-                recognition.onstart = () => {
-                    setRecordingState(true);
-                };
-                
-                recognition.onend = () => {
-                    setRecordingState(false);
-                };
-                
-                recognition.onresult = (event) => {
-                    let interimTranscript = '';
-                    let finalTranscript = '';
-                    
-                    // Process results
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript + ' ';
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
-                        }
-                    }
-                    
-                    // Update the UI with results
-                    if (interimTranscript) {
-                        interimTextElement.textContent = interimTranscript;
-                    }
-                    
-                    if (finalTranscript) {
-                        // Append to final text, don't replace it
-                        finalTextElement.textContent += finalTranscript;
-                        // Clear interim text once it's finalized
-                        interimTextElement.textContent = '';
-                    }
-                };
-                
-                recognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error);
-                    setRecordingState(false);
-                    alert(`Speech recognition error: ${event.error}`);
-                };
-                
-                // Function to start recognition
-                startSpeechBtn.addEventListener('click', () => {
-                    if (!recognitionActive) {
-                        try {
-                            recognition.start();
-                        } catch (error) {
-                            console.error('Failed to start recognition:', error);
-                        }
-                    }
-                });
-                
-                // Function to stop recognition
-                stopSpeechBtn.addEventListener('click', () => {
-                    if (recognitionActive) {
-                        recognition.stop();
-                    }
-                });
-                
-            } else {
-                // Fall back to Vosk for browsers without Web Speech API or offline use
-                console.log('Web Speech API not available, using Vosk');
-                updateModelStatus('none'); // Start with no model until loaded
-                
-                // Set up start speech button
-                startSpeechBtn.addEventListener('click', () => {
-                    if (modelLoaded) {
-                        startVoskRecognition();
-                    } else {
-                        alert('Please load the speech model first by clicking the "Load Speech Model" button.');
-                    }
-                });
-                
-                // Set up stop speech button
-                stopSpeechBtn.addEventListener('click', stopVoskRecognition);
-            }
-        }
+        // Set up event handlers for our speech recognition service
+        speechRecognition.on('start', () => {
+            setRecordingState(true);
+        });
         
-        // Start Vosk recognition
-        async function startVoskRecognition() {
-            if (recognitionActive || !voskWorker) return;
+        speechRecognition.on('end', () => {
+            setRecordingState(false);
+        });
+        
+        speechRecognition.on('result', (text) => {
+            finalTextElement.textContent += text;
+        });
+        
+        speechRecognition.on('partialresult', (text) => {
+            interimTextElement.textContent = text;
+        });
+        
+        speechRecognition.on('error', (error) => {
+            console.error('Speech recognition error:', error);
+            setRecordingState(false);
+            alert(`Speech recognition error: ${error}`);
+        });
+        
+        // Function to start speech recognition
+        startSpeechBtn.addEventListener('click', async () => {
+            if (recognitionActive) return;
+            
+            // Clear previous text when starting new session
+            interimTextElement.textContent = '';
+            
+            const selectedMethod = speechMethodSelect.value;
             
             try {
-                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                source = audioContext.createMediaStreamSource(audioStream);
+                if (selectedMethod === 'local' && !speechRecognition.localRecognition) {
+                    alert('Please load the local model first by clicking the "Load Local Model" button.');
+                    return;
+                }
                 
-                // Use ScriptProcessorNode (will be replaced with AudioWorkletNode in future version)
-                processor = audioContext.createScriptProcessor(4096, 1, 1);
-                
-                source.connect(processor);
-                processor.connect(audioContext.destination);
-                
-                // Reset the recognizer state
-                voskWorker.postMessage({ command: 'reset' });
-                
-                processor.onaudioprocess = (event) => {
-                    // Only process if recognition is active
-                    if (recognitionActive) {
-                        // Convert audio data for Vosk
-                        const inputData = event.inputBuffer.getChannelData(0);
-                        const int16Array = new Int16Array(inputData.length);
-                        for (let i = 0; i < inputData.length; i++) {
-                            int16Array[i] = Math.min(1, Math.max(-1, inputData[i])) * 32767;
-                        }
-                        
-                        // Send to worker for processing
-                        voskWorker.postMessage({
-                            command: 'processAudio',
-                            audio: int16Array
-                        });
-                    }
-                };
-                
-                setRecordingState(true);
-                
+                await speechRecognition.start(selectedMethod);
             } catch (error) {
-                console.error('Error starting Vosk recognition:', error);
-                alert('Failed to access the microphone. Please ensure you have granted permission.');
-                setRecordingState(false);
+                console.error('Failed to start recognition:', error);
+                alert(`Failed to start recognition: ${error.message}`);
             }
-        }
+        });
         
-        // Stop Vosk recognition
-        function stopVoskRecognition() {
-            if (!recognitionActive) return;
-            
-            // Clean up resources
-            if (source) {
-                source.disconnect();
-                source = null;
+        // Function to stop speech recognition
+        stopSpeechBtn.addEventListener('click', () => {
+            if (recognitionActive) {
+                speechRecognition.stop();
             }
-            
-            if (processor) {
-                processor.disconnect();
-                processor = null;
-            }
-            
-            if (audioContext && audioContext.state !== 'closed') {
-                audioContext.suspend();
-            }
-            
-            if (audioStream) {
-                audioStream.getTracks().forEach(track => track.stop());
-                audioStream = null;
-            }
-            
-            // Reset UI
-            setRecordingState(false);
-        }
+        });
         
         // Helper function to update UI for recording state
         function setRecordingState(isRecording) {
@@ -488,9 +285,6 @@
                 interimTextElement.textContent = '';
             }
         }
-        
-        // Initialize speech recognition on page load
-        document.addEventListener('DOMContentLoaded', initializeSpeechRecognition);
     </script>
     <script>
         // Initialize variables

@@ -1,11 +1,12 @@
 // Service Worker for PWA Template
-const CACHE_NAME = 'pwa-template-v2';
+const CACHE_NAME = 'pwa-template-v3';
 const CACHE_URLS = [
   '/',
   '/index.html',
+  '/offline.html',
   '/css/style.css',
-  '/js/app.js',
   '/js/vosk-worker.js',
+  '/js/alternatives/speech-recognition.js',
   '/manifest.json',
   '/images/icons/icon-72x72.png',
   '/images/icons/icon-96x96.png',
@@ -49,13 +50,39 @@ const VOSK_MODEL_FILES = [
 // Add all Vosk model files to the cache list
 CACHE_URLS.push(...VOSK_MODEL_FILES);
 
+// Custom local model files - add these when you have them
+const LOCAL_MODEL_FILES = [
+  '/models/speech-model.pbmm',
+  '/models/speech-model.scorer'
+];
+
+// Add local model files to cache if they exist
+CACHE_URLS.push(...LOCAL_MODEL_FILES);
+
 // Install event - cache all static assets
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Opened cache');
-        return cache.addAll(CACHE_URLS);
+        
+        // Filter out files that might not exist yet to prevent install failure
+        // This way the service worker will install even if some files aren't available
+        return Promise.allSettled(
+          CACHE_URLS.map(url => 
+            fetch(url)
+              .then(response => {
+                if (response.ok) {
+                  return cache.put(url, response);
+                }
+                throw new Error(`Failed to fetch ${url}`);
+              })
+              .catch(err => {
+                console.warn(`Couldn't cache ${url}: ${err.message}`);
+                return Promise.resolve(); // Continue despite error
+              })
+          )
+        );
       })
       .then(() => self.skipWaiting())
   );
@@ -77,36 +104,77 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch event - serve cached content when offline
+// Fetch event with improved caching strategy
 self.addEventListener('fetch', event => {
+  const requestUrl = new URL(event.request.url);
+  
+  // For API requests, don't use cache
+  if (requestUrl.pathname.includes('/api/')) {
+    return fetch(event.request).catch(() => {
+      return new Response(JSON.stringify({
+        error: 'You are offline',
+        offline: true
+      }), {
+        headers: {'Content-Type': 'application/json'}
+      });
+    });
+  }
+  
+  // For model files, use cache-first strategy
+  if (event.request.url.includes('/models/') || event.request.url.includes(VOSK_MODEL_URL)) {
+    event.respondWith(
+      caches.match(event.request)
+        .then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          return fetch(event.request)
+            .then(response => {
+              // Clone the response before using it
+              const responseToCache = response.clone();
+              
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(event.request, responseToCache);
+              });
+              
+              return response;
+            })
+            .catch(error => {
+              console.error('Fetch error:', error);
+              return new Response('Network error', { status: 408 });
+            });
+        })
+    );
+    return;
+  }
+  
+  // For regular assets, use network-first with cache fallback
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          if (event.request.url.startsWith(self.location.origin) || event.request.url.startsWith(VOSK_MODEL_URL)) {
-            cache.put(event.request, responseClone);
-          }
-        });
+        // Cache successful responses
+        if (response.ok) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            if (event.request.url.startsWith(self.location.origin)) {
+              cache.put(event.request, responseClone);
+            }
+          });
+        }
         return response;
       })
       .catch(() => {
-        if (event.request.url.startsWith(VOSK_MODEL_URL)) {
-          return caches.match(event.request);
-        }
         return caches.match(event.request).then(cachedResponse => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          if (event.request.url.includes('/api/')) {
-            return new Response(JSON.stringify({
-              error: 'You are offline',
-              offline: true
-            }), {
-              headers: {'Content-Type': 'application/json'}
-            });
+          // If the request is for a page, return the offline page
+          if (event.request.mode === 'navigate') {
+            return caches.match('/offline.html');
           }
-          return caches.match('/offline.html');
+          // Otherwise return a simple error response
+          return new Response('You are offline', { status: 503 });
         });
       })
   );
