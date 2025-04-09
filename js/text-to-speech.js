@@ -7,7 +7,6 @@ class TextToSpeech {
         this.synth = window.speechSynthesis;
         this.speakingIndicator = document.getElementById('speaking-indicator');
         this.isSpeaking = false;
-        this.hasSpokenWelcome = false;
         this.voices = [];
         this.isInitialized = false;
         
@@ -44,6 +43,9 @@ class TextToSpeech {
                 ) || this.voices[0];
                 
                 console.log(`Selected voice: ${this.selectedVoice.name}`);
+                
+                // Speak welcome message after voices are initialized
+                this.speakWelcome();
             } else {
                 console.warn("No voices available yet, will retry");
                 // Retry after a delay if no voices found
@@ -125,23 +127,25 @@ class TextToSpeech {
      * Speak welcome message when app opens
      */
     speakWelcome() {
-        if (this.hasSpokenWelcome) return;
-        
-        // Set flag to prevent repeated welcome messages during a session
-        this.hasSpokenWelcome = true;
-        
-        // Welcome message
+        // Welcome message - must play on every refresh
         const welcomeMessage = "Speech to Braille Refreshable Display. Let's learn braille!";
         
-        // Use setTimeout to let the page fully load first and voices initialize
-        setTimeout(() => {
-            if (!this.isInitialized) {
-                this.initVoices();
-                setTimeout(() => this.speak(welcomeMessage), 1000);
-            } else {
-                this.speak(welcomeMessage);
-            }
-        }, 1500);
+        // Speak immediately if voices are initialized
+        if (this.isInitialized) {
+            console.log("Speaking welcome message immediately");
+            this.speak(welcomeMessage);
+        } else {
+            // Wait for voices to initialize then speak
+            console.log("Delaying welcome message until voices are initialized");
+            const checkVoicesAndSpeak = () => {
+                if (this.isInitialized) {
+                    this.speak(welcomeMessage);
+                } else {
+                    setTimeout(checkVoicesAndSpeak, 500);
+                }
+            };
+            setTimeout(checkVoicesAndSpeak, 1000);
+        }
     }
     
     /**
@@ -200,7 +204,7 @@ window.testSpeech = function() {
     textToSpeech.testSpeech();
 };
 
-// Set up welcome message when DOM is loaded
+// Set up welcome message when DOM is loaded - ensure it plays on every page refresh
 document.addEventListener('DOMContentLoaded', () => {
     // Add a debug button to help diagnose TTS issues
     setTimeout(() => {
@@ -214,7 +218,17 @@ document.addEventListener('DOMContentLoaded', () => {
             container.appendChild(debugButton);
         }
         
-        // Speak welcome message when page is loaded
+        // Attempt to speak welcome message immediately on page load
+        // This ensures it happens on every refresh
         textToSpeech.speakWelcome();
     }, 1000);
+});
+
+// Additional trigger for the welcome message to ensure it plays on every refresh
+window.addEventListener('load', () => {
+    console.log('Window loaded - triggering welcome message');
+    // Use a timeout to make sure the DOM and audio context are fully ready
+    setTimeout(() => {
+        textToSpeech.speakWelcome();
+    }, 1500);
 });
