@@ -411,14 +411,20 @@
                 brailleLanguageElement.textContent = result.language;
                 brailleSymbolElement.textContent = result.braille;
                 
-                // Format the array for display
+                // Debug the array content to verify what we're receiving
+                console.log('Braille array for ' + result.word + ':', result.array);
+                
+                // Format the array for display with proper JSON stringification first
+                // to ensure all array elements are captured
                 let arrayDisplay;
                 if (Array.isArray(result.array[0])) {
-                    // Nested array format for contractions (like {{1,2},{3,4}})
-                    arrayDisplay = '{{' + result.array.map(subArray => subArray.join(',')).join('},{') + '}}';
+                    // Handle nested arrays for contractions
+                    arrayDisplay = '{{' + result.array.map(subArray => 
+                        subArray.toString()
+                    ).join('},{') + '}}';
                 } else {
-                    // Single array format (like {1,2,3})
-                    arrayDisplay = '{' + result.array.join(',') + '}';
+                    // Handle single arrays for letters
+                    arrayDisplay = '{' + result.array.toString() + '}';
                 }
                 
                 brailleArrayElement.textContent = arrayDisplay;

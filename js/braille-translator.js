@@ -132,11 +132,16 @@ const brailleTranslator = (function() {
                 return nestedArrays;
             } else {
                 // If it's a simple array like {1,2,3}
-                return arrayString
+                const values = arrayString
                     .replace(/[{}]/g, '')
                     .split(',')
                     .map(val => parseInt(val.trim()))
                     .filter(val => !isNaN(val));
+                
+                // Debug output to check parsed values
+                console.log('Parsed array for:', arrayString, 'Result:', values);
+                
+                return values;
             }
         } catch (error) {
             console.error('Error parsing array:', arrayString, error);
