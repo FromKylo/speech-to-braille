@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4285f4">
     <meta name="description" content="A simple Progressive Web App template">
-    <title>PWA Template</title>
+    <title>Speech to Braille Refreshable Module</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
@@ -127,6 +127,54 @@
     <footer>
         <p>Progressive Web App Template &copy; 2025</p>
     </footer>
+
+    <script src="https://unpkg.com/vosk-browser/dist/vosk.js"></script>
+    <script>
+        // Initialize Vosk
+        let recognizer;
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const startButton = document.createElement('button');
+        startButton.textContent = 'Start Speech Recognition';
+        startButton.style.margin = '1rem 0';
+        document.querySelector('main').appendChild(startButton);
+
+        async function initializeVosk() {
+            const model = new vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
+            recognizer = new vosk.Recognizer({
+                model: model,
+                sampleRate: audioContext.sampleRate
+            });
+        }
+
+        async function startRecognition() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+
+            processor.onaudioprocess = (event) => {
+                const inputData = event.inputBuffer.getChannelData(0);
+                const int16Array = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) {
+                    int16Array[i] = inputData[i] * 32767;
+                }
+                const result = recognizer.acceptWaveform(int16Array);
+                if (result) {
+                    const text = recognizer.result().text;
+                    dynamicContent.innerHTML = `<p>Recognized Text: ${text}</p>`;
+                }
+            };
+        }
+
+        startButton.addEventListener('click', () => {
+            startRecognition();
+        });
+
+        // Initialize Vosk on page load
+        initializeVosk();
+    </script>
 
     <script>
         // Initialize variables

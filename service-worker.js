@@ -17,6 +17,11 @@ const CACHE_URLS = [
   'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap'
 ];
 
+const VOSK_MODEL_URL = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
+
+// Add Vosk model to the cache list
+CACHE_URLS.push(VOSK_MODEL_URL);
+
 // Install event - cache all static assets
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -48,44 +53,34 @@ self.addEventListener('activate', event => {
 // Fetch event - serve cached content when offline
 self.addEventListener('fetch', event => {
   event.respondWith(
-    // Try the network first
     fetch(event.request)
       .then(response => {
-        // Clone the response to store in cache
         const responseClone = response.clone();
-        
-        // Open cache and store the response
-        caches.open(CACHE_NAME)
-          .then(cache => {
-            // Only cache same-origin requests
-            if (event.request.url.startsWith(self.location.origin)) {
-              cache.put(event.request, responseClone);
-            }
-          });
-        
+        caches.open(CACHE_NAME).then(cache => {
+          if (event.request.url.startsWith(self.location.origin) || event.request.url === VOSK_MODEL_URL) {
+            cache.put(event.request, responseClone);
+          }
+        });
         return response;
       })
       .catch(() => {
-        // If network fails, try to serve from cache
-        return caches.match(event.request)
-          .then(cachedResponse => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            
-            // If the request is for an API and we're offline, you could return a custom offline response
-            if (event.request.url.includes('/api/')) {
-              return new Response(JSON.stringify({
-                error: 'You are offline',
-                offline: true
-              }), {
-                headers: {'Content-Type': 'application/json'}
-              });
-            }
-            
-            // For other resources that aren't in the cache, return a simple offline page
-            return caches.match('/offline.html');
-          });
+        if (event.request.url === VOSK_MODEL_URL) {
+          return caches.match(event.request);
+        }
+        return caches.match(event.request).then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          if (event.request.url.includes('/api/')) {
+            return new Response(JSON.stringify({
+              error: 'You are offline',
+              offline: true
+            }), {
+              headers: {'Content-Type': 'application/json'}
+            });
+          }
+          return caches.match('/offline.html');
+        });
       })
   );
 });
