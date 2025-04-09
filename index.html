@@ -128,7 +128,7 @@
         <p>Progressive Web App Template &copy; 2025</p>
     </footer>
 
-    <script src="https://unpkg.com/vosk-browser/dist/vosk.js"></script>
+    <script src="node_modules/vosk-browser/dist/vosk.js"></script>
     <script>
         // Initialize Vosk
         let recognizer;
@@ -139,11 +139,17 @@
         document.querySelector('main').appendChild(startButton);
 
         async function initializeVosk() {
-            const model = new vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
-            recognizer = new vosk.Recognizer({
-                model: model,
-                sampleRate: audioContext.sampleRate
-            });
+            try {
+                const model = new vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
+                recognizer = new vosk.Recognizer({
+                    model: model,
+                    sampleRate: audioContext.sampleRate
+                });
+                console.log('Vosk model loaded successfully');
+            } catch (error) {
+                console.error('Error loading Vosk model:', error);
+                alert('Failed to load the speech recognition model. Please check your connection.');
+            }
         }
 
         async function startRecognition() {
