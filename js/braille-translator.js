@@ -76,7 +76,9 @@ const brailleTranslator = (function() {
                 const row = rows[i].replace(/^\/\/.*?/, '').trim();
                 if (!row) continue;
                 
-                const columns = row.split(',');
+                // Handle CSV format properly with quoted fields
+                const columns = parseCSVRow(row);
+                
                 if (columns.length >= 5) {
                     parsedDatabase.push({
                         word: columns[0].trim(),
@@ -107,13 +109,47 @@ const brailleTranslator = (function() {
         }
     }
     
+    /**
+     * Parse a CSV row handling quoted fields correctly
+     * @param {string} row - CSV row to parse
+     * @return {Array} Array of column values
+     */
+    function parseCSVRow(row) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < row.length; i++) {
+            const char = row[i];
+            
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        // Add the last field
+        result.push(current);
+        return result;
+    }
+    
     // Helper function to parse array values from the CSV
     function parseArray(arrayString) {
-        // Handle single value arrays like {1,2} or nested arrays like {{1,2},{3,4}}
+        // Remove surrounding quotes if present
+        arrayString = arrayString.trim();
+        if (arrayString.startsWith('"') && arrayString.endsWith('"')) {
+            arrayString = arrayString.slice(1, -1);
+        }
+        
         try {
-            // If it's a nested array
-            if (arrayString.includes('{{')) {
+            // Handle nested arrays (for contractions)
+            if (arrayString.startsWith('{{')) {
                 const nestedArrays = [];
+                // Match each inner array like {1,2} from a string like {{1,2},{3,4}}
                 const matches = arrayString.match(/\{([^{}]+)\}/g);
                 
                 if (matches) {
@@ -137,9 +173,6 @@ const brailleTranslator = (function() {
                     .split(',')
                     .map(val => parseInt(val.trim()))
                     .filter(val => !isNaN(val));
-                
-                // Debug output to check parsed values
-                console.log('Parsed array for:', arrayString, 'Result:', values);
                 
                 return values;
             }

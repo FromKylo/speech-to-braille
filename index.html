@@ -128,6 +128,9 @@
     <!-- Import our Braille translator module -->
     <script src="js/braille-translator.js"></script>
     
+    <!-- Import the braille array formatter utility -->
+    <script src="utils/braille-array-formatter.js"></script>
+    
     <script>
         // Speech recognition functionality
         let recognitionActive = false;
@@ -393,24 +396,6 @@
         }
         
         /**
-         * Properly formats the braille array for display exactly as it appears in the CSV
-         * @param {Array|Array[]} array - The array data from the translator
-         * @return {string} The formatted array string
-         */
-        function formatBrailleArrayForDisplay(array) {
-            // For nested arrays (contractions)
-            if (Array.isArray(array[0])) {
-                return '{{' + array.map(subArray => {
-                    return subArray.join(',');
-                }).join('},{') + '}}';
-            } 
-            // For single character arrays
-            else {
-                return '{' + array.join(',') + '}';
-            }
-        }
-
-        /**
          * Formats the language display with proper capitalization and handling of "Both"
          * @param {string} language - The language string from the database
          * @return {string} Properly formatted language display
@@ -448,9 +433,24 @@
                 // Debug the raw array content to verify what we're receiving
                 console.log('Raw braille array for ' + result.word + ':', result.array);
                 
-                // Format the array display exactly as in the CSV file
-                const formattedArray = formatBrailleArrayForDisplay(result.array);
-                console.log('Formatted array:', formattedArray);
+                // Use the imported braille array formatter utility instead of the local function
+                let formattedArray;
+                
+                if (typeof formatBrailleArrayForDisplay === 'function' && typeof window.formatBrailleArrayForDisplay !== 'function') {
+                    // Check if the utility function from imported module is available
+                    // Use the original array string from CSV rather than trying to reconstruct it
+                    formattedArray = formatBrailleArrayForDisplay(result.array);
+                    console.log('Using utility formatBrailleArrayForDisplay function:', formattedArray);
+                } else {
+                    // Fallback to our own implementation
+                    formattedArray = '{' + (Array.isArray(result.array) ? result.array.join(',') : '') + '}';
+                    
+                    // For nested arrays (contractions)
+                    if (Array.isArray(result.array) && Array.isArray(result.array[0])) {
+                        formattedArray = '{{' + result.array.map(subArray => subArray.join(',')).join('},{') + '}}';
+                    }
+                    console.log('Using fallback array formatting:', formattedArray);
+                }
                 
                 // Display the formatted array
                 brailleArrayElement.textContent = formattedArray;
