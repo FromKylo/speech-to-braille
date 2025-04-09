@@ -8,6 +8,11 @@ let recognitionActive = false;
 
 // Initialize the application
 function initApp() {
+    // Speak welcome message if text-to-speech is available
+    if (window.textToSpeech && typeof textToSpeech.speakWelcome === 'function') {
+        textToSpeech.speakWelcome();
+    }
+    
     // Check if speech recognition is defined before using it
     if (typeof speechRecognition === 'undefined') {
         console.error('Speech recognition module is not loaded');

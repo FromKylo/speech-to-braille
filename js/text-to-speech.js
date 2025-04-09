@@ -7,6 +7,7 @@ class TextToSpeech {
         this.synth = window.speechSynthesis;
         this.speakingIndicator = document.getElementById('speaking-indicator');
         this.isSpeaking = false;
+        this.hasSpokenWelcome = false;
     }
 
     /**
@@ -45,6 +46,24 @@ class TextToSpeech {
     }
     
     /**
+     * Speak welcome message when app opens
+     */
+    speakWelcome() {
+        if (this.hasSpokenWelcome) return;
+        
+        // Set flag to prevent repeated welcome messages during a session
+        this.hasSpokenWelcome = true;
+        
+        // Welcome message
+        const welcomeMessage = "Speech to Braille Refreshable Display. Let's learn braille!";
+        
+        // Use setTimeout to let the page fully load first
+        setTimeout(() => {
+            this.speak(welcomeMessage);
+        }, 1000);
+    }
+    
+    /**
      * Show the speaking indicator
      */
     showSpeakingIndicator() {
@@ -76,3 +95,9 @@ class TextToSpeech {
 
 // Create global instance
 const textToSpeech = new TextToSpeech();
+
+// Set up welcome message when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Speak welcome message when page is loaded
+    textToSpeech.speakWelcome();
+});
