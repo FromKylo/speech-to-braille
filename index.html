@@ -185,12 +185,20 @@
             updateLoadingProgress(0, 'Preparing to download model...');
             
             try {
-                // Set worker path to local Vosk bundle
-                speechRecognition.setWorkerPath('/node_modules/vosk-browser/dist/vosk-worker.js');
+                // Check if setWorkerPath method exists
+                if (typeof speechRecognition.setWorkerPath === 'function') {
+                    // Set worker path to local Vosk bundle using method
+                    speechRecognition.setWorkerPath('/node_modules/vosk-browser/dist/vosk-worker.js');
+                } else {
+                    console.warn('speechRecognition.setWorkerPath is not available - will use default worker path');
+                    // Continue without setting worker path - we'll rely on the default path
+                }
                 
                 // Load local model for speech recognition
                 await speechRecognition.loadLocalModel({
-                    progressCallback: updateLoadingProgress
+                    progressCallback: updateLoadingProgress,
+                    // Provide worker URL directly in the options as fallback
+                    workerPath: '/node_modules/vosk-browser/dist/vosk-worker.js'
                 });
                 
                 // Update UI
@@ -553,6 +561,22 @@
             supported: typeof speechRecognition !== 'undefined' ? speechRecognition.isSupported() : false,
             webSpeech: typeof speechRecognition !== 'undefined' ? speechRecognition.webSpeechRecognition : false
         });
+    </script>
+    
+    <!-- Add cache-busting reload helper -->
+    <script>
+        // Helper function to force reload the page clearing cache
+        function forceReload() {
+            console.log('Forcing page reload with cache clear...');
+            // Add timestamp to URL to bypass cache
+            window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
+        }
+        
+        // Check for issues with speechRecognition
+        if (typeof speechRecognition !== 'undefined' && 
+            typeof speechRecognition.setWorkerPath !== 'function') {
+            console.warn('speechRecognition.setWorkerPath not found - the module may need to be updated');
+        }
     </script>
     <script>
         // Initialize variables
