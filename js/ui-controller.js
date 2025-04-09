@@ -199,6 +199,7 @@ const uiController = {
         });
 
         // Add functionality for speak button if it exists
+        const speakWordBtn = document.getElementById('speak-word-btn');
         if (speakWordBtn) {
             speakWordBtn.addEventListener('click', () => {
                 this.speakMatchedWord();
@@ -206,24 +207,44 @@ const uiController = {
 
             // Setup TTS event listeners if available
             if (window.textToSpeech) {
-                textToSpeech.on('start', () => {
-                    if (speakWordBtn) {
-                        speakWordBtn.classList.add('speaking');
-                    }
-                });
+                // The TextToSpeech class doesn't have these event listeners yet,
+                // but we can add them for future compatibility
+                if (typeof textToSpeech.on === 'function') {
+                    textToSpeech.on('start', () => {
+                        if (speakWordBtn) {
+                            speakWordBtn.classList.add('speaking');
+                        }
+                    });
 
-                textToSpeech.on('end', () => {
-                    if (speakWordBtn) {
-                        speakWordBtn.classList.remove('speaking');
-                    }
-                });
-
-                textToSpeech.on('error', (error) => {
-                    console.error('Speech synthesis error:', error);
-                    if (speakWordBtn) {
-                        speakWordBtn.classList.remove('speaking');
-                    }
-                });
+                    textToSpeech.on('end', () => {
+                        if (speakWordBtn) {
+                            speakWordBtn.classList.remove('speaking');
+                        }
+                    });
+                }
+                
+                // Use direct UI updates with the current implementation
+                const speakingIndicator = document.getElementById('speaking-indicator');
+                if (speakingIndicator) {
+                    // Create a MutationObserver to watch for changes to the speaking indicator
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach((mutation) => {
+                            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                                const isHidden = speakingIndicator.classList.contains('hidden');
+                                if (speakWordBtn) {
+                                    if (isHidden) {
+                                        speakWordBtn.classList.remove('speaking');
+                                    } else {
+                                        speakWordBtn.classList.add('speaking');
+                                    }
+                                }
+                            }
+                        });
+                    });
+                    
+                    // Start observing
+                    observer.observe(speakingIndicator, { attributes: true });
+                }
             }
         }
     },
@@ -405,10 +426,15 @@ const uiController = {
 
     // Speak matched word
     speakMatchedWord: function() {
-        if (!matchedWordElement || !window.textToSpeech) return;
-        const word = matchedWordElement.textContent;
-        if (word) {
-            window.textToSpeech.speak(word);
+        if (!window.textToSpeech) return;
+        
+        const matchedWordElement = document.getElementById('matched-word');
+        if (matchedWordElement) {
+            const word = matchedWordElement.textContent;
+            if (word && word !== 'None') {
+                console.log(`Speaking matched word: ${word}`);
+                window.textToSpeech.speak(word);
+            }
         }
     }
 };

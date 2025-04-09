@@ -174,20 +174,6 @@ class TextToSpeech {
     }
     
     /**
-     * Check if the browser is Safari
-     */
-    isSafari() {
-        return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    }
-    
-    /**
-     * Check if the device is iOS
-     */
-    isIOS() {
-        return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    }
-    
-    /**
      * Debug method to test speech synthesis
      */
     testSpeech() {
