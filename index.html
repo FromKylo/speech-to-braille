@@ -185,6 +185,9 @@
             updateLoadingProgress(0, 'Preparing to download model...');
             
             try {
+                // Set worker path to local Vosk bundle
+                speechRecognition.setWorkerPath('/node_modules/vosk-browser/dist/vosk-worker.js');
+                
                 // Load local model for speech recognition
                 await speechRecognition.loadLocalModel({
                     progressCallback: updateLoadingProgress
