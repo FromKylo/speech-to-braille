@@ -392,6 +392,38 @@
             }
         }
         
+        /**
+         * Properly formats the braille array for display exactly as it appears in the CSV
+         * @param {Array|Array[]} array - The array data from the translator
+         * @return {string} The formatted array string
+         */
+        function formatBrailleArrayForDisplay(array) {
+            // For nested arrays (contractions)
+            if (Array.isArray(array[0])) {
+                return '{{' + array.map(subArray => {
+                    return subArray.join(',');
+                }).join('},{') + '}}';
+            } 
+            // For single character arrays
+            else {
+                return '{' + array.join(',') + '}';
+            }
+        }
+
+        /**
+         * Formats the language display with proper capitalization and handling of "Both"
+         * @param {string} language - The language string from the database
+         * @return {string} Properly formatted language display
+         */
+        function formatLanguageDisplay(language) {
+            if (language === 'Both') {
+                return 'Universal (UEB & Philippine)';
+            } else {
+                // Proper capitalization
+                return language.charAt(0).toUpperCase() + language.slice(1);
+            }
+        }
+
         // Function to process speech results for Braille matching
         function processSpeechForBraille(text) {
             if (!brailleTranslator.isDatabaseLoaded()) {
@@ -406,28 +438,22 @@
                 noMatchInfo.classList.add('hidden');
                 brailleResult.classList.remove('hidden');
                 
-                // Update UI with match details
+                // Update UI with matched word and braille symbol
                 matchedWordElement.textContent = result.word;
-                brailleLanguageElement.textContent = result.language;
                 brailleSymbolElement.textContent = result.braille;
                 
-                // Debug the array content to verify what we're receiving
-                console.log('Braille array for ' + result.word + ':', result.array);
+                // Format and display the language properly
+                brailleLanguageElement.textContent = formatLanguageDisplay(result.language);
                 
-                // Format the array for display with proper JSON stringification first
-                // to ensure all array elements are captured
-                let arrayDisplay;
-                if (Array.isArray(result.array[0])) {
-                    // Handle nested arrays for contractions
-                    arrayDisplay = '{{' + result.array.map(subArray => 
-                        subArray.toString()
-                    ).join('},{') + '}}';
-                } else {
-                    // Handle single arrays for letters
-                    arrayDisplay = '{' + result.array.toString() + '}';
-                }
+                // Debug the raw array content to verify what we're receiving
+                console.log('Raw braille array for ' + result.word + ':', result.array);
                 
-                brailleArrayElement.textContent = arrayDisplay;
+                // Format the array display exactly as in the CSV file
+                const formattedArray = formatBrailleArrayForDisplay(result.array);
+                console.log('Formatted array:', formattedArray);
+                
+                // Display the formatted array
+                brailleArrayElement.textContent = formattedArray;
             } else {
                 // No match found
                 brailleResult.classList.add('hidden');
