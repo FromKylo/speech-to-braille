@@ -15,6 +15,9 @@ const CACHE_URLS = [
   '/images/icons/icon-384x384.png',
   '/images/icons/icon-512x512.png',
   'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap'
+  '/speech-to-braille/',
+  '/speech-to-braille/index.html',
+  '/speech-to-braille/manifest.json'
 ];
 
 // Install event - cache all static assets
