@@ -83,6 +83,57 @@
             color: #666;
             font-size: 0.875rem;
         }
+        
+        /* Speech Recognition Styles */
+        #speech-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        #recording-indicator {
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .recording-off {
+            color: #666;
+            background-color: #e0e0e0;
+        }
+        
+        .recording-on {
+            color: white;
+            background-color: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        #speech-output {
+            min-height: 100px;
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        
+        #interim-text {
+            color: #666;
+            font-style: italic;
+        }
+        
+        #final-text {
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -115,6 +166,20 @@
         </div>
         
         <div class="card">
+            <h2>Speech Recognition</h2>
+            <p>Speak into your microphone and see the text appear in real-time.</p>
+            <div id="speech-controls">
+                <button id="start-speech-btn">Start Speaking</button>
+                <button id="stop-speech-btn" disabled>Stop</button>
+                <div id="recording-indicator" class="recording-off">● Recording</div>
+            </div>
+            <div id="speech-output">
+                <p id="interim-text"></p>
+                <p id="final-text"></p>
+            </div>
+        </div>
+        
+        <div class="card">
             <h2>Dynamic Content</h2>
             <p>This section demonstrates dynamic content handling:</p>
             <button id="refresh-button">Refresh Data</button>
@@ -130,56 +195,231 @@
 
     <script src="node_modules/vosk-browser/dist/vosk.js"></script>
     <script>
-        // Initialize Vosk
-        let recognizer;
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const startButton = document.createElement('button');
-        startButton.textContent = 'Start Speech Recognition';
-        startButton.style.margin = '1rem 0';
-        document.querySelector('main').appendChild(startButton);
-
-        async function initializeVosk() {
-            try {
-                const model = new vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
-                recognizer = new vosk.Recognizer({
-                    model: model,
-                    sampleRate: audioContext.sampleRate
+        // Speech recognition functionality
+        let recognitionActive = false;
+        let audioStream = null;
+        let recognizer = null;
+        let audioContext = null;
+        let processor = null;
+        let source = null;
+        
+        // DOM elements
+        const startSpeechBtn = document.getElementById('start-speech-btn');
+        const stopSpeechBtn = document.getElementById('stop-speech-btn');
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const interimTextElement = document.getElementById('interim-text');
+        const finalTextElement = document.getElementById('final-text');
+        
+        // Remove the old button that was added programmatically
+        const oldButtons = document.querySelectorAll('main > button');
+        oldButtons.forEach(button => {
+            if (button.textContent === 'Start Speech Recognition') {
+                button.remove();
+            }
+        });
+        
+        // Speech recognition initialization
+        async function initializeSpeechRecognition() {
+            // First try to use Web Speech API if available (better for real-time results)
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                console.log('Using Web Speech API for speech recognition');
+                
+                // Create speech recognition object
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                
+                // Configure recognition
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                
+                // Set up event handlers
+                recognition.onstart = () => {
+                    setRecordingState(true);
+                };
+                
+                recognition.onend = () => {
+                    setRecordingState(false);
+                };
+                
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+                    
+                    // Process results
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript + ' ';
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    
+                    // Update the UI with results
+                    if (interimTranscript) {
+                        interimTextElement.textContent = interimTranscript;
+                    }
+                    
+                    if (finalTranscript) {
+                        // Append to final text, don't replace it
+                        finalTextElement.textContent += finalTranscript;
+                        // Clear interim text once it's finalized
+                        interimTextElement.textContent = '';
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    setRecordingState(false);
+                    alert(`Speech recognition error: ${event.error}`);
+                };
+                
+                // Function to start recognition
+                startSpeechBtn.addEventListener('click', () => {
+                    if (!recognitionActive) {
+                        try {
+                            recognition.start();
+                        } catch (error) {
+                            console.error('Failed to start recognition:', error);
+                        }
+                    }
                 });
-                console.log('Vosk model loaded successfully');
-            } catch (error) {
-                console.error('Error loading Vosk model:', error);
-                alert('Failed to load the speech recognition model. Please check your connection.');
+                
+                // Function to stop recognition
+                stopSpeechBtn.addEventListener('click', () => {
+                    if (recognitionActive) {
+                        recognition.stop();
+                    }
+                });
+                
+            } else {
+                // Fall back to Vosk for browsers without Web Speech API or offline use
+                console.log('Web Speech API not available, using Vosk');
+                
+                try {
+                    // Initialize audio context
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Initialize Vosk model
+                    try {
+                        const model = await vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
+                        recognizer = new vosk.Recognizer({
+                            model: model,
+                            sampleRate: audioContext.sampleRate
+                        });
+                        console.log('Vosk model loaded successfully');
+                    } catch (error) {
+                        console.error('Error loading Vosk model:', error);
+                        alert('Failed to load the speech recognition model. Please check your connection.');
+                    }
+                    
+                    // Set up start speech button
+                    startSpeechBtn.addEventListener('click', startVoskRecognition);
+                    
+                    // Set up stop speech button
+                    stopSpeechBtn.addEventListener('click', stopVoskRecognition);
+                } catch (error) {
+                    console.error('Failed to initialize audio context:', error);
+                    alert('Failed to initialize audio. Please try again or use a different browser.');
+                }
             }
         }
-
-        async function startRecognition() {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const source = audioContext.createMediaStreamSource(stream);
-            const processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-            source.connect(processor);
-            processor.connect(audioContext.destination);
-
-            processor.onaudioprocess = (event) => {
-                const inputData = event.inputBuffer.getChannelData(0);
-                const int16Array = new Int16Array(inputData.length);
-                for (let i = 0; i < inputData.length; i++) {
-                    int16Array[i] = inputData[i] * 32767;
-                }
-                const result = recognizer.acceptWaveform(int16Array);
-                if (result) {
-                    const text = recognizer.result().text;
-                    dynamicContent.innerHTML = `<p>Recognized Text: ${text}</p>`;
-                }
-            };
+        
+        // Start Vosk recognition
+        async function startVoskRecognition() {
+            if (recognitionActive || !recognizer) return;
+            
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                source = audioContext.createMediaStreamSource(audioStream);
+                processor = audioContext.createScriptProcessor(4096, 1, 1);
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                processor.onaudioprocess = (event) => {
+                    // Convert audio data for Vosk
+                    const inputData = event.inputBuffer.getChannelData(0);
+                    const int16Array = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        int16Array[i] = inputData[i] * 32767;
+                    }
+                    
+                    // Process with Vosk
+                    const result = recognizer.acceptWaveform(int16Array);
+                    
+                    if (result) {
+                        // Final result
+                        const finalText = recognizer.result().text;
+                        if (finalText) {
+                            finalTextElement.textContent += finalText + ' ';
+                        }
+                    } else {
+                        // Partial result (intermediate)
+                        const partialText = recognizer.partialResult().partial;
+                        if (partialText) {
+                            interimTextElement.textContent = partialText;
+                        }
+                    }
+                };
+                
+                setRecordingState(true);
+            } catch (error) {
+                console.error('Error starting Vosk recognition:', error);
+                alert('Failed to access the microphone. Please ensure you have granted permission.');
+                setRecordingState(false);
+            }
         }
-
-        startButton.addEventListener('click', () => {
-            startRecognition();
-        });
-
-        // Initialize Vosk on page load
-        initializeVosk();
+        
+        // Stop Vosk recognition
+        function stopVoskRecognition() {
+            if (!recognitionActive) return;
+            
+            // Clean up resources
+            if (source) {
+                source.disconnect();
+                source = null;
+            }
+            
+            if (processor) {
+                processor.disconnect();
+                processor = null;
+            }
+            
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+            
+            // Reset UI
+            setRecordingState(false);
+        }
+        
+        // Helper function to update UI for recording state
+        function setRecordingState(isRecording) {
+            recognitionActive = isRecording;
+            
+            // Update button states
+            startSpeechBtn.disabled = isRecording;
+            stopSpeechBtn.disabled = !isRecording;
+            
+            // Update recording indicator
+            if (isRecording) {
+                recordingIndicator.className = 'recording-on';
+                recordingIndicator.textContent = '● Recording';
+            } else {
+                recordingIndicator.className = 'recording-off';
+                recordingIndicator.textContent = '● Recording';
+            }
+            
+            // Clear interim text if stopping
+            if (!isRecording) {
+                interimTextElement.textContent = '';
+            }
+        }
+        
+        // Initialize speech recognition on page load
+        document.addEventListener('DOMContentLoaded', initializeSpeechRecognition);
     </script>
 
     <script>
