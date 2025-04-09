@@ -89,14 +89,21 @@ footer {
 }
 
 .recording-off {
-    color: #666;
+    color: #9e9e9e;
     background-color: #e0e0e0;
 }
 
 .recording-on {
-    color: white;
+    color: #f44336;
+    font-weight: bold;
     background-color: #dc3545;
-    animation: pulse 1.5s infinite;
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 @keyframes pulse {
@@ -526,4 +533,22 @@ details[open] summary {
 
 .speaking-indicator.hidden {
     display: none;
+}
+
+/* Microphone status indicator */
+.mic-status {
+    margin-left: 15px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.mic-ok {
+    background-color: #34a853;
+    color: white;
+}
+
+.mic-error {
+    background-color: #ea4335;
+    color: white;
 }

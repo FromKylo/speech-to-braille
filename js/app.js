@@ -11,7 +11,16 @@ function initApp() {
     // Check if speech recognition is defined before using it
     if (typeof speechRecognition === 'undefined') {
         console.error('Speech recognition module is not loaded');
-        alert('Speech recognition module is not available. Please check console for errors.');
+        
+        // Wait a bit and try again - it might still be initializing
+        setTimeout(() => {
+            if (typeof speechRecognition !== 'undefined') {
+                console.log('Speech recognition module loaded after delay');
+                setupSpeechRecognitionEvents();
+            } else {
+                alert('Speech recognition module is not available. Please check console for errors.');
+            }
+        }, 1000);
         return;
     }
     
@@ -21,8 +30,7 @@ function initApp() {
     // Add debugging helper to check if the speech recognition module is working
     console.log('Speech recognition module status:', {
         defined: typeof speechRecognition !== 'undefined',
-        supported: typeof speechRecognition !== 'undefined' ? speechRecognition.isSupported() : false,
-        webSpeech: typeof speechRecognition !== 'undefined' ? speechRecognition.webSpeechRecognition : false
+        supported: typeof speechRecognition !== 'undefined' ? speechRecognition.isSupported() : false
     });
 }
 
@@ -33,11 +41,13 @@ function setupSpeechRecognitionEvents() {
         speechRecognition.on('start', () => {
             console.log('Speech recognition started');
             uiController.setRecordingState(true);
+            recognitionActive = true;
         });
         
         speechRecognition.on('end', () => {
             console.log('Speech recognition ended');
             uiController.setRecordingState(false);
+            recognitionActive = false;
         });
         
         speechRecognition.on('result', (text) => {
@@ -56,7 +66,27 @@ function setupSpeechRecognitionEvents() {
         speechRecognition.on('error', (error) => {
             console.error('Speech recognition error:', error);
             uiController.setRecordingState(false);
-            alert(`Speech recognition error: ${error}`);
+            recognitionActive = false;
+            
+            // Show error but don't block with alert
+            const errorElement = document.createElement('div');
+            errorElement.className = 'error-message';
+            errorElement.textContent = `Speech recognition error: ${error}`;
+            errorElement.style.color = '#ea4335';
+            errorElement.style.margin = '10px 0';
+            errorElement.style.padding = '10px';
+            errorElement.style.borderRadius = '4px';
+            errorElement.style.backgroundColor = '#fce8e6';
+            
+            const speechOutput = document.getElementById('speech-output');
+            if (speechOutput) {
+                speechOutput.prepend(errorElement);
+                setTimeout(() => {
+                    errorElement.style.opacity = '0';
+                    errorElement.style.transition = 'opacity 1s';
+                    setTimeout(() => errorElement.remove(), 1000);
+                }, 5000);
+            }
         });
     }
 }
@@ -140,8 +170,12 @@ async function startSpeechRecognition() {
     
     try {
         console.log(`Starting speech recognition with method: ${selectedMethod}`);
-        await speechRecognition.start(selectedMethod);
-        console.log('Speech recognition start method called');
+        if (typeof speechRecognition !== 'undefined' && speechRecognition) {
+            console.log('Speech recognition object exists, starting...');
+            speechRecognition.startRecognition();
+        } else {
+            throw new Error('Speech recognition module not initialized');
+        }
     } catch (error) {
         console.error('Failed to start recognition:', error);
         alert(`Failed to start recognition: ${error.message}`);
@@ -150,9 +184,9 @@ async function startSpeechRecognition() {
 
 // Function to stop speech recognition
 function stopSpeechRecognition() {
-    if (recognitionActive && speechRecognition) {
+    if (recognitionActive && typeof speechRecognition !== 'undefined' && speechRecognition) {
         console.log('Stopping speech recognition');
-        speechRecognition.stop();
+        speechRecognition.stopRecognition();
     }
 }
 
