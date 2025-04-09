@@ -23,23 +23,6 @@
         <button id="install-button" class="install-button">Install App</button>
         
         <div class="card">
-            <h2>Welcome to your PWA</h2>
-            <p>This Progressive Web App template is designed to work offline on mobile devices. It includes:</p>
-            <ul>
-                <li>Service worker for offline caching</li>
-                <li>Web App Manifest for installation</li>
-                <li>Responsive design</li>
-                <li>Network status detection</li>
-            </ul>
-        </div>
-        
-        <div class="card">
-            <h2>Cached Content</h2>
-            <p>This content will be available even when you're offline.</p>
-            <p>Last updated: <span id="last-updated">Loading...</span></p>
-        </div>
-        
-        <div class="card">
             <h2>Speech Recognition</h2>
             <p>Speak into your microphone and see the text appear in real-time.</p>
             <div id="speech-controls">
@@ -75,7 +58,7 @@
             </div>
         </div>
         
-        <!-- New Braille Translator Card -->
+        <!-- Braille Translator Card -->
         <div class="card">
             <h2>Braille Translation</h2>
             <p>Matches from your speech are converted to Braille:</p>
@@ -107,13 +90,36 @@
             </div>
         </div>
         
+        <!-- Troubleshooting Details Card - Combined section -->
         <div class="card">
-            <h2>Dynamic Content</h2>
-            <p>This section displays the cached resources in this application:</p>
-            <button id="refresh-button">Check Cache Status</button>
-            <div id="dynamic-content">
-                <p>Loading cache information...</p>
-            </div>
+            <h2>Troubleshooting Details</h2>
+            <p>Technical information to help diagnose issues with the application.</p>
+            
+            <details>
+                <summary>Cached Content</summary>
+                <div class="details-content">
+                    <p>This content will be available even when you're offline.</p>
+                    <p>Last updated: <span id="last-updated">Loading...</span></p>
+                </div>
+            </details>
+            
+            <details>
+                <summary>Cache Resources</summary>
+                <div class="details-content">
+                    <p>This section displays the cached resources in this application:</p>
+                    <button id="refresh-button">Refresh Cache Info</button>
+                    <div id="dynamic-content">
+                        <p>Loading cache information...</p>
+                    </div>
+                </div>
+            </details>
+            
+            <details>
+                <summary>IndexedDB Models</summary>
+                <div class="details-content" id="indexeddb-content">
+                    <p>Loading IndexedDB information...</p>
+                </div>
+            </details>
         </div>
     </main>
     
