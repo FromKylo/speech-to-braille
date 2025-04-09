@@ -1,10 +1,11 @@
 // Service Worker for PWA Template
-const CACHE_NAME = 'pwa-template-v1';
+const CACHE_NAME = 'pwa-template-v2';
 const CACHE_URLS = [
   '/',
   '/index.html',
   '/css/style.css',
   '/js/app.js',
+  '/js/vosk-worker.js',
   '/manifest.json',
   '/images/icons/icon-72x72.png',
   '/images/icons/icon-96x96.png',
@@ -14,13 +15,39 @@ const CACHE_URLS = [
   '/images/icons/icon-192x192.png',
   '/images/icons/icon-384x384.png',
   '/images/icons/icon-512x512.png',
-  'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap'
+  'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap',
+  '/node_modules/vosk-browser/dist/vosk.js'
 ];
 
-const VOSK_MODEL_URL = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
+// Vosk model URL (we'll use the CDN version)
+const VOSK_MODEL_URL = 'https://cdn.jsdelivr.net/gh/ccoreilly/vosk-browser@master/public/models/vosk-model-small-en-us-0.15';
 
-// Add Vosk model to the cache list
-CACHE_URLS.push(VOSK_MODEL_URL);
+// Add Vosk model related files to cache
+const VOSK_MODEL_FILES = [
+  `${VOSK_MODEL_URL}/am/final.mdl`,
+  `${VOSK_MODEL_URL}/conf/mfcc.conf`,
+  `${VOSK_MODEL_URL}/conf/model.conf`,
+  `${VOSK_MODEL_URL}/graph/disambig_tid.int`,
+  `${VOSK_MODEL_URL}/graph/Gr.fst`,
+  `${VOSK_MODEL_URL}/graph/HCLr.fst`,
+  `${VOSK_MODEL_URL}/graph/phones.txt`,
+  `${VOSK_MODEL_URL}/graph/phones/align_lexicon.int`,
+  `${VOSK_MODEL_URL}/graph/phones/disambig.int`,
+  `${VOSK_MODEL_URL}/graph/phones/optional_silence.csl`,
+  `${VOSK_MODEL_URL}/graph/phones/optional_silence.txt`,
+  `${VOSK_MODEL_URL}/graph/phones/silence.csl`,
+  `${VOSK_MODEL_URL}/graph/phones/silence.txt`,
+  `${VOSK_MODEL_URL}/graph/words.txt`,
+  `${VOSK_MODEL_URL}/ivector/final.dubm`,
+  `${VOSK_MODEL_URL}/ivector/final.ie`,
+  `${VOSK_MODEL_URL}/ivector/final.mat`,
+  `${VOSK_MODEL_URL}/ivector/global_cmvn.stats`,
+  `${VOSK_MODEL_URL}/ivector/online_cmvn.conf`,
+  `${VOSK_MODEL_URL}/ivector/splice.conf`
+];
+
+// Add all Vosk model files to the cache list
+CACHE_URLS.push(...VOSK_MODEL_FILES);
 
 // Install event - cache all static assets
 self.addEventListener('install', event => {
@@ -57,14 +84,14 @@ self.addEventListener('fetch', event => {
       .then(response => {
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then(cache => {
-          if (event.request.url.startsWith(self.location.origin) || event.request.url === VOSK_MODEL_URL) {
+          if (event.request.url.startsWith(self.location.origin) || event.request.url.startsWith(VOSK_MODEL_URL)) {
             cache.put(event.request, responseClone);
           }
         });
         return response;
       })
       .catch(() => {
-        if (event.request.url === VOSK_MODEL_URL) {
+        if (event.request.url.startsWith(VOSK_MODEL_URL)) {
           return caches.match(event.request);
         }
         return caches.match(event.request).then(cachedResponse => {

@@ -238,6 +238,7 @@
         let processor = null;
         let source = null;
         let modelLoaded = false;
+        let voskWorker = null;
         
         // DOM elements
         const startSpeechBtn = document.getElementById('start-speech-btn');
@@ -279,74 +280,141 @@
         // Initialize Vosk model
         async function initializeVosk() {
             try {
+                // Create audio context for sample rate
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const model = new vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
-                recognizer = new vosk.Recognizer({
-                    model: model,
-                    sampleRate: audioContext.sampleRate
-                });
-                console.log('Vosk model loaded successfully');
-                return recognizer;
-            } catch (error) {
-                console.error('Error initializing Vosk:', error);
+                const sampleRate = audioContext.sampleRate;Content = 'Downloading model...';
+                
+                // Create and initialize Web Worker for Vosk processingInitialize Vosk with proper model loading
+                if (voskWorker) {ccoreilly/vosk-browser@master/public/models/vosk-model-small-en-us-0.15';
+                    voskWorker.terminate();ng Vosk model from:', modelUrl);
+                }
+                odel
+                voskWorker = new Worker('js/vosk-worker.js');reateModel(modelUrl);
+                   const model = await vosk.createModel(modelUrl);
+                // Set up worker message handler       
+                voskWorker.onmessage = function(event) {        recognizer = new vosk.Recognizer({
+                    const message = event.data;
+                    t.sampleRate
+                    switch(message.status) {
+                        case 'workerReady':    
+                            console.log('Vosk worker is ready');('Vosk model loaded successfully with sample rate:', audioContext.sampleRate);
+                            break;;
+                            
+                        case 'loading':r);
+                            loadModelBtn.textContent = 'Downloading...';r;
+                            break;
+                            
+                        case 'init':
+                            loadModelBtn.textContent = 'Initializing...';atus indicator
+                            break;odelStatus(model) {
+                            
+                        case 'ready':
+                            console.log('Vosk model loaded successfully');witch(model) {
+                            modelLoaded = true;       case 'webspeech':
+                            break;            modelBadge.classList.add('web-speech');
+                             'Web Speech API';
+                        case 'error':
+                            console.error('Vosk error:', message.message);
+                            loadModelBtn.textContent = 'Load Model';
+                            loadModelBtn.disabled = false;
+                            throw new Error(message.message);
+                            default:
+                        case 'result':del');
+                            if (message.type === 'partial') {
+                                interimTextElement.textContent = message.text;
+                            } else {
+                                finalTextElement.textContent += message.text + ' ';
+                                interimTextElement.textContent = '';
+                            }() {
+                            break;API if available (better for real-time results)
+                    }'webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                };peech API for speech recognition');
+                );
+                // Load the model in the worker
+                voskWorker.postMessage({ Create speech recognition object
+                    command: 'loadModel',const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    sampleRate: sampleRate,echRecognition();
+                    modelUrl: 'https://cdn.jsdelivr.net/gh/ccoreilly/vosk-browser@master/public/models/vosk-model-small-en-us-0.15'
+                }); Configure recognition
+                recognition.continuous = true;
+                // Wait for model to be ready
+                return new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Model loading timeout after 30 seconds'));et up event handlers
+                    }, 30000);() => {
+                    
+                    voskWorker.addEventListener('message', function handler(event) {
+                        if (event.data.status === 'ready') {
+                            clearTimeout(timeout);d = () => {
+                            voskWorker.removeEventListener('message', handler);
+                            resolve(true);
+                        } else if (event.data.status === 'error') {
+                            clearTimeout(timeout);gnition.onresult = (event) => {
+                            voskWorker.removeEventListener('message', handler);
+                            reject(new Error(event.data.message));;
+                        }
+                    });/ Process results
+                });for (let i = event.resultIndex; i < event.results.length; ++i) {
+            } catch (error) {i].isFinal) {
+                console.error('Error initializing Vosk:', error);].transcript + ' ';
                 throw error;
-            }
+            }[0].transcript;
         }
         
-        // Update model status indicator
-        function updateModelStatus(model) {
+        // Update model status indicator  
+        function updateModelStatus(model) {    // Update the UI with results
             modelBadge.className = 'model-badge';
             
             switch(model) {
                 case 'webspeech':
-                    modelBadge.classList.add('web-speech');
-                    modelBadge.textContent = 'Web Speech API';
-                    break;
-                case 'vosk':
-                    modelBadge.classList.add('vosk-model');
+                    modelBadge.classList.add('web-speech');  if (finalTranscript) {
+                    modelBadge.textContent = 'Web Speech API';        // Append to final text, don't replace it
+                    break;tent += finalTranscript;
+                case 'vosk':d
+                    modelBadge.classList.add('vosk-model');xtContent = '';
                     modelBadge.textContent = 'Vosk Model';
                     break;
                 default:
                     modelBadge.classList.add('no-model');
-                    modelBadge.textContent = 'Not Selected';
-            }
-        }
-        
+                    modelBadge.textContent = 'Not Selected';le.error('Speech recognition error:', event.error);
+            }etRecordingState(false);
+        } alert(`Speech recognition error: ${event.error}`);
+        };
         // Speech recognition initialization
         async function initializeSpeechRecognition() {
-            // First try to use Web Speech API if available (better for real-time results)
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                console.log('Using Web Speech API for speech recognition');
-                updateModelStatus('webspeech');
-                
-                // Create speech recognition object
+            // First try to use Web Speech API if available (better for real-time results)ner('click', () => {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) { {
+                console.log('Using Web Speech API for speech recognition');   try {
+                updateModelStatus('webspeech');         recognition.start();
+                        } catch (error) {
+                // Create speech recognition object        console.error('Failed to start recognition:', error);
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 const recognition = new SpeechRecognition();
                 
                 // Configure recognition
-                recognition.continuous = true;
+                recognition.continuous = true;on
                 recognition.interimResults = true;
-                recognition.lang = 'en-US';
+                recognition.lang = 'en-US';ive) {
                 
                 // Set up event handlers
                 recognition.onstart = () => {
                     setRecordingState(true);
-                };
-                
-                recognition.onend = () => {
-                    setRecordingState(false);
-                };
-                
-                recognition.onresult = (event) => {
-                    let interimTranscript = '';
+                };{
+                // Fall back to Vosk for browsers without Web Speech API or offline use
+                recognition.onend = () => {not available, using Vosk');
+                    setRecordingState(false);d
+                };   
+                       // Set up start speech button
+                recognition.onresult = (event) => {        startSpeechBtn.addEventListener('click', () => {
+                    let interimTranscript = '';ed) {
                     let finalTranscript = '';
                     
-                    // Process results
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    // Process results            alert('Please load the speech model first by clicking the "Load Speech Model" button.');
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {   }
                         if (event.results[i].isFinal) {
                             finalTranscript += event.results[i][0].transcript + ' ';
                         } else {
-                            interimTranscript += event.results[i][0].transcript;
+                            interimTranscript += event.results[i][0].transcript;stopSpeechBtn.addEventListener('click', stopVoskRecognition);
                         }
                     }
                     
@@ -355,99 +423,97 @@
                         interimTextElement.textContent = interimTranscript;
                     }
                     
-                    if (finalTranscript) {
-                        // Append to final text, don't replace it
-                        finalTextElement.textContent += finalTranscript;
+                    if (finalTranscript) {tUserMedia({ audio: true });
+                        // Append to final text, don't replace ite = audioContext.createMediaStreamSource(audioStream);
+                        finalTextElement.textContent += finalTranscript;essor = audioContext.createScriptProcessor(4096, 1, 1);
                         // Clear interim text once it's finalized
                         interimTextElement.textContent = '';
-                    }
+                    }essor.connect(audioContext.destination);
                 };
-                
+                s = (event) => {
                 recognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error);
+                    console.error('Speech recognition error:', event.error);ent.inputBuffer.getChannelData(0);
                     setRecordingState(false);
-                    alert(`Speech recognition error: ${event.error}`);
-                };
+                    alert(`Speech recognition error: ${event.error}`);let i = 0; i < inputData.length; i++) {
+                };6Array[i] = inputData[i] * 32767;
                 
                 // Function to start recognition
                 startSpeechBtn.addEventListener('click', () => {
                     if (!recognitionActive) {
                         try {
-                            recognition.start();
-                        } catch (error) {
-                            console.error('Failed to start recognition:', error);
+                            recognition.start();f (result) {
+                        } catch (error) {      // Final result
+                            console.error('Failed to start recognition:', error);        const finalText = recognizer.result().text;
                         }
                     }
                 });
                 
                 // Function to stop recognition
-                stopSpeechBtn.addEventListener('click', () => {
-                    if (recognitionActive) {
-                        recognition.stop();
-                    }
+                stopSpeechBtn.addEventListener('click', () => { = recognizer.partialResult().partial;
+                    if (recognitionActive) {           if (partialText) {
+                        recognition.stop();                   interimTextElement.textContent = partialText;
+                    }                }
                 });
                 
             } else {
-                // Fall back to Vosk for browsers without Web Speech API or offline use
-                console.log('Web Speech API not available, using Vosk');
-                updateModelStatus('none'); // Start with no model until loaded
-                
-                // Set up start speech button
-                startSpeechBtn.addEventListener('click', () => {
-                    if (modelLoaded) {
+                // Fall back to Vosk for browsers without Web Speech API or offline use    setRecordingState(true);
+                console.log('Web Speech API not available, using Vosk');('vosk'); // Ensure model status is updated when using Vosk
+                updateModelStatus('none'); // Start with no model until loadedr) {
+                 starting Vosk recognition:', error);
+                // Set up start speech buttonto access the microphone. Please ensure you have granted permission.');
+                startSpeechBtn.addEventListener('click', () => {   setRecordingState(false);
+                    if (modelLoaded) {}
                         startVoskRecognition();
                     } else {
                         alert('Please load the speech model first by clicking the "Load Speech Model" button.');
-                    }
-                });
+                    }ion stopVoskRecognition() {
+                });if (!recognitionActive) return;
                 
                 // Set up stop speech button
                 stopSpeechBtn.addEventListener('click', stopVoskRecognition);
-            }
-        }
+            }   source.disconnect();
+        }    source = null;
         
         // Start Vosk recognition
-        async function startVoskRecognition() {
-            if (recognitionActive || !recognizer) return;
+        async function startVoskRecognition() {   if (processor) {
+            if (recognitionActive || !voskWorker) return;        processor.disconnect();
             
             try {
                 audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                source = audioContext.createMediaStreamSource(audioStream);
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();if (audioStream) {
+                source = audioContext.createMediaStreamSource(audioStream);ks().forEach(track => track.stop());
+                
+                // Use ScriptProcessorNode (will be replaced with AudioWorkletNode in future version)
                 processor = audioContext.createScriptProcessor(4096, 1, 1);
                 
-                source.connect(processor);
+                source.connect(processor);false);
                 processor.connect(audioContext.destination);
                 
+                // Reset the recognizer statenction to update UI for recording state
+                voskWorker.postMessage({ command: 'reset' });
+                
                 processor.onaudioprocess = (event) => {
-                    // Convert audio data for Vosk
-                    const inputData = event.inputBuffer.getChannelData(0);
-                    const int16Array = new Int16Array(inputData.length);
-                    for (let i = 0; i < inputData.length; i++) {
-                        int16Array[i] = inputData[i] * 32767;
-                    }
-                    
-                    // Process with Vosk
-                    const result = recognizer.acceptWaveform(int16Array);
-                    
-                    if (result) {
-                        // Final result
-                        const finalText = recognizer.result().text;
-                        if (finalText) {
-                            finalTextElement.textContent += finalText + ' ';
-                        }
-                    } else {
-                        // Partial result (intermediate)
-                        const partialText = recognizer.partialResult().partial;
-                        if (partialText) {
-                            interimTextElement.textContent = partialText;
-                        }
+                    // Only process if recognition is active// Update button states
+                    if (recognitionActive) {ding;
+                        // Convert audio data for Voskled = !isRecording;
+                        const inputData = event.inputBuffer.getChannelData(0);
+                        const int16Array = new Int16Array(inputData.length);/ Update recording indicator
+                        for (let i = 0; i < inputData.length; i++) {   if (isRecording) {
+                            int16Array[i] = Math.min(1, Math.max(-1, inputData[i])) * 32767;        recordingIndicator.className = 'recording-on';
+                        }ecording';
+                        
+                        // Send to worker for processing   recordingIndicator.className = 'recording-off';
+                        voskWorker.postMessage({                recordingIndicator.textContent = '● Recording';
+                            command: 'processAudio',}
+                            audio: int16Array
+                        });m text if stopping
                     }
                 };
                 
                 setRecordingState(true);
-                updateModelStatus('vosk'); // Ensure model status is updated when using Vosk
-            } catch (error) {
-                console.error('Error starting Vosk recognition:', error);
+                
+            } catch (error) {// Initialize speech recognition on page load
+                console.error('Error starting Vosk recognition:', error);OMContentLoaded', initializeSpeechRecognition);
                 alert('Failed to access the microphone. Please ensure you have granted permission.');
                 setRecordingState(false);
             }
@@ -455,164 +521,180 @@
         
         // Stop Vosk recognition
         function stopVoskRecognition() {
-            if (!recognitionActive) return;
-            
-            // Clean up resources
+            if (!recognitionActive) return;onst lastUpdatedSpan = document.getElementById('last-updated');
+            const dynamicContent = document.getElementById('dynamic-content');
+            // Clean up resourcesefresh-button');
             if (source) {
                 source.disconnect();
-                source = null;
+                source = null;().toLocaleString();
             }
-            
+            and update the UI
             if (processor) {
                 processor.disconnect();
-                processor = null;
-            }
+                processor = null;ou are offline. Using cached content.';
+            }isOnline ? 'status online' : 'status offline';
             
-            if (audioStream) {
-                audioStream.getTracks().forEach(track => track.stop());
-                audioStream = null;
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.suspend();online/offline events
             }
+            Listener('offline', updateOnlineStatus);
+            if (audioStream) {nlineStatus(); // Initial check
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;// Service Worker Registration
+            }igator) {
             
             // Reset UI
-            setRecordingState(false);
-        }
+            setRecordingState(false);> {
+        }red!', reg);
         
         // Helper function to update UI for recording state
-        function setRecordingState(isRecording) {
-            recognitionActive = isRecording;
-            
+        function setRecordingState(isRecording) {r registration failed:', err);
+            recognitionActive = isRecording;         });
+                });
             // Update button states
             startSpeechBtn.disabled = isRecording;
             stopSpeechBtn.disabled = !isRecording;
-            
-            // Update recording indicator
+            nstallprompt', (e) => {
+            // Update recording indicatorly showing the prompt
             if (isRecording) {
                 recordingIndicator.className = 'recording-on';
                 recordingIndicator.textContent = '● Recording';
             } else {
-                recordingIndicator.className = 'recording-off';
+                recordingIndicator.className = 'recording-off';yle.display = 'block';
                 recordingIndicator.textContent = '● Recording';
             }
-            
-            // Clear interim text if stopping
-            if (!isRecording) {
-                interimTextElement.textContent = '';
-            }
-        }
-        
-        // Initialize speech recognition on page load
-        document.addEventListener('DOMContentLoaded', initializeSpeechRecognition);
-    </script>
-
+            ick', () => {
+            // Clear interim text if stoppingerredPrompt) {
+            if (!isRecording) {   // Show the install prompt
+                interimTextElement.textContent = '';     deferredPrompt.prompt();
+            }        // Wait for the user to respond to the prompt
+        }en((choiceResult) => {
+        Result.outcome === 'accepted') {
+        // Initialize speech recognition on page loadstall prompt');
+        document.addEventListener('DOMContentLoaded', initializeSpeechRecognition);y = 'none';
+    </script> {
+console.log('User dismissed the install prompt');
     <script>
         // Initialize variables
         let deferredPrompt;
         const installButton = document.getElementById('install-button');
         const statusDiv = document.getElementById('connection-status');
         const lastUpdatedSpan = document.getElementById('last-updated');
-        const dynamicContent = document.getElementById('dynamic-content');
+        const dynamicContent = document.getElementById('dynamic-content');imulate fetching dynamic content
         const refreshButton = document.getElementById('refresh-button');
-        
-        // Set the last updated time
+        etch from an API
+        // Set the last updated time with local data
         lastUpdatedSpan.textContent = new Date().toLocaleString();
         
-        // Check if the app is online and update the UI
-        function updateOnlineStatus() {
-            const isOnline = navigator.onLine;
+        // Check if the app is online and update the UI title: 'Item 1', description: 'Description for item 1' },
+        function updateOnlineStatus() {n: 'Description for item 2' },
+            const isOnline = navigator.onLine;e: 'Item 3', description: 'Description for item 3' }
             statusDiv.textContent = isOnline ? 'You are online.' : 'You are offline. Using cached content.';
             statusDiv.className = isOnline ? 'status online' : 'status offline';
         }
         
-        // Add event listeners for online/offline events
-        window.addEventListener('online', updateOnlineStatus);
-        window.addEventListener('offline', updateOnlineStatus);
-        updateOnlineStatus(); // Initial check
+        // Add event listeners for online/offline eventsromise((resolve) => {
+        window.addEventListener('online', updateOnlineStatus); // Simulate network delay
+        window.addEventListener('offline', updateOnlineStatus);       setTimeout(() => {
+        updateOnlineStatus(); // Initial check            if (navigator.onLine) {
         
         // Service Worker Registration
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(reg => {
+            window.addEventListener('load', () => {            resolve({
+                navigator.serviceWorker.register('service-worker.js'): 0, title: 'Cached Item', description: 'This is cached content for offline use' }],
+                    .then(reg => {imestamp: 'Using cached data'
                         console.log('Service worker registered!', reg);
                     })
-                    .catch(err => {
+                    .catch(err => {;
                         console.log('Service worker registration failed:', err);
                     });
             });
         }
-        
-        // Handle app installation
+        unction updateUI(data) {
+        // Handle app installation    let html = `<p>Last fetched: ${data.timestamp}</p><ul>`;
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
-            e.preventDefault();
-            // Stash the event so it can be triggered later
+            // Prevent Chrome 67 and earlier from automatically showing the prompt => {
+            e.preventDefault();        html += `<li>
+            // Stash the event so it can be triggered latertle}</h3>
             deferredPrompt = e;
             // Show the install button
             installButton.style.display = 'block';
-        });
-        
-        installButton.addEventListener('click', () => {
-            if (deferredPrompt) {
-                // Show the install prompt
-                deferredPrompt.prompt();
-                // Wait for the user to respond to the prompt
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the install prompt');
-                        installButton.style.display = 'none';
-                    } else {
-                        console.log('User dismissed the install prompt');
-                    }
-                    deferredPrompt = null;
-                });
-            }
-        });
-        
-        // Simulate fetching dynamic content
-        function fetchData() {
-            // In a real app, you would fetch from an API
-            // Here we'll simulate with local data
-            const data = {
-                items: [
-                    { id: 1, title: 'Item 1', description: 'Description for item 1' },
-                    { id: 2, title: 'Item 2', description: 'Description for item 2' },
-                    { id: 3, title: 'Item 3', description: 'Description for item 3' }
-                ],
-                timestamp: new Date().toLocaleString()
-            };
-            
-            return new Promise((resolve) => {
-                // Simulate network delay
-                setTimeout(() => {
-                    if (navigator.onLine) {
-                        resolve(data);
-                    } else {
-                        // Return cached data if offline
-                        resolve({
-                            items: [{ id: 0, title: 'Cached Item', description: 'This is cached content for offline use' }],
-                            timestamp: 'Using cached data'
-                        });
-                    }
-                }, 500);
-            });
-        }
-        
-        // Update the UI with fetched data
-        function updateUI(data) {
-            let html = `<p>Last fetched: ${data.timestamp}</p><ul>`;
-            
-            data.items.forEach(item => {
-                html += `<li>
-                    <h3>${item.title}</h3>
-                    <p>${item.description}</p>
-                </li>`;
-            });
-            
-            html += '</ul>';
-            dynamicContent.innerHTML = html;
-        }
-        
-        // Initial data fetch
+        }); 
+        tml += '</ul>';
+        installButton.addEventListener('click', () => {     dynamicContent.innerHTML = html;
+            if (deferredPrompt) { }
+                // Show the install prompt        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</html></body>    </script>        });            fetchData().then(updateUI);            dynamicContent.innerHTML = '<p>Loading...</p>';        refreshButton.addEventListener('click', () => {        // Refresh button handler                fetchData().then(updateUI);        // Initial data fetch                }            dynamicContent.innerHTML = html;            html += '</ul>';                        });                </li>`;                    <p>${item.description}</p>                    <h3>${item.title}</h3>                html += `<li>            data.items.forEach(item => {                        let html = `<p>Last fetched: ${data.timestamp}</p><ul>`;        function updateUI(data) {        // Update the UI with fetched data                }            });                }, 500);                    }                        });                            timestamp: 'Using cached data'                            items: [{ id: 0, title: 'Cached Item', description: 'This is cached content for offline use' }],                        resolve({                        // Return cached data if offline                    } else {                        resolve(data);                    if (navigator.onLine) {                setTimeout(() => {                // Simulate network delay            return new Promise((resolve) => {                        };                timestamp: new Date().toLocaleString()                ],                    { id: 3, title: 'Item 3', description: 'Description for item 3' }                    { id: 2, title: 'Item 2', description: 'Description for item 2' },                    { id: 1, title: 'Item 1', description: 'Description for item 1' },                items: [            const data = {            // Here we'll simulate with local data            // In a real app, you would fetch from an API        function fetchData() {        // Simulate fetching dynamic content                });            }                });                    deferredPrompt = null;                    }                        console.log('User dismissed the install prompt');                    } else {                        installButton.style.display = 'none';                        console.log('User accepted the install prompt');                    if (choiceResult.outcome === 'accepted') {                deferredPrompt.userChoice.then((choiceResult) => {                // Wait for the user to respond to the prompt                deferredPrompt.prompt();        // Initial data fetch
         fetchData().then(updateUI);
         
         // Refresh button handler
