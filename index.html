@@ -204,6 +204,103 @@
                 brailleStatus.textContent = 'Loading Braille database...';
                 brailleStatus.className = 'status';
                 
+                // Add retry button for manual database loading
+                const retryButton = document.createElement('button');
+                retryButton.textContent = 'Retry Loading Database';
+                retryButton.id = 'retry-braille-db-btn';
+                retryButton.style.marginTop = '10px';
+                retryButton.style.display = 'none';
+                brailleStatus.appendChild(document.createElement('br'));
+                brailleStatus.appendChild(retryButton);
+                
+                // Add event listener to retry button
+                retryButton.addEventListener('click', async () => {
+                    brailleStatus.textContent = 'Retrying database load...';
+                    brailleStatus.className = 'status';
+                    retryButton.style.display = 'none';
+                    brailleStatus.appendChild(document.createElement('br'));
+                    brailleStatus.appendChild(retryButton);
+                    
+                    try {
+                        const success = await brailleTranslator.init();
+                        if (success) {
+                            const dbSize = brailleTranslator.getDatabaseSize();
+                            brailleStatus.textContent = `Braille database loaded with ${dbSize} entries`;
+                            brailleStatus.className = 'status online';
+                            retryButton.style.display = 'none';
+                        } else {
+                            brailleStatus.textContent = 'Failed to load Braille database';
+                            brailleStatus.className = 'status offline';
+                            retryButton.style.display = 'inline-block';
+                            showDatabaseDebugInfo();
+                        }
+                    } catch (error) {
+                        console.error('Error initializing Braille translator:', error);
+                        brailleStatus.textContent = `Error loading database: ${error.message}`;
+                        brailleStatus.className = 'status offline';
+                        retryButton.style.display = 'inline-block';
+                        showDatabaseDebugInfo();
+                    }
+                });
+                
+                // Function to display database debug info
+                function showDatabaseDebugInfo() {
+                    // Check if the CSV file exists and display diagnostic information
+                    const debugDiv = document.createElement('div');
+                    debugDiv.className = 'database-debug-info';
+                    debugDiv.style.marginTop = '10px';
+                    debugDiv.style.padding = '10px';
+                    debugDiv.style.backgroundColor = '#f8f9fa';
+                    debugDiv.style.border = '1px solid #dee2e6';
+                    debugDiv.style.borderRadius = '4px';
+                    
+                    const debugTitle = document.createElement('h4');
+                    debugTitle.textContent = 'Diagnostic Information';
+                    debugTitle.style.margin = '0 0 10px 0';
+                    debugDiv.appendChild(debugTitle);
+                    
+                    // Check file availability
+                    fetch('/ueb-philb-braille-database.csv', { 
+                        method: 'HEAD',
+                        cache: 'no-store'
+                    })
+                    .then(response => {
+                        const fileInfo = document.createElement('p');
+                        if (response.ok) {
+                            fileInfo.textContent = '✅ Database file is accessible via direct path';
+                            fileInfo.style.color = '#155724';
+                        } else {
+                            fileInfo.textContent = '❌ Database file is not accessible via direct path';
+                            fileInfo.style.color = '#721c24';
+                        }
+                        debugDiv.appendChild(fileInfo);
+                        
+                        // Add server information
+                        const serverInfo = document.createElement('p');
+                        serverInfo.textContent = `Server base URL: ${window.location.origin}`;
+                        debugDiv.appendChild(serverInfo);
+                        
+                        // Add helpful suggestions
+                        const suggestions = document.createElement('ul');
+                        suggestions.innerHTML = `
+                            <li>Make sure the file "ueb-philb-braille-database.csv" exists in the root directory</li>
+                            <li>Check if the file permissions allow it to be read</li>
+                            <li>Try refreshing the page with Ctrl+F5 to clear cache</li>
+                            <li>Check the browser console for additional error details</li>
+                        `;
+                        debugDiv.appendChild(suggestions);
+                    })
+                    .catch(error => {
+                        const errorInfo = document.createElement('p');
+                        errorInfo.textContent = `Error checking file: ${error.message}`;
+                        errorInfo.style.color = '#721c24';
+                        debugDiv.appendChild(errorInfo);
+                    })
+                    .finally(() => {
+                        brailleStatus.appendChild(debugDiv);
+                    });
+                }
+                
                 try {
                     const success = await brailleTranslator.init();
                     if (success) {
@@ -213,11 +310,15 @@
                     } else {
                         brailleStatus.textContent = 'Failed to load Braille database';
                         brailleStatus.className = 'status offline';
+                        retryButton.style.display = 'inline-block';
+                        showDatabaseDebugInfo();
                     }
                 } catch (error) {
                     console.error('Error initializing Braille translator:', error);
-                    brailleStatus.textContent = 'Error loading Braille database';
+                    brailleStatus.textContent = `Error loading database: ${error.message}`;
                     brailleStatus.className = 'status offline';
+                    retryButton.style.display = 'inline-block';
+                    showDatabaseDebugInfo();
                 }
             } else {
                 console.error('Braille translator module is not loaded');

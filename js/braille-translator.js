@@ -31,12 +31,38 @@ const brailleTranslator = (function() {
     // Function to load the Braille database from the CSV file
     async function loadDatabase() {
         try {
-            const response = await fetch('/ueb-philb-braille-database.csv');
-            if (!response.ok) {
-                throw new Error(`Failed to load Braille database: ${response.status}`);
+            // Try multiple path possibilities to handle different server configurations
+            const possiblePaths = [
+                '/ueb-philb-braille-database.csv',
+                './ueb-philb-braille-database.csv',
+                '../ueb-philb-braille-database.csv',
+                window.location.origin + '/ueb-philb-braille-database.csv'
+            ];
+            
+            let response = null;
+            let csvText = null;
+            let loadedFrom = '';
+            
+            // Try each path until one works
+            for (const path of possiblePaths) {
+                try {
+                    console.log(`Attempting to load Braille database from: ${path}`);
+                    response = await fetch(path, { cache: 'no-store' });
+                    if (response.ok) {
+                        csvText = await response.text();
+                        loadedFrom = path;
+                        console.log(`Successfully loaded Braille database from: ${path}`);
+                        break;
+                    }
+                } catch (pathError) {
+                    console.warn(`Could not load from ${path}:`, pathError);
+                }
             }
             
-            const csvText = await response.text();
+            if (!csvText) {
+                throw new Error(`Failed to load Braille database from any path`);
+            }
+            
             const rows = csvText.split('\n');
             
             // Skip the first row (header) and parse the rest
@@ -66,7 +92,12 @@ const brailleTranslator = (function() {
             databaseLoaded = true;
             
             // Trigger databaseloaded event
-            triggerEvent('databaseloaded', { count: brailleDatabase.length });
+            triggerEvent('databaseloaded', { 
+                count: brailleDatabase.length,
+                loadedFrom: loadedFrom
+            });
+            
+            console.log(`Braille database loaded with ${brailleDatabase.length} entries`);
             return true;
             
         } catch (error) {
