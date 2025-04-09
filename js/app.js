@@ -15,11 +15,8 @@ function initApp() {
         return;
     }
     
-    // Set up DOM element references
-    setupDOMReferences();
-    
-    // Setup event listeners
-    setupEventListeners();
+    // Setup event listeners for speech recognition events
+    setupSpeechRecognitionEvents();
     
     // Add debugging helper to check if the speech recognition module is working
     console.log('Speech recognition module status:', {
@@ -29,13 +26,8 @@ function initApp() {
     });
 }
 
-// Set up references to DOM elements
-function setupDOMReferences() {
-    // These references are now initialized in ui-controller.js
-}
-
-// Set up event listeners for buttons and select elements
-function setupEventListeners() {
+// Setup speech recognition event listeners
+function setupSpeechRecognitionEvents() {
     if (typeof speechRecognition !== 'undefined') {
         // Set up event handlers for our speech recognition service
         speechRecognition.on('start', () => {
@@ -67,8 +59,6 @@ function setupEventListeners() {
             alert(`Speech recognition error: ${error}`);
         });
     }
-
-    // Button event listeners are set up in ui-controller.js
 }
 
 // Function to load the local model
@@ -113,7 +103,6 @@ async function loadLocalModel() {
         
         // Update UI
         uiController.updateModelStatus('local');
-        uiController.enableStartButton();
         
         // Complete the progress bar and hide after a delay
         uiController.updateLoadingProgress(100, 'Model loaded successfully!');

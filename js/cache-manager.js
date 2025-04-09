@@ -15,16 +15,16 @@ const cacheManager = (function() {
         lastUpdatedSpan = document.getElementById('last-updated');
         dynamicContent = document.getElementById('dynamic-content');
         refreshButton = document.getElementById('refresh-button');
-    }
-    
-    // Set up event listeners
-    function setupEventListeners() {
-        if (!installButton || !refreshButton) return;
         
         // Set the last updated time with local data
         if (lastUpdatedSpan) {
             lastUpdatedSpan.textContent = new Date().toLocaleString();
         }
+    }
+    
+    // Set up event listeners
+    function setupEventListeners() {
+        if (!installButton || !refreshButton) return;
         
         // Add event listeners for online/offline events
         window.addEventListener('online', updateOnlineStatus);
