@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "vosk": "^0.3.39",
     "vosk-browser": "^0.0.8"
   }
 }
