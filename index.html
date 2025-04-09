@@ -48,6 +48,15 @@
                 <button id="load-model-btn">Load Speech Model</button>
                 <div id="recording-indicator" class="recording-off">● Recording</div>
             </div>
+            
+            <!-- Add loading progress bar -->
+            <div id="loading-container" class="loading-container">
+                <div class="progress-bar">
+                    <div id="progress-bar" class="progress progress-striped"></div>
+                </div>
+                <div id="progress-status" class="progress-status">Preparing to download model...</div>
+            </div>
+            
             <div id="model-status">
                 Recognition Model: <span class="model-badge no-model" id="model-badge">Not Selected</span>
             </div>
@@ -82,6 +91,7 @@
         let source = null;
         let modelLoaded = false;
         let voskWorker = null;
+        let modelLoadingProgress = 0;
         
         // DOM elements
         const startSpeechBtn = document.getElementById('start-speech-btn');
@@ -91,6 +101,9 @@
         const interimTextElement = document.getElementById('interim-text');
         const finalTextElement = document.getElementById('final-text');
         const modelBadge = document.getElementById('model-badge');
+        const loadingContainer = document.getElementById('loading-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressStatus = document.getElementById('progress-status');
         
         // Remove any old buttons that were added programmatically
         const oldButtons = document.querySelectorAll('main > button');
@@ -101,21 +114,51 @@
             }
         });
         
+        // Helper function to update progress bar
+        function updateLoadingProgress(percent, statusText) {
+            progressBar.style.width = `${percent}%`;
+            if (statusText) {
+                progressStatus.textContent = statusText;
+            }
+        }
+        
         // Load model button setup
         loadModelBtn.addEventListener('click', async () => {
             loadModelBtn.disabled = true;
             loadModelBtn.textContent = 'Loading Model...';
+            
+            // Show loading bar
+            loadingContainer.style.display = 'block';
+            updateLoadingProgress(0, 'Preparing to download model...');
+            
             try {
                 await initializeVosk();
                 loadModelBtn.textContent = 'Model Loaded';
                 loadModelBtn.style.backgroundColor = '#4CAF50'; // Green color for success
                 modelLoaded = true;
                 updateModelStatus('vosk');
+                
+                // Complete the progress bar and hide after a delay
+                updateLoadingProgress(100, 'Model loaded successfully!');
+                setTimeout(() => {
+                    loadingContainer.style.display = 'none';
+                }, 2000);
+                
             } catch (error) {
                 console.error('Error loading Vosk model:', error);
                 loadModelBtn.textContent = 'Load Model';
                 loadModelBtn.disabled = false;
                 updateModelStatus('none');
+                
+                // Show error in progress bar
+                updateLoadingProgress(100, `Error: ${error.message}`);
+                progressBar.style.backgroundColor = '#ea4335'; // Red for error
+                
+                setTimeout(() => {
+                    loadingContainer.style.display = 'none';
+                    progressBar.style.backgroundColor = '#4285f4'; // Reset color
+                }, 5000);
+                
                 alert('Failed to load the speech recognition model. Please check your connection.');
             }
         });
@@ -140,25 +183,35 @@
                     switch(message.status) {
                         case 'workerReady':
                             console.log('Vosk worker is ready');
+                            updateLoadingProgress(5, 'Worker initialized');
                             break;
                             
                         case 'loading':
                             loadModelBtn.textContent = 'Downloading...';
+                            updateLoadingProgress(10, message.message || 'Downloading model...');
+                            // Start the progress simulation for download phase
+                            simulateProgressDuringPhase(10, 70, 'Downloading model...', 5000);
                             break;
                             
                         case 'init':
                             loadModelBtn.textContent = 'Initializing...';
+                            updateLoadingProgress(70, message.message || 'Initializing model...');
+                            // Start the progress simulation for initialization phase
+                            simulateProgressDuringPhase(70, 95, 'Initializing model...', 3000);
                             break;
                             
                         case 'ready':
                             console.log('Vosk model loaded successfully');
                             modelLoaded = true;
+                            updateLoadingProgress(100, 'Model ready!');
                             break;
                             
                         case 'error':
                             console.error('Vosk error:', message.message);
                             loadModelBtn.textContent = 'Load Model';
                             loadModelBtn.disabled = false;
+                            updateLoadingProgress(100, `Error: ${message.message}`);
+                            progressBar.style.backgroundColor = '#ea4335'; // Red for error
                             throw new Error(message.message);
                             
                         case 'result':
@@ -169,10 +222,34 @@
                                 interimTextElement.textContent = '';
                             }
                             break;
+                            
+                        case 'progress':
+                            if (message.percent) {
+                                updateLoadingProgress(message.percent, message.message);
+                            }
+                            break;
                     }
                 };
                 
+                // Function to simulate progress between phases since we don't get actual progress events
+                function simulateProgressDuringPhase(start, end, message, duration) {
+                    const stepSize = 1;
+                    const steps = (end - start) / stepSize;
+                    const interval = duration / steps;
+                    let currentProgress = start;
+                    
+                    const progressInterval = setInterval(() => {
+                        currentProgress += stepSize;
+                        if (currentProgress >= end) {
+                            clearInterval(progressInterval);
+                            return;
+                        }
+                        updateLoadingProgress(currentProgress, message);
+                    }, interval);
+                }
+                
                 // Load the model in the worker
+                updateLoadingProgress(5, 'Initializing Web Worker...');
                 voskWorker.postMessage({ 
                     command: 'loadModel',
                     sampleRate: sampleRate,

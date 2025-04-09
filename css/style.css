@@ -153,3 +153,57 @@ footer {
 .no-model {
     background-color: #ea4335;
 }
+
+/* Loading Progress Bar Styles */
+.loading-container {
+    display: none;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.progress-bar {
+    height: 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress {
+    height: 100%;
+    background-color: #4285f4;
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 5px;
+}
+
+.progress-striped {
+    background-image: linear-gradient(
+        45deg, 
+        rgba(255, 255, 255, 0.15) 25%, 
+        transparent 25%, 
+        transparent 50%, 
+        rgba(255, 255, 255, 0.15) 50%, 
+        rgba(255, 255, 255, 0.15) 75%, 
+        transparent 75%, 
+        transparent
+    );
+    background-size: 40px 40px;
+    animation: progress-bar-stripes 2s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    from {
+        background-position: 40px 0;
+    }
+    to {
+        background-position: 0 0;
+    }
+}
+
+.progress-status {
+    margin-top: 5px;
+    font-size: 0.875rem;
+    color: #666;
+    text-align: center;
+}
