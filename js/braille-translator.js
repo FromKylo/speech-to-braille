@@ -230,6 +230,36 @@ const brailleTranslator = (function() {
         return null;
     }
     
+    // Function to display Braille result and automatically speak matched words
+    function displayBrailleResult(matchedWord, brailleData) {
+        // Get DOM elements
+        const matchedWordElement = document.getElementById('matched-word');
+        const brailleLanguageElement = document.getElementById('braille-language');
+        const brailleSymbolElement = document.getElementById('braille-symbol');
+        const brailleArrayElement = document.getElementById('braille-array');
+        const brailleResultContainer = document.getElementById('braille-result');
+        const noMatchInfo = document.getElementById('no-match-info');
+        
+        // Update UI with matched word data
+        if (matchedWord && brailleData) {
+            matchedWordElement.textContent = matchedWord;
+            brailleLanguageElement.textContent = brailleData.language || 'Unknown';
+            brailleSymbolElement.textContent = brailleData.symbol || '⠿';
+            brailleArrayElement.textContent = JSON.stringify(brailleData.dots || []);
+            
+            // Show result container, hide no-match info
+            brailleResultContainer.classList.remove('hidden');
+            noMatchInfo.classList.add('hidden');
+            
+            // Automatically speak the matched word
+            textToSpeech.speak(matchedWord);
+        } else {
+            // Handle no match case
+            brailleResultContainer.classList.add('hidden');
+            noMatchInfo.classList.remove('hidden');
+        }
+    }
+    
     // Public API
     return {
         // Initialize the translator
@@ -269,6 +299,11 @@ const brailleTranslator = (function() {
             );
             
             return match || null;
+        },
+        
+        // Display Braille result
+        displayResult: function(matchedWord, brailleData) {
+            displayBrailleResult(matchedWord, brailleData);
         }
     };
 })();
