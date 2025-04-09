@@ -2,7 +2,7 @@
   "name": "PWA Template",
   "short_name": "PWA",
   "description": "A simple Progressive Web App template",
-  "start_url": "/index.html",
+  "start_url": "speech-to-braille/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4285f4",
