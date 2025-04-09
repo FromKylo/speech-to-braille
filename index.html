@@ -55,7 +55,6 @@
                     </select>
                 </div>
                 
-                <button id="load-model-btn">Load Local Model</button>
                 <div id="recording-indicator" class="recording-off">● Recording</div>
             </div>
             
@@ -138,7 +137,6 @@
         // DOM elements
         const startSpeechBtn = document.getElementById('start-speech-btn');
         const stopSpeechBtn = document.getElementById('stop-speech-btn');
-        const loadModelBtn = document.getElementById('load-model-btn');
         const speechMethodSelect = document.getElementById('speech-method');
         const recordingIndicator = document.getElementById('recording-indicator');
         const interimTextElement = document.getElementById('interim-text');
@@ -174,6 +172,47 @@
             }
         }
         
+        // Function to load the local model
+        async function loadLocalModel() {
+            // Show loading bar
+            loadingContainer.style.display = 'block';
+            updateLoadingProgress(0, 'Preparing to download model...');
+            
+            try {
+                // Load local model for speech recognition
+                await speechRecognition.loadLocalModel({
+                    progressCallback: updateLoadingProgress
+                });
+                
+                // Update UI
+                updateModelStatus('local');
+                startSpeechBtn.disabled = false;
+                
+                // Complete the progress bar and hide after a delay
+                updateLoadingProgress(100, 'Model loaded successfully!');
+                setTimeout(() => {
+                    loadingContainer.style.display = 'none';
+                }, 2000);
+                
+                return true;
+            } catch (error) {
+                console.error('Error loading local model:', error);
+                updateModelStatus('none');
+                
+                // Show error in progress bar
+                updateLoadingProgress(100, `Error: ${error.message}`);
+                progressBar.style.backgroundColor = '#ea4335'; // Red for error
+                
+                setTimeout(() => {
+                    loadingContainer.style.display = 'none';
+                    progressBar.style.backgroundColor = '#4285f4'; // Reset color
+                }, 5000);
+                
+                alert('Failed to load the speech recognition model. Please try the Web Speech API option instead.');
+                return false;
+            }
+        }
+        
         // Check if speech recognition is defined before using it
         if (typeof speechRecognition === 'undefined') {
             console.error('Speech recognition module is not loaded');
@@ -186,21 +225,35 @@
                 if (speechRecognition.webSpeechRecognition) {
                     updateModelStatus('webspeech');
                     modelBadge.textContent = 'Web Speech API Available';
-                    loadModelBtn.textContent = 'Load Local Model';
                     startSpeechBtn.disabled = false;
                 } else {
                     updateModelStatus('none');
                     modelBadge.textContent = 'No Recognition Available';
-                    loadModelBtn.textContent = 'Load Local Model';
                     startSpeechBtn.disabled = true;
                 }
             } else {
                 updateModelStatus('none');
                 modelBadge.textContent = 'Not Available';
-                loadModelBtn.disabled = true;
                 startSpeechBtn.disabled = true;
                 console.error('Speech recognition is not supported');
             }
+            
+            // Add event listener for speech method select
+            speechMethodSelect.addEventListener('change', async function(event) {
+                const selectedMethod = event.target.value;
+                
+                if (selectedMethod === 'local') {
+                    // Check if model is already loaded
+                    if (modelBadge.textContent !== 'Local Model') {
+                        // Automatically load the model
+                        await loadLocalModel();
+                    }
+                } else if (selectedMethod === 'webspeech') {
+                    // Switch to web speech API
+                    updateModelStatus('webspeech');
+                    startSpeechBtn.disabled = false;
+                }
+            });
             
             // Initialize Braille translator
             if (typeof brailleTranslator !== 'undefined') {
@@ -330,52 +383,6 @@
             }
         });
         
-        // Load model button setup
-        loadModelBtn.addEventListener('click', async () => {
-            loadModelBtn.disabled = true;
-            loadModelBtn.textContent = 'Loading Model...';
-            
-            // Show loading bar
-            loadingContainer.style.display = 'block';
-            updateLoadingProgress(0, 'Preparing to download model...');
-            
-            try {
-                // Load local model for speech recognition
-                await speechRecognition.loadLocalModel({
-                    progressCallback: updateLoadingProgress
-                });
-                
-                // Update button state
-                loadModelBtn.textContent = 'Model Loaded';
-                loadModelBtn.style.backgroundColor = '#4CAF50'; // Green color for success
-                updateModelStatus('local');
-                startSpeechBtn.disabled = false;
-                
-                // Complete the progress bar and hide after a delay
-                updateLoadingProgress(100, 'Model loaded successfully!');
-                setTimeout(() => {
-                    loadingContainer.style.display = 'none';
-                }, 2000);
-                
-            } catch (error) {
-                console.error('Error loading local model:', error);
-                loadModelBtn.textContent = 'Load Local Model';
-                loadModelBtn.disabled = false;
-                updateModelStatus('none');
-                
-                // Show error in progress bar
-                updateLoadingProgress(100, `Error: ${error.message}`);
-                progressBar.style.backgroundColor = '#ea4335'; // Red for error
-                
-                setTimeout(() => {
-                    loadingContainer.style.display = 'none';
-                    progressBar.style.backgroundColor = '#4285f4'; // Reset color
-                }, 5000);
-                
-                alert('Failed to load the speech recognition model. Please try the Web Speech API option instead.');
-            }
-        });
-
         // Update model status indicator  
         function updateModelStatus(model) {
             modelBadge.className = 'model-badge';
@@ -491,15 +498,6 @@
             
             try {
                 console.log(`Starting speech recognition with method: ${selectedMethod}`);
-                
-                if (selectedMethod === 'local') {
-                    // Check if the model badge indicates the model is loaded
-                    if (modelBadge.textContent !== 'Local Model') {
-                        alert('Please load the local model first by clicking the "Load Local Model" button.');
-                        return;
-                    }
-                }
-                
                 await speechRecognition.start(selectedMethod);
                 console.log('Speech recognition start method called');
             } catch (error) {
