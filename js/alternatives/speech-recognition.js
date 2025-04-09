@@ -27,6 +27,9 @@ const speechRecognition = (function() {
     let audioProcessor = null;
     let modelLoaded = false;
     
+    // Worker path - default path that can be changed
+    let workerPath = 'js/vosk-worker.js';
+    
     // IndexedDB model storage
     const DB_NAME = 'speechToTextDB';
     const STORE_NAME = 'models';
@@ -185,7 +188,8 @@ const speechRecognition = (function() {
             voskWorker.terminate();
         }
         
-        voskWorker = new Worker('js/vosk-worker.js');
+        // Use the configurable worker path instead of hardcoded one
+        voskWorker = new Worker(workerPath);
         
         voskWorker.onmessage = function(event) {
             const message = event.data;
@@ -362,6 +366,13 @@ const speechRecognition = (function() {
         // Methods
         isSupported: function() {
             return !!webSpeechAvailable || !!window.Worker;
+        },
+        
+        // Add the setWorkerPath method
+        setWorkerPath: function(path) {
+            console.log(`Setting Vosk worker path to: ${path}`);
+            workerPath = path;
+            return this;
         },
         
         on: function(eventName, callback) {
