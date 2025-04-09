@@ -134,6 +134,37 @@
             font-weight: 500;
             margin-top: 0.5rem;
         }
+        
+        /* Model Status Indicator Styles */
+        #model-status {
+            padding: 0.5rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .model-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            margin-left: 0.5rem;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .web-speech {
+            background-color: #4285f4;
+        }
+        
+        .vosk-model {
+            background-color: #34a853;
+        }
+        
+        .no-model {
+            background-color: #ea4335;
+        }
     </style>
 </head>
 <body>
@@ -174,6 +205,9 @@
                 <button id="load-model-btn">Load Speech Model</button>
                 <div id="recording-indicator" class="recording-off">● Recording</div>
             </div>
+            <div id="model-status">
+                Recognition Model: <span class="model-badge no-model" id="model-badge">Not Selected</span>
+            </div>
             <div id="speech-output">
                 <p id="interim-text"></p>
                 <p id="final-text"></p>
@@ -212,6 +246,7 @@
         const recordingIndicator = document.getElementById('recording-indicator');
         const interimTextElement = document.getElementById('interim-text');
         const finalTextElement = document.getElementById('final-text');
+        const modelBadge = document.getElementById('model-badge');
         
         // Remove any old buttons that were added programmatically
         const oldButtons = document.querySelectorAll('main > button');
@@ -231,10 +266,12 @@
                 loadModelBtn.textContent = 'Model Loaded';
                 loadModelBtn.style.backgroundColor = '#4CAF50'; // Green color for success
                 modelLoaded = true;
+                updateModelStatus('vosk');
             } catch (error) {
                 console.error('Error loading Vosk model:', error);
                 loadModelBtn.textContent = 'Load Model';
                 loadModelBtn.disabled = false;
+                updateModelStatus('none');
                 alert('Failed to load the speech recognition model. Please check your connection.');
             }
         });
@@ -256,11 +293,31 @@
             }
         }
         
+        // Update model status indicator
+        function updateModelStatus(model) {
+            modelBadge.className = 'model-badge';
+            
+            switch(model) {
+                case 'webspeech':
+                    modelBadge.classList.add('web-speech');
+                    modelBadge.textContent = 'Web Speech API';
+                    break;
+                case 'vosk':
+                    modelBadge.classList.add('vosk-model');
+                    modelBadge.textContent = 'Vosk Model';
+                    break;
+                default:
+                    modelBadge.classList.add('no-model');
+                    modelBadge.textContent = 'Not Selected';
+            }
+        }
+        
         // Speech recognition initialization
         async function initializeSpeechRecognition() {
             // First try to use Web Speech API if available (better for real-time results)
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 console.log('Using Web Speech API for speech recognition');
+                updateModelStatus('webspeech');
                 
                 // Create speech recognition object
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -333,6 +390,7 @@
             } else {
                 // Fall back to Vosk for browsers without Web Speech API or offline use
                 console.log('Web Speech API not available, using Vosk');
+                updateModelStatus('none'); // Start with no model until loaded
                 
                 // Set up start speech button
                 startSpeechBtn.addEventListener('click', () => {
@@ -387,6 +445,7 @@
                 };
                 
                 setRecordingState(true);
+                updateModelStatus('vosk'); // Ensure model status is updated when using Vosk
             } catch (error) {
                 console.error('Error starting Vosk recognition:', error);
                 alert('Failed to access the microphone. Please ensure you have granted permission.');
