@@ -171,6 +171,7 @@
             <div id="speech-controls">
                 <button id="start-speech-btn">Start Speaking</button>
                 <button id="stop-speech-btn" disabled>Stop</button>
+                <button id="load-model-btn">Load Speech Model</button>
                 <div id="recording-indicator" class="recording-off">● Recording</div>
             </div>
             <div id="speech-output">
@@ -202,21 +203,58 @@
         let audioContext = null;
         let processor = null;
         let source = null;
+        let modelLoaded = false;
         
         // DOM elements
         const startSpeechBtn = document.getElementById('start-speech-btn');
         const stopSpeechBtn = document.getElementById('stop-speech-btn');
+        const loadModelBtn = document.getElementById('load-model-btn');
         const recordingIndicator = document.getElementById('recording-indicator');
         const interimTextElement = document.getElementById('interim-text');
         const finalTextElement = document.getElementById('final-text');
         
-        // Remove the old button that was added programmatically
+        // Remove any old buttons that were added programmatically
         const oldButtons = document.querySelectorAll('main > button');
         oldButtons.forEach(button => {
-            if (button.textContent === 'Start Speech Recognition') {
+            if (button.textContent === 'Start Speech Recognition' || 
+                button.textContent === 'Load Speech Recognition Model') {
                 button.remove();
             }
         });
+        
+        // Load model button setup
+        loadModelBtn.addEventListener('click', async () => {
+            loadModelBtn.disabled = true;
+            loadModelBtn.textContent = 'Loading Model...';
+            try {
+                await initializeVosk();
+                loadModelBtn.textContent = 'Model Loaded';
+                loadModelBtn.style.backgroundColor = '#4CAF50'; // Green color for success
+                modelLoaded = true;
+            } catch (error) {
+                console.error('Error loading Vosk model:', error);
+                loadModelBtn.textContent = 'Load Model';
+                loadModelBtn.disabled = false;
+                alert('Failed to load the speech recognition model. Please check your connection.');
+            }
+        });
+
+        // Initialize Vosk model
+        async function initializeVosk() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const model = new vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
+                recognizer = new vosk.Recognizer({
+                    model: model,
+                    sampleRate: audioContext.sampleRate
+                });
+                console.log('Vosk model loaded successfully');
+                return recognizer;
+            } catch (error) {
+                console.error('Error initializing Vosk:', error);
+                throw error;
+            }
+        }
         
         // Speech recognition initialization
         async function initializeSpeechRecognition() {
@@ -296,32 +334,17 @@
                 // Fall back to Vosk for browsers without Web Speech API or offline use
                 console.log('Web Speech API not available, using Vosk');
                 
-                try {
-                    // Initialize audio context
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    // Initialize Vosk model
-                    try {
-                        const model = await vosk.Model('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip');
-                        recognizer = new vosk.Recognizer({
-                            model: model,
-                            sampleRate: audioContext.sampleRate
-                        });
-                        console.log('Vosk model loaded successfully');
-                    } catch (error) {
-                        console.error('Error loading Vosk model:', error);
-                        alert('Failed to load the speech recognition model. Please check your connection.');
+                // Set up start speech button
+                startSpeechBtn.addEventListener('click', () => {
+                    if (modelLoaded) {
+                        startVoskRecognition();
+                    } else {
+                        alert('Please load the speech model first by clicking the "Load Speech Model" button.');
                     }
-                    
-                    // Set up start speech button
-                    startSpeechBtn.addEventListener('click', startVoskRecognition);
-                    
-                    // Set up stop speech button
-                    stopSpeechBtn.addEventListener('click', stopVoskRecognition);
-                } catch (error) {
-                    console.error('Failed to initialize audio context:', error);
-                    alert('Failed to initialize audio. Please try again or use a different browser.');
-                }
+                });
+                
+                // Set up stop speech button
+                stopSpeechBtn.addEventListener('click', stopVoskRecognition);
             }
         }
         
