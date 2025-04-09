@@ -78,10 +78,10 @@
         
         <div class="card">
             <h2>Dynamic Content</h2>
-            <p>This section demonstrates dynamic content handling:</p>
-            <button id="refresh-button">Refresh Data</button>
+            <p>This section displays the cached resources in this application:</p>
+            <button id="refresh-button">Check Cache Status</button>
             <div id="dynamic-content">
-                <p>Content will appear here...</p>
+                <p>Loading cache information...</p>
             </div>
         </div>
     </main>
@@ -349,52 +349,168 @@
             }
         });
         
-        // Simulate fetching dynamic content
-        function fetchData() {
-            // Here we'll simulate with local data
-            // In a real app, you would fetch from an API
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    if (navigator.onLine) {
-                        const data = {
-                            timestamp: new Date().toLocaleString(),
-                            items: [
-                                { id: 1, title: 'Item 1', description: 'Description for item 1' },
-                                { id: 2, title: 'Item 2', description: 'Description for item 2' },
-                                { id: 3, title: 'Item 3', description: 'Description for item 3' }
-                            ]
-                        };
-                        resolve(data);
-                    } else {
-                        resolve({
-                            timestamp: 'Using cached data',
-                            items: [{ id: 0, title: 'Cached Item', description: 'This is cached content for offline use' }]
-                        });
+        // Fetch cached data information
+        async function checkCacheContents() {
+            dynamicContent.innerHTML = '<p>Checking cache contents...</p>';
+            
+            try {
+                // Check if we can access caches
+                if (!('caches' in window)) {
+                    dynamicContent.innerHTML = '<p class="error">Cache API not available in this browser.</p>';
+                    return;
+                }
+                
+                // Get all cache keys
+                const cacheKeys = await caches.keys();
+                
+                if (cacheKeys.length === 0) {
+                    dynamicContent.innerHTML = '<p>No caches found.</p>';
+                    return;
+                }
+                
+                let cacheContentsHTML = '<div class="cache-summary">';
+                cacheContentsHTML += `<p><strong>${cacheKeys.length}</strong> cache(s) found</p>`;
+                cacheContentsHTML += '</div>';
+                
+                // Process each cache
+                for (const cacheName of cacheKeys) {
+                    const cache = await caches.open(cacheName);
+                    const requests = await cache.keys();
+                    const requestUrls = requests.map(request => request.url);
+                    
+                    cacheContentsHTML += `<div class="cache-details">
+                        <h3>Cache: ${cacheName}</h3>
+                        <p><strong>${requestUrls.length}</strong> item(s) cached</p>
+                        <details>
+                            <summary>Show cached items</summary>
+                            <ul class="cache-items">`;
+                    
+                    // Group items by type
+                    const groupedItems = {
+                        html: [],
+                        css: [],
+                        js: [],
+                        images: [],
+                        models: [],
+                        other: []
+                    };
+                    
+                    requestUrls.forEach(url => {
+                        const path = new URL(url).pathname;
+                        if (path.endsWith('.html')) {
+                            groupedItems.html.push(url);
+                        } else if (path.endsWith('.css')) {
+                            groupedItems.css.push(url);
+                        } else if (path.endsWith('.js')) {
+                            groupedItems.js.push(url);
+                        } else if (/\.(jpe?g|png|gif|svg|webp|ico)$/i.test(path)) {
+                            groupedItems.images.push(url);
+                        } else if (path.includes('/models/') || path.includes('vosk-model')) {
+                            groupedItems.models.push(url);
+                        } else {
+                            groupedItems.other.push(url);
+                        }
+                    });
+                    
+                    // Add collapsible sections for each type
+                    if (groupedItems.html.length) {
+                        cacheContentsHTML += `<li><details>
+                            <summary>HTML Files (${groupedItems.html.length})</summary>
+                            <ul>${groupedItems.html.map(url => `<li>${displayUrl(url)}</li>`).join('')}</ul>
+                        </details></li>`;
                     }
-                }, 500);
-            });
+                    
+                    if (groupedItems.css.length) {
+                        cacheContentsHTML += `<li><details>
+                            <summary>CSS Files (${groupedItems.css.length})</summary>
+                            <ul>${groupedItems.css.map(url => `<li>${displayUrl(url)}</li>`).join('')}</ul>
+                        </details></li>`;
+                    }
+                    
+                    if (groupedItems.js.length) {
+                        cacheContentsHTML += `<li><details>
+                            <summary>JavaScript Files (${groupedItems.js.length})</summary>
+                            <ul>${groupedItems.js.map(url => `<li>${displayUrl(url)}</li>`).join('')}</ul>
+                        </details></li>`;
+                    }
+                    
+                    if (groupedItems.images.length) {
+                        cacheContentsHTML += `<li><details>
+                            <summary>Images (${groupedItems.images.length})</summary>
+                            <ul>${groupedItems.images.map(url => `<li>${displayUrl(url)}</li>`).join('')}</ul>
+                        </details></li>`;
+                    }
+                    
+                    if (groupedItems.models.length) {
+                        cacheContentsHTML += `<li><details>
+                            <summary>Speech Models (${groupedItems.models.length})</summary>
+                            <ul>${groupedItems.models.map(url => `<li>${displayUrl(url)}</li>`).join('')}</ul>
+                        </details></li>`;
+                    }
+                    
+                    if (groupedItems.other.length) {
+                        cacheContentsHTML += `<li><details>
+                            <summary>Other Files (${groupedItems.other.length})</summary>
+                            <ul>${groupedItems.other.map(url => `<li>${displayUrl(url)}</li>`).join('')}</ul>
+                        </details></li>`;
+                    }
+                    
+                    cacheContentsHTML += `</ul></details></div>`;
+                }
+                
+                // Check for IndexedDB models
+                cacheContentsHTML += '<div class="indexeddb-details">';
+                cacheContentsHTML += '<h3>IndexedDB Models</h3>';
+                
+                try {
+                    if ('speechRecognition' in window && typeof speechRecognition.isModelAvailableOffline === 'function') {
+                        const modelAvailable = await speechRecognition.isModelAvailableOffline();
+                        if (modelAvailable) {
+                            cacheContentsHTML += '<p class="success">✓ Local speech model found in IndexedDB</p>';
+                        } else {
+                            cacheContentsHTML += '<p class="warning">No local speech models in IndexedDB</p>';
+                        }
+                    } else {
+                        cacheContentsHTML += '<p class="warning">Cannot check IndexedDB speech models</p>';
+                    }
+                } catch (err) {
+                    cacheContentsHTML += `<p class="error">Error checking IndexedDB: ${err.message}</p>`;
+                }
+                
+                cacheContentsHTML += '</div>';
+                
+                // Update the timestamp
+                cacheContentsHTML += `<p class="cache-timestamp">Last checked: ${new Date().toLocaleString()}</p>`;
+                
+                dynamicContent.innerHTML = cacheContentsHTML;
+                
+            } catch (error) {
+                console.error('Error checking cache:', error);
+                dynamicContent.innerHTML = `<p class="error">Error checking cache: ${error.message}</p>`;
+            }
         }
         
-        function updateUI(data) {
-            // Update the UI with fetched data
-            let html = `<p>Last fetched: ${data.timestamp}</p><ul>`;
-            data.items.forEach(item => {
-                html += `<li>
-                    <h3>${item.title}</h3>
-                    <p>${item.description}</p>
-                </li>`;
-            });
-            html += '</ul>';
-            dynamicContent.innerHTML = html;
+        // Helper function to display URLs in a cleaner format
+        function displayUrl(url) {
+            // Extract just the pathname from the URL
+            const urlObj = new URL(url);
+            let path = urlObj.pathname;
+            
+            // If it's from our own origin, just show the path
+            if (urlObj.origin === location.origin) {
+                return path;
+            }
+            
+            // For external URLs, show a simplified version
+            return `${urlObj.hostname}${path}`;
         }
         
-        // Initial data fetch
-        fetchData().then(updateUI);
+        // Initial cache check
+        checkCacheContents();
         
         // Refresh button handler
         refreshButton.addEventListener('click', () => {
-            dynamicContent.innerHTML = '<p>Loading...</p>';
-            fetchData().then(updateUI);
+            checkCacheContents();
         });
     </script>
 </body>
