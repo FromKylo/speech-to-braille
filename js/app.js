@@ -78,20 +78,37 @@ async function loadLocalModel() {
     uiController.updateLoadingProgress(0, 'Preparing to download model...');
     
     try {
-        // Check if setWorkerPath method exists
-        if (typeof speechRecognition.setWorkerPath === 'function') {
-            // Set worker path to local Vosk bundle using method
-            speechRecognition.setWorkerPath('/node_modules/vosk-browser/dist/vosk-worker.js');
-        } else {
-            console.warn('speechRecognition.setWorkerPath is not available - will use default worker path');
-            // Continue without setting worker path - we'll rely on the default path
+        // First, try to use the local worker in /js directory
+        const localWorkerPath = '/js/vosk-worker.js';
+        let workerPath;
+        
+        try {
+            // Check if our custom worker exists
+            const response = await fetch(localWorkerPath, { method: 'HEAD' });
+            if (response.ok) {
+                workerPath = localWorkerPath;
+                console.log('Using local worker at:', workerPath);
+            } else {
+                workerPath = '/node_modules/vosk-browser/dist/vosk-worker.js';
+                console.log('Local worker not found, using node_modules worker');
+            }
+        } catch (e) {
+            workerPath = '/node_modules/vosk-browser/dist/vosk-worker.js';
+            console.log('Error checking worker path, using fallback:', e);
         }
         
-        // Load local model for speech recognition
+        // Set worker path if method exists
+        if (typeof speechRecognition.setWorkerPath === 'function') {
+            speechRecognition.setWorkerPath(workerPath);
+        } else {
+            console.warn('speechRecognition.setWorkerPath not available');
+        }
+        
+        // Load local model for speech recognition with ZIP file support
         await speechRecognition.loadLocalModel({
             progressCallback: uiController.updateLoadingProgress,
-            // Provide worker URL directly in the options as fallback
-            workerPath: '/node_modules/vosk-browser/dist/vosk-worker.js'
+            workerPath: workerPath,
+            modelUrl: 'https://alphacephei.com/kaldi/models/vosk-model-small-en-us-0.15.zip'
         });
         
         // Update UI

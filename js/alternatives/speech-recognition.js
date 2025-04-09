@@ -427,24 +427,52 @@ const speechRecognition = (function() {
                 
                 progressCallback(10, 'Initializing Vosk...');
                 
+                // Use relative path to local worker if available, or use the one provided in options
+                const localWorkerPath = '/js/vosk-worker.js';
+                if (options.workerPath) {
+                    workerPath = options.workerPath;
+                } else {
+                    // Try to detect the best worker path
+                    try {
+                        const response = await fetch(localWorkerPath, { method: 'HEAD' });
+                        if (response.ok) {
+                            workerPath = localWorkerPath;
+                            console.log('Using local worker at:', workerPath);
+                        } else {
+                            workerPath = '/node_modules/vosk-browser/dist/vosk-worker.js';
+                            console.log('Using node_modules worker at:', workerPath);
+                        }
+                    } catch (e) {
+                        // Fallback to node_modules path
+                        workerPath = '/node_modules/vosk-browser/dist/vosk-worker.js';
+                        console.log('Worker detection failed, using fallback:', workerPath);
+                    }
+                }
+                
                 // Initialize Vosk worker
                 const worker = initVoskWorker();
+                progressCallback(20, 'Worker initialized, checking for cached model...');
                 
                 // Check if model is already cached
                 const modelIsCached = await isModelCached();
+                progressCallback(30, modelIsCached ? 'Using cached model' : 'Downloading new model...');
+                
+                // Choose a reliable model URL - prefer ZIP file from alphacephei.com
+                const modelUrl = options.modelUrl || 'https://alphacephei.com/kaldi/models/vosk-model-small-en-us-0.15.zip';
+                console.log('Loading model from:', modelUrl);
                 
                 // Load the Vosk model
                 worker.postMessage({
                     command: 'loadModel',
-                    modelUrl: options.modelUrl || 'https://cdn.jsdelivr.net/gh/ccoreilly/vosk-browser@master/public/models/vosk-model-small-en-us-0.15',
+                    modelUrl: modelUrl,
                     sampleRate: 16000
                 });
                 
                 // Wait for the model to load
                 return new Promise((resolve, reject) => {
                     const timeoutId = setTimeout(() => {
-                        reject(new Error('Model loading timed out after 30 seconds'));
-                    }, 30000);
+                        reject(new Error('Model loading timed out after 60 seconds'));
+                    }, 60000); // Increased timeout for larger models
                     
                     const onLoadProgress = (data) => {
                         if (data.percent === 100) {

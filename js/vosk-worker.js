@@ -14,21 +14,29 @@ self.onmessage = async function(event) {
             try {
                 self.postMessage({status: 'loading', message: 'Downloading speech model...'});
                 
-                // Load the model using the CDN path for vosk-browser WebAssembly
-                const modelUrl = message.modelUrl || 'https://cdn.jsdelivr.net/gh/ccoreilly/vosk-browser@master/public/models/vosk-model-small-en-us-0.15';
+                // Get the model URL from the message or use a reliable default
+                const modelUrl = message.modelUrl || 'https://alphacephei.com/kaldi/models/vosk-model-small-en-us-0.15.zip';
                 
-                model = await vosk.createModel(modelUrl);
+                // Check if it's a ZIP file
+                if (modelUrl.endsWith('.zip')) {
+                    self.postMessage({status: 'loading', message: 'Downloading and extracting ZIP model...'});
+                    model = await vosk.createModelFromZip(modelUrl);
+                } else {
+                    // It's a directory-based model
+                    model = await vosk.createModel(modelUrl);
+                }
                 
                 self.postMessage({status: 'init', message: 'Creating recognizer...'});
                 
                 // Create the recognizer with the specified sample rate
                 recognizer = new vosk.Recognizer({
                     model: model,
-                    sampleRate: message.sampleRate
+                    sampleRate: message.sampleRate || 16000
                 });
                 
                 self.postMessage({status: 'ready', message: 'Model loaded successfully'});
             } catch (error) {
+                console.error('Vosk model loading error:', error);
                 self.postMessage({
                     status: 'error',
                     message: 'Failed to load model: ' + error.message
