@@ -395,20 +395,6 @@
             }
         }
         
-        /**
-         * Formats the language display with proper capitalization and handling of "Both"
-         * @param {string} language - The language string from the database
-         * @return {string} Properly formatted language display
-         */
-        function formatLanguageDisplay(language) {
-            if (language === 'Both') {
-                return 'Universal (UEB & Philippine)';
-            } else {
-                // Proper capitalization
-                return language.charAt(0).toUpperCase() + language.slice(1);
-            }
-        }
-
         // Function to process speech results for Braille matching
         function processSpeechForBraille(text) {
             if (!brailleTranslator.isDatabaseLoaded()) {
@@ -427,8 +413,8 @@
                 matchedWordElement.textContent = result.word;
                 brailleSymbolElement.textContent = result.braille;
                 
-                // Format and display the language properly
-                brailleLanguageElement.textContent = formatLanguageDisplay(result.language);
+                // Display the language directly without formatting
+                brailleLanguageElement.textContent = result.language;
                 
                 // Debug the raw array content to verify what we're receiving
                 console.log('Raw braille array for ' + result.word + ':', result.array);
