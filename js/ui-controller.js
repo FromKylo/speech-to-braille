@@ -8,7 +8,7 @@ let startSpeechBtn, stopSpeechBtn, speechMethodSelect, recordingIndicator;
 let interimTextElement, finalTextElement, modelBadge;
 let loadingContainer, progressBar, progressStatus;
 let brailleStatus, brailleResult, matchedWordElement, brailleLanguageElement;
-let brailleSymbolElement, brailleArrayElement, noMatchInfo;
+let brailleSymbolElement, brailleArrayElement, noMatchInfo, speakWordBtn;
 
 // Helper function to update progress bar
 function updateLoadingProgress(percent, statusText) {
@@ -40,6 +40,7 @@ function initDOMReferences() {
     brailleSymbolElement = document.getElementById('braille-symbol');
     brailleArrayElement = document.getElementById('braille-array');
     noMatchInfo = document.getElementById('no-match-info');
+    speakWordBtn = document.getElementById('speak-word-btn');
     
     // Remove any old buttons that were added programmatically
     const oldButtons = document.querySelectorAll('main > button');
@@ -196,6 +197,35 @@ const uiController = {
         stopSpeechBtn.addEventListener('click', () => {
             window.app.stopSpeechRecognition();
         });
+
+        // Add functionality for speak button if it exists
+        if (speakWordBtn) {
+            speakWordBtn.addEventListener('click', () => {
+                this.speakMatchedWord();
+            });
+
+            // Setup TTS event listeners if available
+            if (window.textToSpeech) {
+                textToSpeech.on('start', () => {
+                    if (speakWordBtn) {
+                        speakWordBtn.classList.add('speaking');
+                    }
+                });
+
+                textToSpeech.on('end', () => {
+                    if (speakWordBtn) {
+                        speakWordBtn.classList.remove('speaking');
+                    }
+                });
+
+                textToSpeech.on('error', (error) => {
+                    console.error('Speech synthesis error:', error);
+                    if (speakWordBtn) {
+                        speakWordBtn.classList.remove('speaking');
+                    }
+                });
+            }
+        }
     },
     
     // Initialize speech recognition UI
@@ -371,6 +401,15 @@ const uiController = {
     
     updateBrailleArray: function(formattedArray) {
         if (brailleArrayElement) brailleArrayElement.textContent = formattedArray;
+    },
+
+    // Speak matched word
+    speakMatchedWord: function() {
+        if (!matchedWordElement || !window.textToSpeech) return;
+        const word = matchedWordElement.textContent;
+        if (word) {
+            window.textToSpeech.speak(word);
+        }
     }
 };
 
