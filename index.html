@@ -4,37 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4285f4">
-    <title>Offline - PWA Template</title>
+    <meta name="description" content="A simple Progressive Web App template">
+    <title>PWA Template</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            text-align: center;
-            background-color: #f5f5f5;
             color: #333;
+            background-color: #f5f5f5;
         }
         
-        .container {
-            max-width: 500px;
-            padding: 2rem;
-            background-color: white;
-            border-radius: 8px;
+        header {
+            background-color: #4285f4;
+            color: white;
+            padding: 1rem;
+            text-align: center;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
-        h1 {
-            color: #4285f4;
+        main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 1rem;
         }
         
-        .icon {
-            font-size: 4rem;
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
             margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            background-color: #e0e0e0;
+        }
+        
+        .online {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .offline {
+            background-color: #f8d7da;
+            color: #721c24;
         }
         
         button {
@@ -45,28 +65,184 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 1rem;
-            margin-top: 1rem;
             transition: background-color 0.3s;
         }
         
         button:hover {
             background-color: #3367d6;
         }
+        
+        .install-button {
+            display: none;
+            margin: 1rem 0;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            color: #666;
+            font-size: 0.875rem;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="icon">📵</div>
-        <h1>You're Offline</h1>
-        <p>The page you are trying to access is not available offline.</p>
-        <p>Please check your internet connection and try again.</p>
-        <button onclick="window.location.reload()">Retry</button>
-    </div>
+    <header>
+        <h1>PWA Template</h1>
+    </header>
     
+    <main>
+        <div id="connection-status" class="status">
+            Checking connection...
+        </div>
+        
+        <button id="install-button" class="install-button">Install App</button>
+        
+        <div class="card">
+            <h2>Welcome to your PWA</h2>
+            <p>This Progressive Web App template is designed to work offline on mobile devices. It includes:</p>
+            <ul>
+                <li>Service worker for offline caching</li>
+                <li>Web App Manifest for installation</li>
+                <li>Responsive design</li>
+                <li>Network status detection</li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <h2>Cached Content</h2>
+            <p>This content will be available even when you're offline.</p>
+            <p>Last updated: <span id="last-updated">Loading...</span></p>
+        </div>
+        
+        <div class="card">
+            <h2>Dynamic Content</h2>
+            <p>This section demonstrates dynamic content handling:</p>
+            <button id="refresh-button">Refresh Data</button>
+            <div id="dynamic-content">
+                <p>Content will appear here...</p>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>Progressive Web App Template &copy; 2025</p>
+    </footer>
+
     <script>
-        // Check if we come back online
-        window.addEventListener('online', () => {
-            window.location.reload();
+        // Initialize variables
+        let deferredPrompt;
+        const installButton = document.getElementById('install-button');
+        const statusDiv = document.getElementById('connection-status');
+        const lastUpdatedSpan = document.getElementById('last-updated');
+        const dynamicContent = document.getElementById('dynamic-content');
+        const refreshButton = document.getElementById('refresh-button');
+        
+        // Set the last updated time
+        lastUpdatedSpan.textContent = new Date().toLocaleString();
+        
+        // Check if the app is online and update the UI
+        function updateOnlineStatus() {
+            const isOnline = navigator.onLine;
+            statusDiv.textContent = isOnline ? 'You are online.' : 'You are offline. Using cached content.';
+            statusDiv.className = isOnline ? 'status online' : 'status offline';
+        }
+        
+        // Add event listeners for online/offline events
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus(); // Initial check
+        
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => {
+                        console.log('Service worker registered!', reg);
+                    })
+                    .catch(err => {
+                        console.log('Service worker registration failed:', err);
+                    });
+            });
+        }
+        
+        // Handle app installation
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show the install button
+            installButton.style.display = 'block';
+        });
+        
+        installButton.addEventListener('click', () => {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                        installButton.style.display = 'none';
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
+        
+        // Simulate fetching dynamic content
+        function fetchData() {
+            // In a real app, you would fetch from an API
+            // Here we'll simulate with local data
+            const data = {
+                items: [
+                    { id: 1, title: 'Item 1', description: 'Description for item 1' },
+                    { id: 2, title: 'Item 2', description: 'Description for item 2' },
+                    { id: 3, title: 'Item 3', description: 'Description for item 3' }
+                ],
+                timestamp: new Date().toLocaleString()
+            };
+            
+            return new Promise((resolve) => {
+                // Simulate network delay
+                setTimeout(() => {
+                    if (navigator.onLine) {
+                        resolve(data);
+                    } else {
+                        // Return cached data if offline
+                        resolve({
+                            items: [{ id: 0, title: 'Cached Item', description: 'This is cached content for offline use' }],
+                            timestamp: 'Using cached data'
+                        });
+                    }
+                }, 500);
+            });
+        }
+        
+        // Update the UI with fetched data
+        function updateUI(data) {
+            let html = `<p>Last fetched: ${data.timestamp}</p><ul>`;
+            
+            data.items.forEach(item => {
+                html += `<li>
+                    <h3>${item.title}</h3>
+                    <p>${item.description}</p>
+                </li>`;
+            });
+            
+            html += '</ul>';
+            dynamicContent.innerHTML = html;
+        }
+        
+        // Initial data fetch
+        fetchData().then(updateUI);
+        
+        // Refresh button handler
+        refreshButton.addEventListener('click', () => {
+            dynamicContent.innerHTML = '<p>Loading...</p>';
+            fetchData().then(updateUI);
         });
     </script>
 </body>
