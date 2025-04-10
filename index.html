@@ -4,129 +4,215 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4285f4">
-    <meta name="description" content="A simple Progressive Web App template">
+    <meta name="description" content="Speech to Braille Converter Application">
     <!-- Cross-origin isolation for WebAssembly -->
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
-    <!-- Add speech initializer script at the top -->
+    <!-- Speech initializer must be loaded first -->
     <script src="js/speech-init.js"></script>
     <title>Speech to Braille Refreshable Module</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
+    <style>
+        /* Critical inline styles for phase transitions */
+        .phase-container {
+            display: none;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .phase-active {
+            display: block;
+            animation: phaseEnter 0.7s ease-in-out;
+        }
+        @keyframes phaseEnter {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .countdown-timer {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: conic-gradient(#4285f4 0%, transparent 0%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #333;
+        }
+        .blink-recording {
+            color: white;
+            background-color: #ea4335;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-align: center;
+            animation: blink 1.5s infinite;
+            margin: 15px auto;
+            display: inline-block;
+        }
+        .blink-output {
+            color: white;
+            background-color: #34a853;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-align: center;
+            animation: blink 1.5s infinite;
+            margin: 15px auto;
+            display: inline-block;
+        }
+        .large-text {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .small-text {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .braille-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .centered-content {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
 </head>
 <body>
+    <!-- TITLE PORTION -->
     <header>
         <h1>Speech to Braille Refreshable Module</h1>
     </header>
     
     <main>
+        <!-- Connection status -->
         <div id="connection-status" class="status">
             Checking connection...
         </div>
         
-        <button id="install-button" class="install-button">Install App</button>
-        
-        <!-- Phase 1: Introduction Section -->
-        <div id="introduction-section" class="app-section active">
-            <div id="welcome-banner" class="welcome-banner">
-                <h2>Welcome to Speech to Braille Refreshable Display</h2>
-                <p id="intro-phrase" class="intro-phrase">Let's learn braille!</p>
-                <div class="intro-progress">
-                    <div class="intro-spinner"></div>
-                    <p>Initializing application...</p>
-                </div>
-                <!-- Notification banner for introduction - will be announced automatically -->
-                <div id="intro-notification" class="notification-banner">
-                    <p id="intro-text">Let's learn braille!</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Phase 2: Listening Mode Section -->
-        <div id="listening-section" class="app-section hidden">
-            <div class="card">
-                <h2>Speech Recognition</h2>
-                <p>Speak into your microphone and see the text appear in real-time.</p>
-                <div id="speech-controls">
-                    <div id="cycle-mode-status" class="always-on">● Listening Mode (5s)</div>
-                    <div id="recording-indicator" class="recording-on">● Recording</div>
-                    <div id="cycle-mode-indicator" class="cycle-indicator">Now listening for your speech...</div>
-                </div>
-                <div id="loading-container" class="loading-container">
-                    <div class="progress-bar">
-                        <div id="progress-bar" class="progress progress-striped"></div>
+        <!-- APP PORTION - Where all the phases will appear -->
+        <div id="app-container">
+            
+            <!-- PHASE 1: INTRODUCTION -->
+            <div id="introduction-phase" class="phase-container phase-active">
+                <div class="card centered-content">
+                    <h2>Welcome to Speech to Braille</h2>
+                    <p id="intro-phrase" class="large-text">Let's learn braille!</p>
+                    <div class="intro-progress">
+                        <div class="intro-spinner"></div>
+                        <p>Loading application components...</p>
                     </div>
-                    <div id="progress-status" class="progress-status">Preparing to download model...</div>
-                </div>
-                
-                <div id="model-status">
-                    Recognition Model: <span class="model-badge web-speech" id="model-badge">Web Speech API (Auto)</span>
-                    <span id="mic-status" class="mic-status">Mic: Unknown</span>
-                </div>
-                <div id="speech-output">
-                    <p id="interim-text"></p>
-                    <p id="final-text"></p>
+                    <!-- Hidden audio status indicator -->
+                    <div id="intro-speaking-status" class="speaking-indicator hidden">
+                        <span class="speak-icon">🔊</span> Playing introduction...
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Phase 3: Output Mode Section -->
-        <div id="output-section" class="app-section hidden">
-            <div class="card">
-                <h2>Braille Translation</h2>
-                <p>Matches from your speech are converted to Braille:</p>
-                
-                <div id="braille-status" class="status">
-                    Loading Braille database...
+            
+            <!-- PHASE 2: RECORDING (5 seconds) -->
+            <div id="recording-phase" class="phase-container">
+                <div class="card">
+                    <h2>Speech Recognition</h2>
+                    <div class="recording-header">
+                        <div id="recording-indicator" class="blink-recording">● Recording (5s)</div>
+                        <div class="countdown-timer" id="recording-timer">5</div>
+                    </div>
+                    
+                    <p>Speak into your microphone and I'll listen for words to convert to braille.</p>
+                    
+                    <!-- Current sentence display -->
+                    <div class="speech-output-container">
+                        <h3>Current Sentence:</h3>
+                        <div id="speech-output" class="speech-output-box">
+                            <p id="interim-text"></p>
+                            <p id="final-text"></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Status indicators -->
+                    <div id="model-status">
+                        Recognition Model: <span class="model-badge web-speech" id="model-badge">Web Speech API</span>
+                        <span id="mic-status" class="mic-status">Mic: Unknown</span>
+                    </div>
                 </div>
-                <div id="output-indicator" class="output-mode">◉ Output Mode (5s)</div>
-                <div id="braille-result" class="braille-result hidden">
-                    <div class="braille-match-info">
-                        <h3>Matched Word: <span id="matched-word" class="large-text">None</span></h3>
-                        <p>Language: <span id="braille-language">N/A</span></p>
+            </div>
+            
+            <!-- PHASE 3: OUTPUT (5 seconds) -->
+            <div id="output-phase" class="phase-container">
+                <div class="card">
+                    <h2>Braille Translation</h2>
+                    <div class="output-header">
+                        <div id="output-indicator" class="blink-output">◉ Output (5s)</div>
+                        <div class="countdown-timer" id="output-timer">5</div>
+                    </div>
+                    
+                    <div id="braille-status" class="status hidden">
+                        Loading Braille database...
+                    </div>
+                    
+                    <!-- Braille match result -->
+                    <div id="braille-result" class="braille-result">
+                        <div class="braille-word-container centered-content">
+                            <h3>Matched Word:</h3>
+                            <div id="matched-word" class="large-text">Loading...</div>
+                        </div>
+                        
+                        <div class="braille-container">
+                            <h3>Braille Symbol:</h3>
+                            <div id="braille-symbol" class="braille-symbol large-text">⠿</div>
+                        </div>
+                        
+                        <div class="braille-details">
+                            <div class="braille-language">
+                                <h4>Language:</h4>
+                                <span id="braille-language" class="small-text">N/A</span>
+                            </div>
+                            
+                            <div class="braille-array-container">
+                                <h4>Braille Array:</h4>
+                                <pre id="braille-array" class="braille-array small-text">[1,2,3,4,5,6]</pre>
+                            </div>
+                        </div>
+                        
                         <!-- Speaking indicator shows when word is being read aloud -->
                         <div id="speaking-indicator" class="speaking-indicator hidden">
                             <span class="speak-icon">🔊</span> Reading word aloud...
                         </div>
                     </div>
-                    <div class="braille-display">
-                        <div class="braille-symbol-container">
-                            <h4>Braille Symbol:</h4>
-                            <div id="braille-symbol" class="braille-symbol large-text">⠿</div>
-                        </div>
-                        <div class="braille-array-container">
-                            <h4>Braille Array:</h4>
-                            <pre id="braille-array" class="braille-array small-text">[1,2,3,4,5,6]</pre>
-                        </div>
+                    
+                    <!-- No match info -->
+                    <div id="no-match-info" class="braille-no-match hidden">
+                        <p>No matching words found in your sentence.</p>
+                        <p>Try speaking a different phrase.</p>
                     </div>
-                </div>
-                
-                <div id="no-match-info" class="braille-no-match hidden">
-                    <p>No matching words found in the current sentence.</p>
-                    <p>Try speaking a different phrase containing words from the Braille database.</p>
                 </div>
             </div>
         </div>
         
-        <!-- Troubleshooting Details Card -->
-        <div id="troubleshooting-section" class="app-section hidden">
+        <!-- TROUBLESHOOTING PORTION -->
+        <div id="troubleshooting-section" class="hidden-initially">
             <div class="card">
-                <h2>Troubleshooting Details</h2>
-                <p>Technical information to help diagnose issues with the application.</p>
+                <h2>Troubleshooting</h2>
                 
                 <details>
-                    <summary>Cached Content</summary>
+                    <summary>Application Status</summary>
                     <div class="details-content">
-                        <p>This content will be available even when you're offline.</p>
+                        <p>Current Phase: <span id="current-phase-indicator">Introduction</span></p>
+                        <p>Recognition Active: <span id="recognition-active-status">No</span></p>
                         <p>Last updated: <span id="last-updated">Loading...</span></p>
                     </div>
                 </details>
                 
                 <details>
-                    <summary>Cache Resources</summary>
+                    <summary>Cached Resources</summary>
                     <div class="details-content">
-                        <p>This section displays the cached resources in this application:</p>
                         <button id="refresh-button">Refresh Cache Info</button>
                         <div id="dynamic-content">
                             <p>Loading cache information...</p>
@@ -135,15 +221,22 @@
                 </details>
                 
                 <details>
-                    <summary>IndexedDB Models</summary>
-                    <div class="details-content" id="indexeddb-content">
-                        <p>Loading IndexedDB information...</p>
+                    <summary>Speech Recognition Diagnostics</summary>
+                    <div class="details-content" id="speech-diagnostics">
+                        <p>Checking speech recognition capability...</p>
                     </div>
                 </details>
             </div>
         </div>
         
-        <!-- Add speech loading indicator for Web Speech API -->
+        <!-- Loading indicators -->
+        <div id="loading-container" class="loading-container">
+            <div class="progress-bar">
+                <div id="progress-bar" class="progress progress-striped"></div>
+            </div>
+            <div id="progress-status" class="progress-status">Loading components...</div>
+        </div>
+        
         <div id="speech-loading-container" class="loading-container speech-loading-container">
             <div class="progress-bar">
                 <div id="speech-progress-bar" class="progress progress-striped"></div>
@@ -151,7 +244,7 @@
             <div id="speech-loading-status" class="progress-status">Initializing speech recognition...</div>
         </div>
         
-        <!-- Hidden start/stop buttons for backward compatibility with the JS -->
+        <!-- Hidden compatibility elements for JavaScript -->
         <div style="display: none;">
             <button id="start-speech-btn">Start Speaking</button>
             <button id="stop-speech-btn">Stop</button>
@@ -159,31 +252,159 @@
                 <option value="webspeech">Web Speech API</option>
                 <option value="local">Local Model</option>
             </select>
+            <div id="cycle-mode-status"></div>
+            <div id="cycle-mode-indicator"></div>
         </div>
     </main>
     
     <footer>
-        <p>Progressive Web App Template &copy; 2025</p>
+        <p>Speech to Braille PWA &copy; 2025</p>
     </footer>
 
-    <!-- Import dependencies -->
-    <script src="js/alternatives/speech-recognition.js"></script>
-    <script src="js/braille-translator.js"></script>
-    <script src="js/text-to-speech.js"></script>
-    <script src="utils/braille-array-formatter.js"></script>
-    
-    <!-- Import application modules -->
-    <script src="js/ui-controller.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/cache-manager.js"></script>
-    <script src="js/sound-effects.js"></script>
-
-    <!-- Sound indicators for mode switching -->
+    <!-- Audio resources for phase transitions -->
     <audio id="listening-mode-sound" preload="auto">
         <source src="sounds/listening-mode.mp3" type="audio/mpeg">
     </audio>
     <audio id="output-mode-sound" preload="auto">
         <source src="sounds/output-mode.mp3" type="audio/mpeg">
     </audio>
+
+    <!-- Scripts are loaded in a specific order for dependencies -->
+    <script src="js/alternatives/speech-recognition.js"></script>
+    <script src="js/braille-translator.js"></script>
+    <script src="js/text-to-speech.js"></script>
+    <script src="utils/braille-array-formatter.js"></script>
+    
+    <!-- Main application modules -->
+    <script src="js/ui-controller.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/cache-manager.js"></script>
+    <script src="js/sound-effects.js"></script>
+    
+    <!-- Phase controller script -->
+    <script>
+        // Phase control management
+        document.addEventListener('DOMContentLoaded', function() {
+            // Phase control variables
+            let currentPhase = 'introduction';
+            let phaseTimer = null;
+            const PHASE_DURATION = 5000; // 5 seconds per phase
+            
+            // Phase elements
+            const introPhase = document.getElementById('introduction-phase');
+            const recordingPhase = document.getElementById('recording-phase');
+            const outputPhase = document.getElementById('output-phase');
+            
+            // Timer elements
+            const recordingTimer = document.getElementById('recording-timer');
+            const outputTimer = document.getElementById('output-timer');
+            
+            // Phase transition functions
+            function showPhase(phase) {
+                // Update troubleshooting info
+                document.getElementById('current-phase-indicator').textContent = phase.charAt(0).toUpperCase() + phase.slice(1);
+                
+                // Hide all phases
+                introPhase.classList.remove('phase-active');
+                recordingPhase.classList.remove('phase-active');
+                outputPhase.classList.remove('phase-active');
+                
+                // Show the selected phase
+                if (phase === 'introduction') {
+                    introPhase.classList.add('phase-active');
+                } else if (phase === 'recording') {
+                    recordingPhase.classList.add('phase-active');
+                    startPhaseTimer(recordingTimer, 'output');
+                    
+                    // Play recording sound
+                    if (window.textToSpeech && textToSpeech.playRecordingAudio) {
+                        textToSpeech.playRecordingAudio();
+                    } else if (window.soundEffects) {
+                        window.soundEffects.playListeningModeSound();
+                    }
+                    
+                    // Start speech recognition
+                    if (window.app && app.startSpeechRecognition) {
+                        app.startSpeechRecognition();
+                    }
+                } else if (phase === 'output') {
+                    outputPhase.classList.add('phase-active');
+                    startPhaseTimer(outputTimer, 'recording');
+                    
+                    // Play output sound
+                    if (window.textToSpeech && textToSpeech.playOutputAudio) {
+                        textToSpeech.playOutputAudio();
+                    } else if (window.soundEffects) {
+                        window.soundEffects.playOutputModeSound();
+                    }
+                    
+                    // Process the current text for braille output
+                    processFinalText();
+                }
+                
+                currentPhase = phase;
+            }
+            
+            // Timer countdown function
+            function startPhaseTimer(timerElement, nextPhase) {
+                if (phaseTimer) clearInterval(phaseTimer);
+                
+                let secondsLeft = 5;
+                timerElement.textContent = secondsLeft;
+                timerElement.style.background = 'conic-gradient(#4285f4 0%, transparent 0%)';
+                
+                phaseTimer = setInterval(() => {
+                    secondsLeft--;
+                    if (secondsLeft <= 0) {
+                        clearInterval(phaseTimer);
+                        showPhase(nextPhase);
+                    } else {
+                        // Update timer display
+                        timerElement.textContent = secondsLeft;
+                        // Update circular progress
+                        const progress = (5 - secondsLeft) / 5 * 100;
+                        timerElement.style.background = `conic-gradient(#4285f4 ${progress}%, transparent ${progress}%)`;
+                    }
+                }, 1000);
+            }
+            
+            // Process the final text to find braille matches
+            function processFinalText() {
+                const finalTextElement = document.getElementById('final-text');
+                if (finalTextElement && finalTextElement.textContent.trim()) {
+                    const text = finalTextElement.textContent.trim();
+                    
+                    // If braille translator is available, process the text
+                    if (window.app && app.processSpeechForBraille) {
+                        app.processSpeechForBraille(text);
+                    }
+                }
+            }
+            
+            // Listen for introduction completion
+            window.addEventListener('introCompleted', function() {
+                showPhase('recording');
+            });
+            
+            // Override app's cycle mechanism to use our new phase system
+            if (window.app) {
+                window.app.startListeningCycle = function() {
+                    // Only transition if we're in the introduction phase
+                    if (currentPhase === 'introduction') {
+                        showPhase('recording');
+                    }
+                };
+            }
+            
+            // Start with introduction phase
+            showPhase('introduction');
+            
+            // Make phase control available globally
+            window.phaseControl = {
+                showPhase,
+                getCurrentPhase: () => currentPhase
+            };
+        });
+    </script>
 </body>
 </html>
