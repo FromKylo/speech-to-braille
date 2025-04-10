@@ -349,6 +349,12 @@
                     recordingPhase.classList.add('phase-active');
                     startPhaseTimer(recordingTimer, 'output');
                     
+                    // Clear any previous text to ensure we only show current sentence
+                    const finalTextElement = document.getElementById('final-text');
+                    if (finalTextElement) finalTextElement.textContent = '';
+                    const interimTextElement = document.getElementById('interim-text');
+                    if (interimTextElement) interimTextElement.textContent = '';
+                    
                     // Play recording sound
                     if (window.textToSpeech && textToSpeech.playRecordingAudio) {
                         textToSpeech.playRecordingAudio();

@@ -75,6 +75,10 @@ function setupSpeechRecognitionEvents() {
             console.log('Speech recognition started');
             uiController.setRecordingState(true);
             recognitionActive = true;
+            
+            // Clear any previous text when starting recognition
+            uiController.clearInterimText();
+            uiController.clearFinalText();
         });
         
         speechRecognition.on('end', () => {
@@ -201,8 +205,9 @@ async function startSpeechRecognition() {
         return;
     }
     
-    // Clear previous text when starting new session
+    // Clear both interim and final text when starting new session
     uiController.clearInterimText();
+    uiController.clearFinalText();
     
     // Automatically select method based on connection status
     const isOnline = navigator.onLine;

@@ -468,7 +468,7 @@ const uiController = {
     
     // Update text displays
     updateFinalText: function(text) {
-        if (finalTextElement) finalTextElement.textContent += text + ' ';
+        if (finalTextElement) finalTextElement.textContent = text; // Replace text instead of appending
     },
     
     updateInterimText: function(text) {
@@ -477,6 +477,10 @@ const uiController = {
     
     clearInterimText: function() {
         if (interimTextElement) interimTextElement.textContent = '';
+    },
+
+    clearFinalText: function() {
+        if (finalTextElement) finalTextElement.textContent = '';
     },
     
     // Get speech method
