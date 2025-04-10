@@ -89,6 +89,28 @@
             background-color: #f0f0f0;
             border-radius: 4px;
         }
+        .notification-banner {
+            background-color: #4285f4;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .notification-banner button {
+            margin-top: 10px;
+            background-color: white;
+            color: #4285f4;
+            font-weight: bold;
+        }
+        
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -97,6 +119,11 @@
     </header>
     
     <main>
+        <div id="notification-banner" class="notification-banner">
+            <p>This page uses Text-to-Speech functionality that requires your permission.</p>
+            <button id="start-audio-btn">Enable Audio and Start Demo</button>
+        </div>
+        
         <div class="card">
             <h2>Text-to-Speech Testing</h2>
             <div class="debug-controls">
@@ -146,6 +173,8 @@
             const pitchControl = document.getElementById('pitch-control');
             const rateValue = document.getElementById('rate-value');
             const pitchValue = document.getElementById('pitch-value');
+            const notificationBanner = document.getElementById('notification-banner');
+            const startAudioBtn = document.getElementById('start-audio-btn');
             
             // Logging function
             function log(message) {
@@ -224,6 +253,16 @@
                     speechSynthesis.speak(utterance);
                 } catch (err) {
                     log(`Exception: ${err.message}`);
+                    
+                    // Check for "not-allowed" errors related to autoplay policy
+                    if (err.message.includes('not-allowed')) {
+                        log("Browser blocked automatic speech. User interaction required.");
+                        // Show notification banner if it exists
+                        if (notificationBanner) {
+                            notificationBanner.classList.remove('hidden');
+                        }
+                    }
+                    
                     speechStatus.textContent = `Status: Exception - ${err.message}`;
                 }
             }
@@ -280,11 +319,9 @@
                     }
                 }
                 
-                // Auto-play the text once voices are loaded
-                setTimeout(() => {
-                    log("Auto-playing speech on page load");
-                    speakText(textInput.value.trim());
-                }, 1000); // Slight delay to ensure everything is ready
+                // NO LONGER auto-play on voices loaded
+                // We'll let the user trigger this with the start button
+                log("Voices loaded successfully. Waiting for user interaction to begin speech.");
             }
             
             // Initial voice loading
@@ -302,6 +339,16 @@
             
             pitchControl.addEventListener('input', () => {
                 pitchValue.textContent = pitchControl.value;
+            });
+            
+            // Start Audio button handler (for getting user permission)
+            startAudioBtn.addEventListener('click', () => {
+                // Hide the notification banner
+                notificationBanner.classList.add('hidden');
+                
+                // Play a welcome speech to establish audio permission
+                log("User initiated speech playback");
+                speakText(textInput.value.trim());
             });
             
             // Speak button handler
