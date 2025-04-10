@@ -216,6 +216,21 @@ class SpeechRecognitionManager {
     }
     
     /**
+     * Pause speech recognition without fully stopping it
+     */
+    pauseRecognition() {
+        if (this.isRecording && this.recognition) {
+            console.log('Temporarily pausing speech recognition');
+            try {
+                this.recognition.stop();
+                // Don't update isRecording flag so we know to restart
+            } catch (e) {
+                console.error('Error pausing recognition:', e);
+            }
+        }
+    }
+    
+    /**
      * Check if speech recognition is supported
      */
     isSupported() {

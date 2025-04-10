@@ -6,6 +6,11 @@
 // Speech recognition state
 let recognitionActive = false;
 
+// Add cycle tracking variables
+let cycleMode = 'listening'; // 'listening' or 'output'
+let cycleTimer = null;
+const CYCLE_DURATION = 5000; // 5 seconds for each phase
+
 // Initialize the application
 function initApp() {
     console.log('Initializing application...');
@@ -305,13 +310,77 @@ function processSpeechForBraille(text) {
         // Update the UI with the formatted array
         uiController.updateBrailleArray(formattedArray);
         
-        // Automatically speak the matched word without requiring button press
-        if (window.textToSpeech) {
-            window.textToSpeech.speak(result.word);
+        // We're now using uiController.showBrailleMatch to handle speech
+        // but let's add a fallback just in case
+        if (!document.getElementById('speak-word-btn') && window.textToSpeech) {
+            console.log('Using fallback speech method for:', result.word);
+            try {
+                setTimeout(() => window.textToSpeech.speak(result.word), 300);
+            } catch (error) {
+                console.error('Text-to-speech error:', error);
+            }
         }
     } else {
         // No match found
         uiController.showNoMatch();
+    }
+}
+
+// Function to start the listening/output cycle
+function startListeningCycle() {
+    if (cycleTimer) {
+        clearInterval(cycleTimer);
+    }
+    
+    // Set initial state to listening
+    cycleMode = 'listening';
+    updateCycleUI();
+    
+    // Start the cycle timer
+    cycleTimer = setInterval(() => {
+        // Toggle between listening and output modes
+        cycleMode = cycleMode === 'listening' ? 'output' : 'listening';
+        updateCycleUI();
+    }, CYCLE_DURATION);
+}
+
+// Function to update UI based on cycle mode
+function updateCycleUI() {
+    if (cycleMode === 'listening') {
+        console.log('Switching to LISTENING mode');
+        // Enable speech recognition
+        if (!recognitionActive && typeof speechRecognition !== 'undefined') {
+            speechRecognition.startRecognition();
+        }
+        
+        // Update UI to show we're in listening mode
+        uiController.setCycleMode('listening');
+        
+        // Clear any previous interim text
+        uiController.clearInterimText();
+    } else {
+        console.log('Switching to OUTPUT mode');
+        // Temporarily pause recognition
+        if (recognitionActive && typeof speechRecognition !== 'undefined') {
+            speechRecognition.pauseRecognition();
+        }
+        
+        // Update UI to show we're in output mode
+        uiController.setCycleMode('output');
+        
+        // Process the most recent recognized text
+        const finalTextElement = document.getElementById('final-text');
+        if (finalTextElement && finalTextElement.textContent.trim()) {
+            // Get the most recent sentence or fragment
+            const text = finalTextElement.textContent.trim();
+            const sentences = text.split(/[.!?]+/);
+            const lastSentence = sentences[sentences.length - 1].trim();
+            
+            if (lastSentence) {
+                // Process this text for braille matching
+                processSpeechForBraille(lastSentence);
+            }
+        }
     }
 }
 
@@ -323,7 +392,14 @@ function forceReload() {
 }
 
 // Initialize app when loaded
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', function() {
+    initApp();
+    
+    // Start the listening/output cycle after a delay
+    setTimeout(() => {
+        startListeningCycle();
+    }, 3000); // Give time for initial welcome message
+});
 
 // Expose public methods
 window.app = {
@@ -331,5 +407,7 @@ window.app = {
     startSpeechRecognition,
     stopSpeechRecognition,
     processSpeechForBraille,
-    forceReload
+    forceReload,
+    startListeningCycle,
+    getCurrentCycleMode: () => cycleMode
 };

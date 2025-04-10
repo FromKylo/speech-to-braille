@@ -467,6 +467,13 @@ const uiController = {
         
         // Display the language directly without formatting
         brailleLanguageElement.textContent = result.language;
+        
+        // Auto-speak the word (adding delay to ensure TTS is ready)
+        setTimeout(() => {
+            if (window.textToSpeech) {
+                window.textToSpeech.speak(result.word);
+            }
+        }, 500);
     },
     
     showNoMatch: function() {
@@ -495,6 +502,60 @@ const uiController = {
         speechProgressBar.style.width = `${percent}%`;
         if (statusText) {
             speechLoadingStatus.textContent = statusText;
+        }
+    },
+
+    // Add new method to speak the matched word
+    speakMatchedWord: function() {
+        const matchedWord = document.getElementById('matched-word');
+        if (matchedWord && matchedWord.textContent && matchedWord.textContent !== 'None') {
+            console.log('Speaking matched word:', matchedWord.textContent);
+            if (window.textToSpeech) {
+                window.textToSpeech.speak(matchedWord.textContent);
+                
+                // Update button state
+                const speakBtn = document.getElementById('speak-word-btn');
+                if (speakBtn) {
+                    speakBtn.classList.add('speaking');
+                    setTimeout(() => {
+                        speakBtn.classList.remove('speaking');
+                    }, 2000);
+                }
+            } else {
+                console.error('Text-to-speech not available');
+            }
+        }
+    },
+
+    // Add new method to update UI based on cycle mode
+    setCycleMode: function(mode) {
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const cycleIndicator = document.getElementById('cycle-mode-indicator');
+        
+        if (recordingIndicator) {
+            if (mode === 'listening') {
+                recordingIndicator.className = 'always-on';
+                recordingIndicator.textContent = '● Listening Mode (5s)';
+            } else {
+                recordingIndicator.className = 'output-mode';
+                recordingIndicator.textContent = '◉ Output Mode (5s)';
+            }
+        }
+        
+        if (cycleIndicator) {
+            cycleIndicator.textContent = mode === 'listening' ? 
+                'Now listening for your speech...' : 
+                'Displaying Braille output...';
+        }
+        
+        // If in output mode, make sure to speak the currently matched word
+        if (mode === 'output') {
+            const matchedWord = document.getElementById('matched-word');
+            if (matchedWord && matchedWord.textContent && matchedWord.textContent !== 'None') {
+                if (window.textToSpeech) {
+                    window.textToSpeech.speak(matchedWord.textContent);
+                }
+            }
         }
     }
 };

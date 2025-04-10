@@ -36,8 +36,8 @@
             <h2>Speech Recognition</h2>
             <p>Speak into your microphone and see the text appear in real-time.</p>
             <div id="speech-controls">
-                <!-- Removed buttons - speech recognition is always running -->
-                <div id="recording-indicator" class="always-on">● Always Listening</div>
+                <div id="recording-indicator" class="always-on">● Listening Mode (5s)</div>
+                <div id="cycle-mode-indicator" class="cycle-indicator">Now listening for your speech...</div>
             </div>
             
             <!-- Add loading progress bar -->
@@ -71,7 +71,11 @@
                 <div class="braille-match-info">
                     <h3>Matched Word: <span id="matched-word">None</span></h3>
                     <p>Language: <span id="braille-language">N/A</span></p>
-                    <!-- Enhanced speaking indicator - no button anymore -->
+                    <!-- Add explicit speak button -->
+                    <button id="speak-word-btn" class="speak-btn">
+                        <span class="speak-icon">🔊</span> Speak Word
+                    </button>
+                    <!-- Enhanced speaking indicator -->
                     <div id="speaking-indicator" class="speaking-indicator hidden">
                         <span class="speak-icon">🔊</span> Reading word aloud...
                     </div>
