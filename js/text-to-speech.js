@@ -1,6 +1,6 @@
 /**
  * Text to Speech module
- * Automatically speaks matched words and provides visual feedback
+ * Simplified for Chrome/Android compatibility only
  */
 class TextToSpeech {
     constructor() {
@@ -8,144 +8,76 @@ class TextToSpeech {
         this.speakingIndicator = document.getElementById('speaking-indicator');
         this.isSpeaking = false;
         this.voices = [];
-        this.isInitialized = false;
         
-        // Check if speech synthesis is available
-        if (!this.synth) {
-            console.error("Speech synthesis not supported in this browser");
-            return;
-        }
-        
-        // Initialize voices when they are available
-        if (this.synth.onvoiceschanged !== undefined) {
-            this.synth.onvoiceschanged = this.initVoices.bind(this);
-        } else {
-            // For browsers that don't fire onvoiceschanged
-            setTimeout(() => this.initVoices(), 500);
-        }
+        // Initialize voices when they are available (Chrome-specific event)
+        this.synth.onvoiceschanged = () => this.initVoices();
     }
     
     /**
      * Initialize available voices
      */
     initVoices() {
-        if (this.isInitialized) return;
-        
-        try {
-            this.voices = this.synth.getVoices();
-            if (this.voices.length > 0) {
-                this.isInitialized = true;
-                console.log(`Initialized ${this.voices.length} voices for speech synthesis`);
-                
-                // Select the best voice for English (if available)
-                this.selectedVoice = this.voices.find(voice => 
-                    voice.lang.includes('en') && voice.localService
-                ) || this.voices[0];
-                
-                console.log(`Selected voice: ${this.selectedVoice.name}`);
-                
-                // Speak welcome message after voices are initialized
-                this.speakWelcome();
-            } else {
-                console.warn("No voices available yet, will retry");
-                // Retry after a delay if no voices found
-                setTimeout(() => this.initVoices(), 1000);
-            }
-        } catch (error) {
-            console.error("Error initializing voices:", error);
+        this.voices = this.synth.getVoices();
+        if (this.voices.length > 0) {
+            console.log(`Loaded ${this.voices.length} voices`);
+            
+            // Select the best voice for Chrome/Android
+            this.selectedVoice = this.voices.find(voice => 
+                voice.lang.includes('en-US') || voice.lang.includes('en-GB')
+            ) || this.voices[0];
+            
+            console.log(`Selected voice: ${this.selectedVoice.name}`);
+            
+            // Speak welcome message after voices are initialized
+            this.speakWelcome();
         }
     }
 
     /**
-     * Automatically speak the provided text
+     * Speak the provided text
      * @param {string} text - Text to be spoken
      */
     speak(text) {
         if (!text || this.isSpeaking) return;
         
-        // Check if speech synthesis is available
-        if (!this.synth) {
-            console.error("Speech synthesis not supported");
-            return;
+        // Create speech utterance
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Set speaking properties
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        // Use selected voice if available
+        if (this.selectedVoice) {
+            utterance.voice = this.selectedVoice;
         }
         
-        try {
-            // Create speech utterance
-            const utterance = new SpeechSynthesisUtterance(text);
-            
-            // Set speaking properties
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
-            
-            // Use selected voice if available
-            if (this.selectedVoice) {
-                utterance.voice = this.selectedVoice;
-            }
-            
-            // Show speaking indicator
-            this.showSpeakingIndicator();
-            
-            // Handle events
-            utterance.onend = () => {
-                this.hideSpeakingIndicator();
-                this.isSpeaking = false;
-                console.log(`Finished speaking: "${text}"`);
-            };
-            
-            utterance.onerror = (event) => {
-                console.error('Speech synthesis error:', event);
-                this.hideSpeakingIndicator();
-                this.isSpeaking = false;
-            };
-            
-            // Start speaking
-            this.isSpeaking = true;
-            
-            // Ensure speech synthesis is in a valid state
-            if (this.synth.speaking || this.synth.pending) {
-                this.synth.cancel();
-            }
-            
-            console.log(`Speaking: "${text}"`);
-            this.synth.speak(utterance);
-            
-            // Safari/iOS workaround - sometimes speech won't start without this
-            if (this.isIOS() || this.isSafari()) {
-                setTimeout(() => {
-                    if (this.synth.paused) this.synth.resume();
-                }, 100);
-            }
-        } catch (error) {
-            console.error("Error speaking text:", error);
-            this.isSpeaking = false;
+        // Show speaking indicator
+        this.showSpeakingIndicator();
+        
+        // Handle events
+        utterance.onend = () => {
             this.hideSpeakingIndicator();
-        }
+            this.isSpeaking = false;
+        };
+        
+        utterance.onerror = () => {
+            this.hideSpeakingIndicator();
+            this.isSpeaking = false;
+        };
+        
+        // Start speaking
+        this.isSpeaking = true;
+        this.synth.speak(utterance);
     }
     
     /**
      * Speak welcome message when app opens
      */
     speakWelcome() {
-        // Welcome message - must play on every refresh
         const welcomeMessage = "Speech to Braille Refreshable Display. Let's learn braille!";
-        
-        // Speak immediately if voices are initialized
-        if (this.isInitialized) {
-            console.log("Speaking welcome message immediately");
-            this.speak(welcomeMessage);
-        } else {
-            // Wait for voices to initialize then speak
-            console.log("Delaying welcome message until voices are initialized");
-            const checkVoicesAndSpeak = () => {
-                if (this.isInitialized) {
-                    this.speak(welcomeMessage);
-                } else {
-                    setTimeout(checkVoicesAndSpeak, 500);
-                }
-            };
-            setTimeout(checkVoicesAndSpeak, 1000);
-        }
+        this.speak(welcomeMessage);
     }
     
     /**
@@ -178,18 +110,9 @@ class TextToSpeech {
     }
     
     /**
-     * Debug method to test speech synthesis
+     * Test speech synthesis
      */
     testSpeech() {
-        console.log("Testing speech synthesis...");
-        
-        if (!this.synth) {
-            console.error("Speech synthesis not supported in this browser");
-            return false;
-        }
-        
-        console.log("Available voices:", this.voices.map(v => `${v.name} (${v.lang})`).join(', '));
-        
         this.speak("This is a test of the speech synthesis system");
         return true;
     }
@@ -200,13 +123,12 @@ const textToSpeech = new TextToSpeech();
 
 // Add a test function for debugging
 window.testSpeech = function() {
-    console.log("Manual speech test triggered");
     textToSpeech.testSpeech();
 };
 
-// Set up welcome message when DOM is loaded - ensure it plays on every page refresh
+// Set up welcome message when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Add a debug button to help diagnose TTS issues
+    // Add a debug button
     setTimeout(() => {
         const container = document.querySelector('.card:first-of-type');
         if (container) {
@@ -217,18 +139,5 @@ document.addEventListener('DOMContentLoaded', () => {
             debugButton.addEventListener('click', window.testSpeech);
             container.appendChild(debugButton);
         }
-        
-        // Attempt to speak welcome message immediately on page load
-        // This ensures it happens on every refresh
-        textToSpeech.speakWelcome();
     }, 1000);
-});
-
-// Additional trigger for the welcome message to ensure it plays on every refresh
-window.addEventListener('load', () => {
-    console.log('Window loaded - triggering welcome message');
-    // Use a timeout to make sure the DOM and audio context are fully ready
-    setTimeout(() => {
-        textToSpeech.speakWelcome();
-    }, 1500);
 });
