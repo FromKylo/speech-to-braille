@@ -163,6 +163,25 @@ function setRecordingState(isRecording) {
     }
 }
 
+// Sound indicators for mode switching
+function playModeSound(mode) {
+    const listeningSound = document.getElementById('listening-mode-sound');
+    const outputSound = document.getElementById('output-mode-sound');
+    
+    // Stop any currently playing sounds
+    listeningSound.pause();
+    listeningSound.currentTime = 0;
+    outputSound.pause();
+    outputSound.currentTime = 0;
+    
+    // Play the appropriate sound
+    if (mode === 'listening') {
+        listeningSound.play().catch(err => console.log('Could not play sound:', err));
+    } else if (mode === 'output') {
+        outputSound.play().catch(err => console.log('Could not play sound:', err));
+    }
+}
+
 // UI-related methods for export
 const uiController = {
     // Initialize UI
@@ -306,7 +325,6 @@ const uiController = {
                 if (modelBadge) modelBadge.textContent = 'Not Supported';
                 
                 // Still keep the button enabled to attempt recognition
-                // Many browsers don't correctly report support until after user interaction
             }
         } else {
             console.warn('Speech recognition module not initialized properly');
@@ -557,6 +575,8 @@ const uiController = {
                 }
             }
         }
+
+        playModeSound(mode); // Add this line
     }
 };
 
