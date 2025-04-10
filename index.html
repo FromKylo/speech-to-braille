@@ -31,15 +31,14 @@
         <div id="introduction-section" class="app-section active">
             <div id="welcome-banner" class="welcome-banner">
                 <h2>Welcome to Speech to Braille Refreshable Display</h2>
-                <p>Let's learn braille!</p>
+                <p id="intro-phrase" class="intro-phrase">Let's learn braille!</p>
                 <div class="intro-progress">
                     <div class="intro-spinner"></div>
                     <p>Initializing application...</p>
                 </div>
-                <!-- Notification banner without button -->
+                <!-- Notification banner for introduction - will be announced automatically -->
                 <div id="intro-notification" class="notification-banner">
-                    <p>Welcome to the Speech to Braille converter! This application will help you learn Braille.</p>
-                    <!-- Button removed - speech is now automatic -->
+                    <p id="intro-text">Let's learn braille!</p>
                 </div>
             </div>
         </div>
@@ -51,6 +50,7 @@
                 <p>Speak into your microphone and see the text appear in real-time.</p>
                 <div id="speech-controls">
                     <div id="cycle-mode-status" class="always-on">● Listening Mode (5s)</div>
+                    <div id="recording-indicator" class="recording-on">● Recording</div>
                     <div id="cycle-mode-indicator" class="cycle-indicator">Now listening for your speech...</div>
                 </div>
                 <div id="loading-container" class="loading-container">
@@ -80,11 +80,12 @@
                 <div id="braille-status" class="status">
                     Loading Braille database...
                 </div>
+                <div id="output-indicator" class="output-mode">◉ Output Mode (5s)</div>
                 <div id="braille-result" class="braille-result hidden">
                     <div class="braille-match-info">
-                        <h3>Matched Word: <span id="matched-word">None</span></h3>
+                        <h3>Matched Word: <span id="matched-word" class="large-text">None</span></h3>
                         <p>Language: <span id="braille-language">N/A</span></p>
-                        <!-- Speak button removed - speech is now automatic -->
+                        <!-- Speaking indicator shows when word is being read aloud -->
                         <div id="speaking-indicator" class="speaking-indicator hidden">
                             <span class="speak-icon">🔊</span> Reading word aloud...
                         </div>
@@ -92,11 +93,11 @@
                     <div class="braille-display">
                         <div class="braille-symbol-container">
                             <h4>Braille Symbol:</h4>
-                            <div id="braille-symbol" class="braille-symbol">⠿</div>
+                            <div id="braille-symbol" class="braille-symbol large-text">⠿</div>
                         </div>
                         <div class="braille-array-container">
                             <h4>Braille Array:</h4>
-                            <pre id="braille-array" class="braille-array">[1,2,3,4,5,6]</pre>
+                            <pre id="braille-array" class="braille-array small-text">[1,2,3,4,5,6]</pre>
                         </div>
                     </div>
                 </div>
@@ -184,7 +185,5 @@
     <audio id="output-mode-sound" preload="auto">
         <source src="sounds/output-mode.mp3" type="audio/mpeg">
     </audio>
-    
-    <!-- Remove the script that handled notification reading since it's now automatic -->
 </body>
 </html>

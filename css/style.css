@@ -742,3 +742,59 @@ details[open] summary {
 .notification-btn:hover {
     background-color: #3367d6;
 }
+
+/* Add these styles to the end of your existing CSS file */
+
+/* Introduction Phrase Styling */
+.intro-phrase {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #4285f4;
+    margin: 1.5rem 0;
+    text-align: center;
+}
+
+/* Text size classes */
+.large-text {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.small-text {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Output mode indicator */
+.output-mode {
+    display: inline-block;
+    color: #ffffff;
+    font-weight: bold;
+    background-color: #34a853;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    animation: blink 1.5s infinite;
+}
+
+/* Enhance blink animation */
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Enhanced speaking indicator */
+.speaking-indicator {
+    display: flex;
+    align-items: center;
+    background-color: #fbbc05;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    animation: pulse 1.5s infinite;
+}
+
+.speak-icon {
+    margin-right: 0.5rem;
+}
