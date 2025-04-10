@@ -114,7 +114,6 @@
                     <div class="config-controls">
                         <label for="voice-select">Voice:</label>
                         <select id="voice-select"></select>
-                        
                         <label for="rate-control">Rate:</label>
                         <input type="range" id="rate-control" min="0.5" max="2" step="0.1" value="1">
                         <span id="rate-value">1</span>
@@ -133,7 +132,7 @@
             </div>
         </div>
     </main>
-
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // DOM Elements
@@ -156,80 +155,8 @@
                 console.log(message);
             }
             
-            // Check if speech synthesis is available
-            if (!('speechSynthesis' in window)) {
-                log("ERROR: Speech Synthesis API not supported in this browser");
-                speechStatus.textContent = 'Status: ERROR - Speech Synthesis not supported';
-                speechStatus.style.color = 'red';
-                speakBtn.disabled = true;
-                stopBtn.disabled = true;
-                return;
-            }
-            
-            log("Speech Synthesis API is available");
-            
-            // Get available voices
-            function loadVoices() {
-                const voices = speechSynthesis.getVoices();
-                
-                if (voices.length === 0) {
-                    log("No voices available yet, waiting...");
-                    return;
-                }
-                
-                log(`Loaded ${voices.length} voices`);
-                
-                // Clear previous options
-                voiceSelect.innerHTML = '';
-                
-                // Add voices to select
-                voices.forEach((voice, i) => {
-                    const option = document.createElement('option');
-                    option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' — DEFAULT' : ''}`;
-                    option.setAttribute('data-voice-index', i);
-                    voiceSelect.appendChild(option);
-                    
-                    // Log voice details
-                    log(`Voice ${i}: ${voice.name} (${voice.lang})${voice.default ? ' [DEFAULT]' : ''}${voice.localService ? ' [Local]' : ' [Network]'}`);
-                });
-                
-                // Find the voices from the original module for compatibility
-                const englishVoice = voices.find(voice => 
-                    (voice.lang.includes('en-US') || voice.lang.includes('en-GB')) && voice.localService
-                ) || voices.find(voice => voice.lang.includes('en'));
-                
-                if (englishVoice) {
-                    log(`Found preferred English voice: ${englishVoice.name}`);
-                    
-                    // Select this voice in the dropdown
-                    const englishVoiceIndex = voices.indexOf(englishVoice);
-                    if (englishVoiceIndex >= 0) {
-                        voiceSelect.selectedIndex = englishVoiceIndex;
-                    }
-                }
-            }
-            
-            // Initial voice loading
-            loadVoices();
-            
-            // Chrome requires waiting for voiceschanged event
-            if (speechSynthesis.onvoiceschanged !== undefined) {
-                speechSynthesis.onvoiceschanged = loadVoices;
-            }
-            
-            // Update rate/pitch value displays
-            rateControl.addEventListener('input', () => {
-                rateValue.textContent = rateControl.value;
-            });
-            
-            pitchControl.addEventListener('input', () => {
-                pitchValue.textContent = pitchControl.value;
-            });
-            
-            // Speak button handler
-            speakBtn.addEventListener('click', () => {
-                const text = textInput.value.trim();
-                
+            // Function to speak text
+            function speakText(text) {
                 if (!text) {
                     log("No text to speak");
                     return;
@@ -299,6 +226,87 @@
                     log(`Exception: ${err.message}`);
                     speechStatus.textContent = `Status: Exception - ${err.message}`;
                 }
+            }
+            
+            // Check if speech synthesis is available
+            if (!('speechSynthesis' in window)) {
+                log("ERROR: Speech Synthesis API not supported in this browser");
+                speechStatus.textContent = 'Status: ERROR - Speech Synthesis not supported';
+                speechStatus.style.color = 'red';
+                speakBtn.disabled = true;
+                stopBtn.disabled = true;
+                return;
+            }
+            
+            log("Speech Synthesis API is available");
+            
+            // Get available voices
+            function loadVoices() {
+                const voices = speechSynthesis.getVoices();
+                
+                if (voices.length === 0) {
+                    log("No voices available yet, waiting...");
+                    return;
+                }
+                
+                log(`Loaded ${voices.length} voices`);
+                
+                // Clear previous options
+                voiceSelect.innerHTML = '';
+                
+                // Add voices to select
+                voices.forEach((voice, i) => {
+                    const option = document.createElement('option');
+                    option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' — DEFAULT' : ''}`;
+                    option.setAttribute('data-voice-index', i);
+                    voiceSelect.appendChild(option);
+                    
+                    // Log voice details
+                    log(`Voice ${i}: ${voice.name} (${voice.lang})${voice.default ? ' [DEFAULT]' : ''}${voice.localService ? ' [Local]' : ' [Network]'}`);
+                });
+                
+                // Find the voices from the original module for compatibility
+                const englishVoice = voices.find(voice => 
+                    (voice.lang.includes('en-US') || voice.lang.includes('en-GB')) && voice.localService
+                ) || voices.find(voice => voice.lang.includes('en'));
+                
+                if (englishVoice) {
+                    log(`Found preferred English voice: ${englishVoice.name}`);
+                    
+                    // Select this voice in the dropdown
+                    const englishVoiceIndex = voices.indexOf(englishVoice);
+                    if (englishVoiceIndex >= 0) {
+                        voiceSelect.selectedIndex = englishVoiceIndex;
+                    }
+                }
+                
+                // Auto-play the text once voices are loaded
+                setTimeout(() => {
+                    log("Auto-playing speech on page load");
+                    speakText(textInput.value.trim());
+                }, 1000); // Slight delay to ensure everything is ready
+            }
+            
+            // Initial voice loading
+            loadVoices();
+            
+            // Chrome requires waiting for voiceschanged event
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = loadVoices;
+            }
+            
+            // Update rate/pitch value displays
+            rateControl.addEventListener('input', () => {
+                rateValue.textContent = rateControl.value;
+            });
+            
+            pitchControl.addEventListener('input', () => {
+                pitchValue.textContent = pitchControl.value;
+            });
+            
+            // Speak button handler
+            speakBtn.addEventListener('click', () => {
+                speakText(textInput.value.trim());
             });
             
             // Stop button handler
