@@ -8,35 +8,61 @@ let recognitionActive = false;
 
 // Initialize the application
 function initApp() {
+    console.log('Initializing application...');
+    
     // Speak welcome message if text-to-speech is available
     if (window.textToSpeech && typeof textToSpeech.speakWelcome === 'function') {
         textToSpeech.speakWelcome();
     }
     
+    // Force-enable the start button initially to ensure it's clickable
+    const startBtn = document.getElementById('start-speech-btn');
+    if (startBtn) {
+        startBtn.disabled = false;
+        console.log('Start button initially enabled');
+    }
+    
     // Check if speech recognition is defined before using it
     if (typeof speechRecognition === 'undefined') {
-        console.error('Speech recognition module is not loaded');
+        console.warn('Speech recognition module is not loaded yet');
         
         // Wait a bit and try again - it might still be initializing
         setTimeout(() => {
             if (typeof speechRecognition !== 'undefined') {
                 console.log('Speech recognition module loaded after delay');
                 setupSpeechRecognitionEvents();
+                
+                // Ensure button is enabled after recognition is loaded
+                if (startBtn) startBtn.disabled = false;
             } else {
-                alert('Speech recognition module is not available. Please check console for errors.');
+                console.error('Speech recognition module is not available');
+                // Still keep button enabled - we'll handle errors when it's clicked
+                if (startBtn) startBtn.disabled = false;
             }
         }, 1000);
-        return;
+    } else {
+        // Setup event listeners for speech recognition events
+        setupSpeechRecognitionEvents();
+        
+        // Make sure button is enabled
+        if (startBtn) startBtn.disabled = false;
     }
-    
-    // Setup event listeners for speech recognition events
-    setupSpeechRecognitionEvents();
     
     // Add debugging helper to check if the speech recognition module is working
     console.log('Speech recognition module status:', {
         defined: typeof speechRecognition !== 'undefined',
-        supported: typeof speechRecognition !== 'undefined' ? speechRecognition.isSupported() : false
+        supported: typeof speechRecognition !== 'undefined' && typeof speechRecognition.isSupported === 'function' ? 
+                   speechRecognition.isSupported() : 'unknown'
     });
+    
+    // Add a final check to ensure the button is enabled after all initialization
+    setTimeout(() => {
+        const startBtn = document.getElementById('start-speech-btn');
+        if (startBtn && startBtn.disabled) {
+            console.log('Final check: re-enabling start button');
+            startBtn.disabled = false;
+        }
+    }, 2000);
 }
 
 // Setup speech recognition event listeners
@@ -166,7 +192,12 @@ async function loadLocalModel() {
 
 // Function to start speech recognition
 async function startSpeechRecognition() {
-    if (recognitionActive) return;
+    console.log('startSpeechRecognition called');
+    
+    if (recognitionActive) {
+        console.log('Already recording, ignoring start request');
+        return;
+    }
     
     // Clear previous text when starting new session
     uiController.clearInterimText();
@@ -176,51 +207,56 @@ async function startSpeechRecognition() {
     const selectedMethod = isOnline ? 'webspeech' : 'local';
     
     try {
-        // Show loading indicator for speech recognition
+        // Show loading indicator
         uiController.showSpeechLoadingBar();
         uiController.updateSpeechLoadingProgress(15, 'Initializing speech recognition...');
         
         console.log(`Starting speech recognition with method: ${selectedMethod} (${isOnline ? 'online' : 'offline'} mode)`);
-        if (typeof speechRecognition !== 'undefined' && speechRecognition) {
-            // Set the selected method first
-            if (typeof speechRecognition.setRecognitionMethod === 'function') {
-                speechRecognition.setRecognitionMethod(selectedMethod);
-            }
-            
-            // If offline and using local model, ensure model is loaded
-            if (!isOnline && selectedMethod === 'local') {
-                // Check if model is already loaded
-                const modelStatus = document.getElementById('model-badge');
-                if (modelStatus && modelStatus.textContent !== 'Local Model') {
-                    console.log('Loading local model for offline use...');
-                    uiController.updateSpeechLoadingProgress(30, 'Loading offline speech model...');
-                    await loadLocalModel();
-                }
-            } else {
-                // Web Speech API initialization
-                uiController.updateSpeechLoadingProgress(50, 'Initializing Web Speech API...');
-                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UI feedback
-            }
-            
-            // Update loading progress
-            uiController.updateSpeechLoadingProgress(80, 'Starting recognition engine...');
-            
-            console.log('Starting recognition...');
-            speechRecognition.startRecognition();
-            
-            // Complete progress and hide loading bar after a delay
-            uiController.updateSpeechLoadingProgress(100, 'Recognition started successfully!');
-            setTimeout(() => {
-                uiController.hideSpeechLoadingBar();
-            }, 1000);
-        } else {
-            uiController.hideSpeechLoadingBar();
-            throw new Error('Speech recognition module not initialized');
+        
+        // First check if speechRecognition exists
+        if (typeof speechRecognition === 'undefined') {
+            throw new Error('Speech recognition module not available');
         }
+        
+        // Set the selected method if supported
+        if (typeof speechRecognition.setRecognitionMethod === 'function') {
+            speechRecognition.setRecognitionMethod(selectedMethod);
+        }
+        
+        // Handle offline mode with local model if needed
+        if (!isOnline && selectedMethod === 'local') {
+            const modelStatus = document.getElementById('model-badge');
+            if (modelStatus && modelStatus.textContent !== 'Local Model') {
+                console.log('Loading local model for offline use...');
+                uiController.updateSpeechLoadingProgress(30, 'Loading offline speech model...');
+                await loadLocalModel();
+            }
+        } else {
+            // Web Speech API initialization
+            uiController.updateSpeechLoadingProgress(50, 'Initializing Web Speech API...');
+            await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UI feedback
+        }
+        
+        // Start the actual recognition
+        uiController.updateSpeechLoadingProgress(80, 'Starting recognition engine...');
+        console.log('Calling speechRecognition.startRecognition()');
+        
+        // This is the actual call that starts speech recognition
+        speechRecognition.startRecognition();
+        
+        // Complete progress and hide loading bar after a delay
+        uiController.updateSpeechLoadingProgress(100, 'Recognition started!');
+        setTimeout(() => {
+            uiController.hideSpeechLoadingBar();
+        }, 1000);
     } catch (error) {
         console.error('Failed to start recognition:', error);
         uiController.hideSpeechLoadingBar();
-        alert(`Failed to start recognition: ${error.message}`);
+        alert(`Failed to start recognition: ${error.message}. Please try again or check if your browser supports speech recognition.`);
+        
+        // Re-enable the start button in case of error
+        const startBtn = document.getElementById('start-speech-btn');
+        if (startBtn) startBtn.disabled = false;
     }
 }
 

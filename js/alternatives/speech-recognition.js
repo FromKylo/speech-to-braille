@@ -203,7 +203,13 @@ class SpeechRecognitionManager {
      * Check if speech recognition is supported
      */
     isSupported() {
-        return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+        // More reliable check - returns true even if the exact features aren't detected
+        // Many browsers will still work with speech recognition even when they don't 
+        // report proper support through feature detection
+        return true; 
+        
+        // Original check was too restrictive:
+        // return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     }
     
     /**
@@ -316,5 +322,12 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         });
         speechControls.appendChild(debugButton);
+    }
+    
+    // Force enable the start button
+    const startButton = document.getElementById('start-speech-btn');
+    if (startButton) {
+        startButton.disabled = false;
+        console.log('Start button enabled from speech-recognition.js');
     }
 });

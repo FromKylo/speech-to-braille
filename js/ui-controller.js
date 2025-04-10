@@ -167,10 +167,32 @@ function setRecordingState(isRecording) {
 const uiController = {
     // Initialize UI
     init: function() {
-        initDOMReferences();
-        this.setupEventListeners();
-        this.initSpeechRecognitionUI();
-        this.initBrailleTranslator();
+        return new Promise((resolve) => {
+            console.log('Initializing UI controller...');
+            initDOMReferences();
+            
+            // Make sure the button is enabled regardless of other conditions
+            const startBtn = document.getElementById('start-speech-btn');
+            if (startBtn) {
+                startBtn.disabled = false;
+                console.log('Start button explicitly enabled');
+            }
+            
+            this.setupEventListeners();
+            this.initSpeechRecognitionUI();
+            this.initBrailleTranslator();
+            
+            // Force enable the button again after a short delay
+            // This helps with race conditions in initialization
+            setTimeout(() => {
+                const startBtn = document.getElementById('start-speech-btn');
+                if (startBtn && startBtn.disabled) {
+                    console.log('Re-enabling start button after delay');
+                    startBtn.disabled = false;
+                }
+                resolve();
+            }, 500);
+        });
     },
     
     // Setup event listeners
@@ -256,42 +278,44 @@ const uiController = {
     },
     
     // Initialize speech recognition UI
-    initSpeechRecognitionUI: async function() {
-        if (typeof speechRecognition !== 'undefined' && speechRecognition.isSupported()) {
-            // Update model status based on online/offline status
-            const isOnline = navigator.onLine;
-            
-            if (isOnline) {
-                // Online mode uses Web Speech API
-                updateModelStatus('webspeech');
-                if (modelBadge) modelBadge.textContent = 'Web Speech API (Online Mode)';
-                if (startSpeechBtn) startSpeechBtn.disabled = false;
-            } else {
-                // Offline mode needs local model
-                const hasLocalModel = /* check if local model is available */
-                    typeof speechRecognition.isModelAvailableOffline === 'function' ? 
-                    await speechRecognition.isModelAvailableOffline() : false;
-                    
-                if (hasLocalModel) {
-                    updateModelStatus('local');
-                    if (modelBadge) modelBadge.textContent = 'Local Model (Offline Mode)';
-                    if (startSpeechBtn) startSpeechBtn.disabled = false;
-                } else {
-                    updateModelStatus('none');
-                    if (modelBadge) modelBadge.textContent = 'No Model Available Offline';
-                    if (startSpeechBtn) startSpeechBtn.disabled = true;
-                }
-            }
-            
-            // Add listener for online/offline events to update UI
-            window.addEventListener('online', () => this.updateConnectionStatus(true));
-            window.addEventListener('offline', () => this.updateConnectionStatus(false));
-        } else {
-            updateModelStatus('none');
-            if (modelBadge) modelBadge.textContent = 'Not Available';
-            if (startSpeechBtn) startSpeechBtn.disabled = true;
-            console.error('Speech recognition is not supported');
+    initSpeechRecognitionUI: function() {
+        // Make sure start button exists and is referenced
+        startSpeechBtn = document.getElementById('start-speech-btn');
+        if (!startSpeechBtn) {
+            console.error('Start speech button not found');
+            return;
         }
+        
+        // Always enable the button by default - this ensures it's clickable on load
+        startSpeechBtn.disabled = false;
+        
+        if (typeof speechRecognition !== 'undefined' && typeof speechRecognition.isSupported === 'function') {
+            const isSupported = speechRecognition.isSupported();
+            console.log('Speech recognition supported:', isSupported);
+            
+            if (isSupported) {
+                // Online mode uses Web Speech API by default
+                updateModelStatus('webspeech');
+                if (modelBadge) modelBadge.textContent = 'Web Speech API (Default)';
+                
+                // Button is already enabled from above
+                console.log('Start button enabled for speech recognition');
+            } else {
+                console.warn('Speech recognition is not supported by browser');
+                updateModelStatus('none');
+                if (modelBadge) modelBadge.textContent = 'Not Supported';
+                
+                // Still keep the button enabled to attempt recognition
+                // Many browsers don't correctly report support until after user interaction
+            }
+        } else {
+            console.warn('Speech recognition module not initialized properly');
+            // Still keep the button enabled to give it a chance to work
+        }
+        
+        // Add listener for online/offline events to update UI
+        window.addEventListener('online', () => this.updateConnectionStatus(true));
+        window.addEventListener('offline', () => this.updateConnectionStatus(false));
     },
 
     // New method to handle connection status changes
