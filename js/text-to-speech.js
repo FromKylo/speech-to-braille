@@ -11,6 +11,7 @@ class TextToSpeech {
         this.initialized = false;
         this.englishVoice = null;
         this.filipinoVoice = null;
+        this.introCompleted = false;
         
         // Initialize voices when they are available
         this.synth.onvoiceschanged = () => this.initVoices();
@@ -59,12 +60,16 @@ class TextToSpeech {
     }
 
     /**
-     * Speak the provided text
+     * Speak the provided text with callback support
      * @param {string} text - Text to be spoken
      * @param {string} language - Language code (optional, 'en' or 'fil')
+     * @param {function} onEndCallback - Callback to execute when speech ends
      */
-    speak(text, language = 'en') {
-        if (!text || this.isSpeaking) return;
+    speak(text, language = 'en', onEndCallback = null) {
+        if (!text || this.isSpeaking) {
+            if (onEndCallback) onEndCallback();
+            return;
+        }
         
         // Create speech utterance
         const utterance = new SpeechSynthesisUtterance(text);
@@ -88,11 +93,13 @@ class TextToSpeech {
         utterance.onend = () => {
             this.hideSpeakingIndicator();
             this.isSpeaking = false;
+            if (onEndCallback) onEndCallback();
         };
         
         utterance.onerror = () => {
             this.hideSpeakingIndicator();
             this.isSpeaking = false;
+            if (onEndCallback) onEndCallback();
         };
         
         // Start speaking
@@ -111,16 +118,21 @@ class TextToSpeech {
      */
     speakWelcome() {
         const welcomeMessage = "Speech to Braille Refreshable Display. Let's learn braille!";
-        this.speak(welcomeMessage);
         
-        // Auto-start speech recognition after welcome message
-        if (typeof window.app !== 'undefined' && 
-            typeof window.app.startSpeechRecognition === 'function') {
-            setTimeout(() => {
-                console.log('Auto-starting speech recognition');
-                window.app.startSpeechRecognition();
-            }, 2000); // Give the welcome message time to play
-        }
+        // Only show introduction section
+        this.showOnlySection('introduction-section');
+        
+        // Speak welcome message and transition to listening mode when done
+        this.speak(welcomeMessage, 'en', () => {
+            console.log('Welcome message completed, transitioning to listening mode');
+            this.introCompleted = true;
+            
+            // Start the application cycle
+            if (typeof window.app !== 'undefined') {
+                // Start with listening mode
+                window.app.startListeningCycle();
+            }
+        });
     }
     
     /**
@@ -170,6 +182,22 @@ class TextToSpeech {
             startBtn.disabled = false;
         }
     }
+
+    /**
+     * Helper to show only a specific section
+     */
+    showOnlySection(sectionId) {
+        const sections = document.querySelectorAll('.app-section');
+        sections.forEach(section => {
+            if (section.id === sectionId) {
+                section.classList.add('active');
+                section.classList.remove('hidden');
+            } else {
+                section.classList.remove('active');
+                section.classList.add('hidden');
+            }
+        });
+    }
 }
 
 // Create global instance
@@ -212,12 +240,24 @@ window.addEventListener('load', () => {
     if (startBtn) startBtn.style.display = 'none';
     if (stopBtn) stopBtn.style.display = 'none';
     
-    // Update cycle mode status
+    // Update cycle mode status instead of recording indicator
     const cycleModeStatus = document.getElementById('cycle-mode-status');
     if (cycleModeStatus) {
         cycleModeStatus.textContent = '● Listening Mode (5s)';
         cycleModeStatus.classList.add('always-on');
     }
+    
+    // Start with introduction section only
+    const sections = document.querySelectorAll('.app-section');
+    sections.forEach(section => {
+        if (section.id === 'introduction-section') {
+            section.classList.add('active');
+            section.classList.remove('hidden');
+        } else {
+            section.classList.remove('active');
+            section.classList.add('hidden');
+        }
+    });
     
     // Auto-start speech recognition after a short delay
     setTimeout(() => {
@@ -225,6 +265,12 @@ window.addEventListener('load', () => {
             typeof window.app.startSpeechRecognition === 'function') {
             console.log('Auto-initializing speech recognition');
             window.app.startSpeechRecognition();
+            
+            // Make sure the listening/output cycle starts
+            if (typeof window.app.startListeningCycle === 'function') {
+                console.log('Starting listening/output cycle');
+                window.app.startListeningCycle();
+            }
         }
     }, 2000);
 });

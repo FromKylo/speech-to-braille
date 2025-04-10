@@ -453,7 +453,17 @@ const uiController = {
     
     // Update recording state
     setRecordingState: function(isRecording) {
-        setRecordingState(isRecording);
+        console.log(`Setting recording state: ${isRecording}`);
+        window.recognitionActive = isRecording;
+        
+        // Update button states
+        if (startSpeechBtn) startSpeechBtn.disabled = isRecording;
+        if (stopSpeechBtn) stopSpeechBtn.disabled = !isRecording;
+        
+        // Clear interim text if stopping
+        if (!isRecording && interimTextElement) {
+            interimTextElement.textContent = '';
+        }
     },
     
     // Update text displays
@@ -528,6 +538,12 @@ const uiController = {
 
     // Add new method to speak the matched word
     speakMatchedWord: function() {
+        // Check if we're in output mode
+        if (window.app && window.app.getCurrentCycleMode() !== 'output') {
+            console.log('Cannot speak word - not in output mode');
+            return;
+        }
+        
         const matchedWord = document.getElementById('matched-word');
         if (matchedWord && matchedWord.textContent && matchedWord.textContent !== 'None') {
             console.log('Speaking matched word:', matchedWord.textContent);
@@ -550,6 +566,8 @@ const uiController = {
 
     // Add new method to update UI based on cycle mode
     setCycleMode: function(mode) {
+        console.log(`Setting cycle mode UI to: ${mode}`);
+        
         if (cycleModeStatus) {
             if (mode === 'listening') {
                 cycleModeStatus.className = 'always-on';
@@ -558,12 +576,16 @@ const uiController = {
                 cycleModeStatus.className = 'output-mode';
                 cycleModeStatus.textContent = '◉ Output Mode (5s)';
             }
+        } else {
+            console.error('cycleModeStatus element not found');
         }
         
         if (cycleModeIndicator) {
             cycleModeIndicator.textContent = mode === 'listening' ? 
                 'Now listening for your speech...' : 
                 'Displaying Braille output...';
+        } else {
+            console.error('cycleModeIndicator element not found');
         }
         
         // If in output mode, make sure to speak the currently matched word
@@ -576,7 +598,16 @@ const uiController = {
             }
         }
 
-        playModeSound(mode);
+        // Play appropriate sound for mode change
+        if (typeof playModeSound === 'function') {
+            playModeSound(mode);
+        } else if (window.soundEffects) {
+            if (mode === 'listening') {
+                window.soundEffects.playListeningModeSound();
+            } else {
+                window.soundEffects.playOutputModeSound();
+            }
+        }
     }
 };
 

@@ -328,6 +328,8 @@ function processSpeechForBraille(text) {
 
 // Function to start the listening/output cycle
 function startListeningCycle() {
+    console.log('Starting listening/output cycle');
+    
     if (cycleTimer) {
         clearInterval(cycleTimer);
     }
@@ -340,14 +342,51 @@ function startListeningCycle() {
     cycleTimer = setInterval(() => {
         // Toggle between listening and output modes
         cycleMode = cycleMode === 'listening' ? 'output' : 'listening';
+        console.log(`Cycle timer triggered - switching to ${cycleMode} mode`);
         updateCycleUI();
     }, CYCLE_DURATION);
+    
+    console.log(`Cycle timer set with interval of ${CYCLE_DURATION}ms`);
 }
 
 // Function to update UI based on cycle mode
 function updateCycleUI() {
+    // Show the appropriate section based on the current mode
+    if (window.textToSpeech && !textToSpeech.introCompleted) {
+        console.log('Introduction not completed yet, showing intro section');
+        document.querySelectorAll('.app-section').forEach(section => {
+            if (section.id === 'introduction-section') {
+                section.classList.add('active');
+                section.classList.remove('hidden');
+            } else {
+                section.classList.remove('active');
+                section.classList.add('hidden');
+            }
+        });
+        return;
+    }
+    
+    // Now handle the actual modes after intro is complete
     if (cycleMode === 'listening') {
         console.log('Switching to LISTENING mode');
+        
+        // Show listening section, hide others
+        document.querySelectorAll('.app-section').forEach(section => {
+            if (section.id === 'listening-section') {
+                section.classList.add('active');
+                section.classList.remove('hidden');
+                section.classList.add('phase-transition');
+                setTimeout(() => section.classList.remove('phase-transition'), 700);
+            } else if (section.id === 'troubleshooting-section') {
+                // Always show troubleshooting
+                section.classList.add('active');
+                section.classList.remove('hidden');
+            } else {
+                section.classList.remove('active');
+                section.classList.add('hidden');
+            }
+        });
+        
         // Enable speech recognition
         if (!recognitionActive && typeof speechRecognition !== 'undefined') {
             speechRecognition.startRecognition();
@@ -359,12 +398,49 @@ function updateCycleUI() {
         }
         
         // Update UI to show we're in listening mode
-        uiController.setCycleMode('listening');
+        if (typeof uiController !== 'undefined' && typeof uiController.setCycleMode === 'function') {
+            uiController.setCycleMode('listening');
+        } else {
+            console.error('uiController or setCycleMode function not available');
+            
+            // Fallback direct DOM manipulation
+            const cycleModeStatus = document.getElementById('cycle-mode-status');
+            const cycleModeIndicator = document.getElementById('cycle-mode-indicator');
+            
+            if (cycleModeStatus) {
+                cycleModeStatus.className = 'always-on';
+                cycleModeStatus.textContent = '● Listening Mode (5s)';
+            }
+            
+            if (cycleModeIndicator) {
+                cycleModeIndicator.textContent = 'Now listening for your speech...';
+            }
+        }
         
         // Clear any previous interim text
-        uiController.clearInterimText();
+        if (typeof uiController !== 'undefined') {
+            uiController.clearInterimText();
+        }
     } else {
         console.log('Switching to OUTPUT mode');
+        
+        // Show output section, hide others
+        document.querySelectorAll('.app-section').forEach(section => {
+            if (section.id === 'output-section') {
+                section.classList.add('active');
+                section.classList.remove('hidden');
+                section.classList.add('phase-transition');
+                setTimeout(() => section.classList.remove('phase-transition'), 700);
+            } else if (section.id === 'troubleshooting-section') {
+                // Always show troubleshooting
+                section.classList.add('active');
+                section.classList.remove('hidden');
+            } else {
+                section.classList.remove('active');
+                section.classList.add('hidden');
+            }
+        });
+        
         // Temporarily pause recognition
         if (recognitionActive && typeof speechRecognition !== 'undefined') {
             speechRecognition.pauseRecognition();
@@ -376,7 +452,24 @@ function updateCycleUI() {
         }
         
         // Update UI to show we're in output mode
-        uiController.setCycleMode('output');
+        if (typeof uiController !== 'undefined' && typeof uiController.setCycleMode === 'function') {
+            uiController.setCycleMode('output');
+        } else {
+            console.error('uiController or setCycleMode function not available');
+            
+            // Fallback direct DOM manipulation
+            const cycleModeStatus = document.getElementById('cycle-mode-status');
+            const cycleModeIndicator = document.getElementById('cycle-mode-indicator');
+            
+            if (cycleModeStatus) {
+                cycleModeStatus.className = 'output-mode';
+                cycleModeStatus.textContent = '◉ Output Mode (5s)';
+            }
+            
+            if (cycleModeIndicator) {
+                cycleModeIndicator.textContent = 'Displaying Braille output...';
+            }
+        }
         
         // Process the most recent recognized text
         const finalTextElement = document.getElementById('final-text');
@@ -405,10 +498,8 @@ function forceReload() {
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
     
-    // Start the listening/output cycle after a delay
-    setTimeout(() => {
-        startListeningCycle();
-    }, 3000); // Give time for initial welcome message
+    // Start the listening/output cycle after a delay - now handled by speakWelcome
+    // This is now controlled by the text-to-speech.js once the welcome message is done
 });
 
 // Expose public methods
