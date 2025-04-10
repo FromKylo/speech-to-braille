@@ -524,15 +524,22 @@ details[open] summary {
 .speaking-indicator {
     background-color: #4285f4;
     color: white;
-    padding: 5px 10px;
+    padding: 8px 15px;
     border-radius: 15px;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     font-weight: bold;
     animation: pulse 1.5s infinite;
+    margin-top: 10px;
 }
 
 .speaking-indicator.hidden {
     display: none;
+}
+
+.speak-icon {
+    margin-right: 8px;
+    font-size: 1.2em;
 }
 
 /* Microphone status indicator */
@@ -569,4 +576,10 @@ details[open] summary {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-20px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* Speech loading container styles */
+.speech-loading-container {
+    margin-top: 15px;
+    margin-bottom: 15px;
 }

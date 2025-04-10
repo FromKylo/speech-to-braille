@@ -176,6 +176,10 @@ async function startSpeechRecognition() {
     const selectedMethod = isOnline ? 'webspeech' : 'local';
     
     try {
+        // Show loading indicator for speech recognition
+        uiController.showSpeechLoadingBar();
+        uiController.updateSpeechLoadingProgress(15, 'Initializing speech recognition...');
+        
         console.log(`Starting speech recognition with method: ${selectedMethod} (${isOnline ? 'online' : 'offline'} mode)`);
         if (typeof speechRecognition !== 'undefined' && speechRecognition) {
             // Set the selected method first
@@ -183,23 +187,39 @@ async function startSpeechRecognition() {
                 speechRecognition.setRecognitionMethod(selectedMethod);
             }
             
-            // If offline and using local method, ensure model is loaded
+            // If offline and using local model, ensure model is loaded
             if (!isOnline && selectedMethod === 'local') {
                 // Check if model is already loaded
                 const modelStatus = document.getElementById('model-badge');
                 if (modelStatus && modelStatus.textContent !== 'Local Model') {
                     console.log('Loading local model for offline use...');
+                    uiController.updateSpeechLoadingProgress(30, 'Loading offline speech model...');
                     await loadLocalModel();
                 }
+            } else {
+                // Web Speech API initialization
+                uiController.updateSpeechLoadingProgress(50, 'Initializing Web Speech API...');
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UI feedback
             }
+            
+            // Update loading progress
+            uiController.updateSpeechLoadingProgress(80, 'Starting recognition engine...');
             
             console.log('Starting recognition...');
             speechRecognition.startRecognition();
+            
+            // Complete progress and hide loading bar after a delay
+            uiController.updateSpeechLoadingProgress(100, 'Recognition started successfully!');
+            setTimeout(() => {
+                uiController.hideSpeechLoadingBar();
+            }, 1000);
         } else {
+            uiController.hideSpeechLoadingBar();
             throw new Error('Speech recognition module not initialized');
         }
     } catch (error) {
         console.error('Failed to start recognition:', error);
+        uiController.hideSpeechLoadingBar();
         alert(`Failed to start recognition: ${error.message}`);
     }
 }
@@ -231,7 +251,7 @@ function processSpeechForBraille(text) {
         // Format and display the braille array
         let formattedArray;
         
-        if (typeof formatBrailleArrayForDisplay === 'function' && typeof window.formatBrailleArrayForDisplay !== 'function') {
+        if (typeof formatBrailleArrayForDisplay === 'function') {
             // Check if the utility function from imported module is available
             formattedArray = formatBrailleArrayForDisplay(result.array);
             console.log('Using utility formatBrailleArrayForDisplay function:', formattedArray);
@@ -248,6 +268,11 @@ function processSpeechForBraille(text) {
         
         // Update the UI with the formatted array
         uiController.updateBrailleArray(formattedArray);
+        
+        // Automatically speak the matched word without requiring button press
+        if (window.textToSpeech) {
+            window.textToSpeech.speak(result.word);
+        }
     } else {
         // No match found
         uiController.showNoMatch();

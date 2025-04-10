@@ -72,11 +72,10 @@
                 <div class="braille-match-info">
                     <h3>Matched Word: <span id="matched-word">None</span></h3>
                     <p>Language: <span id="braille-language">N/A</span></p>
-                    <p id="speaking-indicator" class="speaking-indicator hidden">🔊 Speaking...</p>
-                    <!-- Add speak button for explicitly triggering speech -->
-                    <button id="speak-word-btn" class="speak-btn">
-                        <span>🔊 Speak Word</span>
-                    </button>
+                    <!-- Enhanced speaking indicator - no button anymore -->
+                    <div id="speaking-indicator" class="speaking-indicator hidden">
+                        <span class="speak-icon">🔊</span> Reading word aloud...
+                    </div>
                 </div>
                 <div class="braille-display">
                     <div class="braille-symbol-container">
@@ -126,6 +125,14 @@
                     <p>Loading IndexedDB information...</p>
                 </div>
             </details>
+        </div>
+        
+        <!-- Add speech loading indicator for Web Speech API -->
+        <div id="speech-loading-container" class="loading-container speech-loading-container">
+            <div class="progress-bar">
+                <div id="speech-progress-bar" class="progress progress-striped"></div>
+            </div>
+            <div id="speech-loading-status" class="progress-status">Initializing speech recognition...</div>
         </div>
     </main>
     

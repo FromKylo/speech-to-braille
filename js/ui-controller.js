@@ -9,6 +9,7 @@ let interimTextElement, finalTextElement, modelBadge;
 let loadingContainer, progressBar, progressStatus;
 let brailleStatus, brailleResult, matchedWordElement, brailleLanguageElement;
 let brailleSymbolElement, brailleArrayElement, noMatchInfo, speakWordBtn;
+let speechLoadingContainer, speechProgressBar, speechLoadingStatus;
 
 // Helper function to update progress bar
 function updateLoadingProgress(percent, statusText) {
@@ -41,6 +42,11 @@ function initDOMReferences() {
     brailleArrayElement = document.getElementById('braille-array');
     noMatchInfo = document.getElementById('no-match-info');
     speakWordBtn = document.getElementById('speak-word-btn');
+    
+    // Speech loading elements
+    speechLoadingContainer = document.getElementById('speech-loading-container');
+    speechProgressBar = document.getElementById('speech-progress-bar');
+    speechLoadingStatus = document.getElementById('speech-loading-status');
     
     // Remove any old buttons that were added programmatically
     const oldButtons = document.querySelectorAll('main > button');
@@ -449,17 +455,22 @@ const uiController = {
         if (brailleArrayElement) brailleArrayElement.textContent = formattedArray;
     },
 
-    // Speak matched word
-    speakMatchedWord: function() {
-        if (!window.textToSpeech) return;
-        
-        const matchedWordElement = document.getElementById('matched-word');
-        if (matchedWordElement) {
-            const word = matchedWordElement.textContent;
-            if (word && word !== 'None') {
-                console.log(`Speaking matched word: ${word}`);
-                window.textToSpeech.speak(word);
-            }
+    // Show speech loading bar
+    showSpeechLoadingBar: function() {
+        if (speechLoadingContainer) speechLoadingContainer.style.display = 'block';
+    },
+
+    // Hide speech loading bar
+    hideSpeechLoadingBar: function() {
+        if (speechLoadingContainer) speechLoadingContainer.style.display = 'none';
+    },
+
+    // Update speech loading progress
+    updateSpeechLoadingProgress: function(percent, statusText) {
+        if (!speechProgressBar || !speechLoadingStatus) return;
+        speechProgressBar.style.width = `${percent}%`;
+        if (statusText) {
+            speechLoadingStatus.textContent = statusText;
         }
     }
 };
