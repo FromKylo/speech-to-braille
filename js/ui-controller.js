@@ -250,23 +250,48 @@ const uiController = {
     },
     
     // Initialize speech recognition UI
-    initSpeechRecognitionUI: function() {
+    initSpeechRecognitionUI: async function() {
         if (typeof speechRecognition !== 'undefined' && speechRecognition.isSupported()) {
-            if (speechRecognition.webSpeechRecognition) {
+            // Update model status based on online/offline status
+            const isOnline = navigator.onLine;
+            
+            if (isOnline) {
+                // Online mode uses Web Speech API
                 updateModelStatus('webspeech');
-                if (modelBadge) modelBadge.textContent = 'Web Speech API Available';
+                if (modelBadge) modelBadge.textContent = 'Web Speech API (Online Mode)';
                 if (startSpeechBtn) startSpeechBtn.disabled = false;
             } else {
-                updateModelStatus('none');
-                if (modelBadge) modelBadge.textContent = 'No Recognition Available';
-                if (startSpeechBtn) startSpeechBtn.disabled = true;
+                // Offline mode needs local model
+                const hasLocalModel = /* check if local model is available */
+                    typeof speechRecognition.isModelAvailableOffline === 'function' ? 
+                    await speechRecognition.isModelAvailableOffline() : false;
+                    
+                if (hasLocalModel) {
+                    updateModelStatus('local');
+                    if (modelBadge) modelBadge.textContent = 'Local Model (Offline Mode)';
+                    if (startSpeechBtn) startSpeechBtn.disabled = false;
+                } else {
+                    updateModelStatus('none');
+                    if (modelBadge) modelBadge.textContent = 'No Model Available Offline';
+                    if (startSpeechBtn) startSpeechBtn.disabled = true;
+                }
             }
+            
+            // Add listener for online/offline events to update UI
+            window.addEventListener('online', () => this.updateConnectionStatus(true));
+            window.addEventListener('offline', () => this.updateConnectionStatus(false));
         } else {
             updateModelStatus('none');
             if (modelBadge) modelBadge.textContent = 'Not Available';
             if (startSpeechBtn) startSpeechBtn.disabled = true;
             console.error('Speech recognition is not supported');
         }
+    },
+
+    // New method to handle connection status changes
+    updateConnectionStatus: function(isOnline) {
+        console.log(`Connection status changed: ${isOnline ? 'online' : 'offline'}`);
+        this.initSpeechRecognitionUI(); // Re-initialize UI based on new connection status
     },
     
     // Initialize braille translator

@@ -171,12 +171,29 @@ async function startSpeechRecognition() {
     // Clear previous text when starting new session
     uiController.clearInterimText();
     
-    const selectedMethod = uiController.getSpeechMethod();
+    // Automatically select method based on connection status
+    const isOnline = navigator.onLine;
+    const selectedMethod = isOnline ? 'webspeech' : 'local';
     
     try {
-        console.log(`Starting speech recognition with method: ${selectedMethod}`);
+        console.log(`Starting speech recognition with method: ${selectedMethod} (${isOnline ? 'online' : 'offline'} mode)`);
         if (typeof speechRecognition !== 'undefined' && speechRecognition) {
-            console.log('Speech recognition object exists, starting...');
+            // Set the selected method first
+            if (typeof speechRecognition.setRecognitionMethod === 'function') {
+                speechRecognition.setRecognitionMethod(selectedMethod);
+            }
+            
+            // If offline and using local method, ensure model is loaded
+            if (!isOnline && selectedMethod === 'local') {
+                // Check if model is already loaded
+                const modelStatus = document.getElementById('model-badge');
+                if (modelStatus && modelStatus.textContent !== 'Local Model') {
+                    console.log('Loading local model for offline use...');
+                    await loadLocalModel();
+                }
+            }
+            
+            console.log('Starting recognition...');
             speechRecognition.startRecognition();
         } else {
             throw new Error('Speech recognition module not initialized');
