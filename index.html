@@ -36,11 +36,8 @@
             <h2>Speech Recognition</h2>
             <p>Speak into your microphone and see the text appear in real-time.</p>
             <div id="speech-controls">
-                <button id="start-speech-btn">Start Speaking</button>
-                <button id="stop-speech-btn" disabled>Stop</button>
-                
-                <!-- Removed selection dropdown - system now automatically selects API based on connection -->
-                <div id="recording-indicator" class="recording-off">● Recording</div>
+                <!-- Removed buttons - speech recognition is always running -->
+                <div id="recording-indicator" class="always-on">● Always Listening</div>
             </div>
             
             <!-- Add loading progress bar -->
@@ -52,7 +49,7 @@
             </div>
             
             <div id="model-status">
-                Recognition Model: <span class="model-badge no-model" id="model-badge">Not Selected</span>
+                Recognition Model: <span class="model-badge web-speech" id="model-badge">Web Speech API (Auto)</span>
                 <span id="mic-status" class="mic-status">Mic: Unknown</span>
             </div>
             <div id="speech-output">
@@ -135,6 +132,16 @@
                 <div id="speech-progress-bar" class="progress progress-striped"></div>
             </div>
             <div id="speech-loading-status" class="progress-status">Initializing speech recognition...</div>
+        </div>
+        
+        <!-- Hidden start/stop buttons for backward compatibility with the JS -->
+        <div style="display: none;">
+            <button id="start-speech-btn">Start Speaking</button>
+            <button id="stop-speech-btn">Stop</button>
+            <select id="speech-method">
+                <option value="webspeech">Web Speech API</option>
+                <option value="local">Local Model</option>
+            </select>
         </div>
     </main>
     
