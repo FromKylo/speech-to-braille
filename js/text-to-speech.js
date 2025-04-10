@@ -1,276 +1,127 @@
-/**
- * Text to Speech module
- * Simplified for Chrome/Android compatibility only
- */
-class TextToSpeech {
-    constructor() {
-        this.synth = window.speechSynthesis;
-        this.speakingIndicator = document.getElementById('speaking-indicator');
-        this.isSpeaking = false;
-        this.voices = [];
-        this.initialized = false;
-        this.englishVoice = null;
-        this.filipinoVoice = null;
-        this.introCompleted = false;
-        
-        // Initialize voices when they are available
-        this.synth.onvoiceschanged = () => this.initVoices();
-        this.initVoices(); // Try initial load
-        
-        // Fallback initialization after a delay
-        setTimeout(() => {
-            if (!this.initialized) this.initVoices();
-        }, 1000);
-    }
-    
-    /**
-     * Initialize available voices
-     */
-    initVoices() {
-        this.voices = this.synth.getVoices();
-        
-        if (this.voices.length > 0) {
-            // Find the best voices for each language
-            this.englishVoice = this.voices.find(voice => 
-                (voice.lang.includes('en-US') || voice.lang.includes('en-GB')) && voice.localService
-            ) || this.voices.find(voice => voice.lang.includes('en'));
-            
-            // For Filipino/Tagalog voice
-            this.filipinoVoice = this.voices.find(voice => 
-                voice.lang.includes('fil') || voice.lang.includes('tl') || voice.lang.includes('fil-PH')
-            );
-            
-            // Default to English voice if Filipino not found
-            if (!this.filipinoVoice) {
-                this.filipinoVoice = this.englishVoice;
-            }
-            
-            // Default voice if nothing was found
-            if (!this.englishVoice) {
-                this.englishVoice = this.voices[0];
-            }
-            
-            console.log(`Voices loaded. English: ${this.englishVoice?.name}, Filipino: ${this.filipinoVoice?.name}`);
-            this.initialized = true;
-            
-            // Speak welcome message and ensure button is enabled
-            this.speakWelcome();
-            this.ensureStartButtonEnabled();
-        }
-    }
+// Improved text-to-speech with default voice
 
-    /**
-     * Speak the provided text with callback support
-     * @param {string} text - Text to be spoken
-     * @param {string} language - Language code (optional, 'en' or 'fil')
-     * @param {function} onEndCallback - Callback to execute when speech ends
-     */
-    speak(text, language = 'en', onEndCallback = null) {
-        if (!text || this.isSpeaking) {
-            if (onEndCallback) onEndCallback();
-            return;
-        }
-        
-        // Create speech utterance
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        // Select appropriate voice based on language
-        if (language === 'fil' && this.filipinoVoice) {
-            utterance.voice = this.filipinoVoice;
-        } else {
-            utterance.voice = this.englishVoice;
-        }
-        
-        // Set speaking properties
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        
-        // Show speaking indicator
-        this.showSpeakingIndicator();
-        
-        // Handle events
-        utterance.onend = () => {
-            this.hideSpeakingIndicator();
-            this.isSpeaking = false;
-            if (onEndCallback) onEndCallback();
-        };
-        
-        utterance.onerror = () => {
-            this.hideSpeakingIndicator();
-            this.isSpeaking = false;
-            if (onEndCallback) onEndCallback();
-        };
-        
-        // Start speaking
-        this.isSpeaking = true;
-        
-        // Make sure to clear previous speech (important for Chrome)
-        if (this.synth.speaking) {
-            this.synth.cancel();
-        }
-        
-        this.synth.speak(utterance);
-    }
-    
-    /**
-     * Speak welcome message when app opens
-     */
-    speakWelcome() {
-        const welcomeMessage = "Speech to Braille Refreshable Display. Let's learn braille!";
-        
-        // Only show introduction section
-        this.showOnlySection('introduction-section');
-        
-        // Speak welcome message and transition to listening mode when done
-        this.speak(welcomeMessage, 'en', () => {
-            console.log('Welcome message completed, transitioning to listening mode');
-            this.introCompleted = true;
-            
-            // Start the application cycle
-            if (typeof window.app !== 'undefined') {
-                // Start with listening mode
-                window.app.startListeningCycle();
-            }
-        });
-    }
-    
-    /**
-     * Show the speaking indicator
-     */
-    showSpeakingIndicator() {
-        if (this.speakingIndicator) {
-            this.speakingIndicator.classList.remove('hidden');
-        }
-    }
-    
-    /**
-     * Hide the speaking indicator
-     */
-    hideSpeakingIndicator() {
-        if (this.speakingIndicator) {
-            this.speakingIndicator.classList.add('hidden');
-        }
-    }
-    
-    /**
-     * Cancel any ongoing speech
-     */
-    cancel() {
-        if (this.synth && this.synth.speaking) {
-            this.synth.cancel();
-            this.hideSpeakingIndicator();
-            this.isSpeaking = false;
-        }
-    }
-    
-    /**
-     * Test speech synthesis
-     */
-    testSpeech() {
-        this.speak("This is a test of the speech synthesis system");
-        return true;
-    }
-    
-    /**
-     * Ensure the start button is enabled
-     */
-    ensureStartButtonEnabled() {
-        const startBtn = document.getElementById('start-speech-btn');
-        if (startBtn && startBtn.disabled) {
-            console.log('Text-to-speech: Enabling start button');
-            startBtn.disabled = false;
-        }
-    }
+// Default voice settings
+const defaultVoiceSettings = {
+    lang: 'en-US',
+    pitch: 1.0,
+    rate: 1.0,
+    volume: 1.0
+};
 
-    /**
-     * Helper to show only a specific section
-     */
-    showOnlySection(sectionId) {
-        const sections = document.querySelectorAll('.app-section');
-        sections.forEach(section => {
-            if (section.id === sectionId) {
-                section.classList.add('active');
-                section.classList.remove('hidden');
-            } else {
-                section.classList.remove('active');
-                section.classList.add('hidden');
-            }
+// Voice cache to avoid re-fetching voices
+let cachedVoice = null;
+let isSpeaking = false;
+
+// Initialize speech synthesis on page load
+document.addEventListener('DOMContentLoaded', initSpeechSynthesis);
+
+// Initialize and set up the default voice
+async function initSpeechSynthesis() {
+    // Wait for voices to be loaded
+    if (window.speechSynthesis.getVoices().length === 0) {
+        return new Promise(resolve => {
+            window.speechSynthesis.addEventListener('voiceschanged', () => {
+                setupDefaultVoice();
+                resolve();
+            });
         });
+    } else {
+        setupDefaultVoice();
+        // Speak the introduction automatically
+        speakIntroduction();
     }
 }
 
-// Create global instance
-const textToSpeech = new TextToSpeech();
-
-// Add a test function for debugging
-window.testSpeech = function() {
-    textToSpeech.testSpeech();
-};
-
-// Set up welcome message when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Add a debug button
-    setTimeout(() => {
-        const container = document.querySelector('.card:first-of-type');
-        if (container) {
-            const debugButton = document.createElement('button');
-            debugButton.textContent = 'Test Speech';
-            debugButton.style.backgroundColor = '#9c27b0';
-            debugButton.style.margin = '10px 0';
-            debugButton.addEventListener('click', window.testSpeech);
-            container.appendChild(debugButton);
-        }
-        
-        // Ensure start button is enabled
-        const startBtn = document.getElementById('start-speech-btn');
-        if (startBtn) {
-            startBtn.disabled = false;
-            console.log('DOM loaded: Enabling start button');
-        }
-    }, 1000);
-});
-
-// Add event listener to page load to ensure button is enabled and start speech recognition
-window.addEventListener('load', () => {
-    // Hide start/stop buttons since we're auto-starting
-    const startBtn = document.getElementById('start-speech-btn');
-    const stopBtn = document.getElementById('stop-speech-btn');
+// Setup the default voice
+function setupDefaultVoice() {
+    const voices = window.speechSynthesis.getVoices();
     
-    if (startBtn) startBtn.style.display = 'none';
-    if (stopBtn) stopBtn.style.display = 'none';
+    // Prefer English voices in this order: US English, UK English, any English
+    cachedVoice = voices.find(voice => voice.lang === 'en-US' && !voice.localService) || 
+                  voices.find(voice => voice.lang === 'en-GB' && !voice.localService) ||
+                  voices.find(voice => voice.lang.startsWith('en') && !voice.localService) ||
+                  voices.find(voice => voice.lang === 'en-US') ||
+                  voices.find(voice => voice.lang === 'en-GB') ||
+                  voices.find(voice => voice.lang.startsWith('en')) ||
+                  voices[0]; // Fallback to first available voice
     
-    // Update cycle mode status instead of recording indicator
-    const cycleModeStatus = document.getElementById('cycle-mode-status');
-    if (cycleModeStatus) {
-        cycleModeStatus.textContent = '● Listening Mode (5s)';
-        cycleModeStatus.classList.add('always-on');
+    console.log('Default voice set to:', cachedVoice ? cachedVoice.name : 'None available');
+}
+
+// Speak text with default voice
+function speakText(text, callback) {
+    if (!text) return;
+    
+    // Stop any current speech
+    stopSpeaking();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = defaultVoiceSettings.lang;
+    utterance.pitch = defaultVoiceSettings.pitch;
+    utterance.rate = defaultVoiceSettings.rate;
+    utterance.volume = defaultVoiceSettings.volume;
+    
+    // Set the default voice if available
+    if (cachedVoice) {
+        utterance.voice = cachedVoice;
     }
     
-    // Start with introduction section only
-    const sections = document.querySelectorAll('.app-section');
-    sections.forEach(section => {
-        if (section.id === 'introduction-section') {
-            section.classList.add('active');
-            section.classList.remove('hidden');
-        } else {
-            section.classList.remove('active');
-            section.classList.add('hidden');
-        }
-    });
+    // Set up speaking indicator
+    const speakingIndicator = document.getElementById('speaking-indicator');
+    if (speakingIndicator) {
+        speakingIndicator.classList.remove('hidden');
+    }
+    isSpeaking = true;
     
-    // Auto-start speech recognition after a short delay
-    setTimeout(() => {
-        if (typeof window.app !== 'undefined' && 
-            typeof window.app.startSpeechRecognition === 'function') {
-            console.log('Auto-initializing speech recognition');
-            window.app.startSpeechRecognition();
-            
-            // Make sure the listening/output cycle starts
-            if (typeof window.app.startListeningCycle === 'function') {
-                console.log('Starting listening/output cycle');
-                window.app.startListeningCycle();
-            }
+    // Set up callbacks
+    utterance.onend = function() {
+        isSpeaking = false;
+        if (speakingIndicator) {
+            speakingIndicator.classList.add('hidden');
         }
-    }, 2000);
-});
+        if (callback && typeof callback === 'function') {
+            callback();
+        }
+    };
+    
+    utterance.onerror = function(event) {
+        console.error('Speech synthesis error:', event);
+        isSpeaking = false;
+        if (speakingIndicator) {
+            speakingIndicator.classList.add('hidden');
+        }
+    };
+    
+    // Speak the text
+    window.speechSynthesis.speak(utterance);
+}
+
+// Stop any ongoing speech
+function stopSpeaking() {
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        isSpeaking = false;
+        
+        const speakingIndicator = document.getElementById('speaking-indicator');
+        if (speakingIndicator) {
+            speakingIndicator.classList.add('hidden');
+        }
+    }
+}
+
+// Speak the introduction text automatically
+function speakIntroduction() {
+    const introText = "Welcome to the Speech to Braille converter! This application will help you learn Braille.";
+    speakText(introText);
+}
+
+// Automatically speak matched word - call this function when a match is found
+function speakMatchedWord(word) {
+    if (!word) return;
+    speakText(`Matched word: ${word}`);
+}
+
+// Export functions for use in other modules
+window.speakText = speakText;
+window.stopSpeaking = stopSpeaking;
+window.speakMatchedWord = speakMatchedWord;

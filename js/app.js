@@ -512,3 +512,31 @@ window.app = {
     startListeningCycle,
     getCurrentCycleMode: () => cycleMode
 };
+
+// Modify your section transition function or event handlers to speak introduction automatically
+function showIntroductionSection() {
+    // Your existing code to show the introduction section
+    // ...
+    
+    // Speak introduction automatically
+    if (window.speakIntroduction) {
+        window.speakIntroduction();
+    }
+}
+
+// Modify your word matching function to automatically speak matched words
+function handleWordMatch(matchedWord) {
+    // Your existing code to handle matched word
+    // ...
+    
+    // Update the UI
+    const matchedWordElement = document.getElementById('matched-word');
+    if (matchedWordElement) {
+        matchedWordElement.textContent = matchedWord;
+    }
+    
+    // Automatically speak the matched word
+    if (window.speakMatchedWord) {
+        window.speakMatchedWord(matchedWord);
+    }
+}

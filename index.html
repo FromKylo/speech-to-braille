@@ -36,10 +36,10 @@
                     <div class="intro-spinner"></div>
                     <p>Initializing application...</p>
                 </div>
-                <!-- Added notification banner -->
+                <!-- Notification banner without button -->
                 <div id="intro-notification" class="notification-banner">
                     <p>Welcome to the Speech to Braille converter! This application will help you learn Braille.</p>
-                    <button id="read-notification-btn" class="notification-btn">Read Aloud</button>
+                    <!-- Button removed - speech is now automatic -->
                 </div>
             </div>
         </div>
@@ -84,9 +84,7 @@
                     <div class="braille-match-info">
                         <h3>Matched Word: <span id="matched-word">None</span></h3>
                         <p>Language: <span id="braille-language">N/A</span></p>
-                        <button id="speak-word-btn" class="speak-btn">
-                            <span class="speak-icon">🔊</span> Speak Word
-                        </button>
+                        <!-- Speak button removed - speech is now automatic -->
                         <div id="speaking-indicator" class="speaking-indicator hidden">
                             <span class="speak-icon">🔊</span> Reading word aloud...
                         </div>
@@ -187,23 +185,6 @@
         <source src="sounds/output-mode.mp3" type="audio/mpeg">
     </audio>
     
-    <!-- Add JavaScript to handle the notification reading -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Get the notification button
-            const readNotificationBtn = document.getElementById('read-notification-btn');
-            
-            // Add click event listener to read the notification text
-            readNotificationBtn.addEventListener('click', function() {
-                const notificationText = "Welcome to the Speech to Braille converter! This application will help you learn Braille.";
-                // Use the existing speakText function to read the notification
-                if (typeof speakText === 'function') {
-                    speakText(notificationText);
-                } else {
-                    console.error('speakText function not available');
-                }
-            });
-        });
-    </script>
+    <!-- Remove the script that handled notification reading since it's now automatic -->
 </body>
 </html>

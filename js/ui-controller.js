@@ -618,6 +618,30 @@ function forceReload() {
     window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
 }
 
+// When showing the introduction section, speak the welcome text
+function showIntroductionSection() {
+    // Your existing code to display the introduction section
+    // ...
+    
+    // Automatically speak the introduction
+    setTimeout(() => {
+        if (window.speakText) {
+            window.speakText("Welcome to the Speech to Braille converter! This application will help you learn Braille.");
+        }
+    }, 1000); // Short delay to ensure everything is loaded
+}
+
+// When displaying a matched word, speak it automatically
+function displayMatchedWord(word, brailleSymbol, brailleArray, language) {
+    // Your existing code to update the UI
+    // ...
+    
+    // Automatically speak the matched word
+    if (window.speakText) {
+        window.speakText(`Matched word: ${word}`);
+    }
+}
+
 // Export UI controller
 window.uiController = uiController;
 
