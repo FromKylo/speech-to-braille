@@ -212,11 +212,11 @@ window.addEventListener('load', () => {
     if (startBtn) startBtn.style.display = 'none';
     if (stopBtn) stopBtn.style.display = 'none';
     
-    // Show always-on recording indicator
-    const recordingIndicator = document.getElementById('recording-indicator');
-    if (recordingIndicator) {
-        recordingIndicator.textContent = '● Always Listening';
-        recordingIndicator.classList.add('always-on');
+    // Update cycle mode status
+    const cycleModeStatus = document.getElementById('cycle-mode-status');
+    if (cycleModeStatus) {
+        cycleModeStatus.textContent = '● Listening Mode (5s)';
+        cycleModeStatus.classList.add('always-on');
     }
     
     // Auto-start speech recognition after a short delay

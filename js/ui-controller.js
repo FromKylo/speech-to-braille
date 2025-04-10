@@ -10,6 +10,7 @@ let loadingContainer, progressBar, progressStatus;
 let brailleStatus, brailleResult, matchedWordElement, brailleLanguageElement;
 let brailleSymbolElement, brailleArrayElement, noMatchInfo, speakWordBtn;
 let speechLoadingContainer, speechProgressBar, speechLoadingStatus;
+let cycleModeStatus, cycleModeIndicator;
 
 // Helper function to update progress bar
 function updateLoadingProgress(percent, statusText) {
@@ -26,6 +27,8 @@ function initDOMReferences() {
     stopSpeechBtn = document.getElementById('stop-speech-btn');
     speechMethodSelect = document.getElementById('speech-method');
     recordingIndicator = document.getElementById('recording-indicator');
+    cycleModeStatus = document.getElementById('cycle-mode-status');
+    cycleModeIndicator = document.getElementById('cycle-mode-indicator');
     interimTextElement = document.getElementById('interim-text');
     finalTextElement = document.getElementById('final-text');
     modelBadge = document.getElementById('model-badge');
@@ -547,21 +550,18 @@ const uiController = {
 
     // Add new method to update UI based on cycle mode
     setCycleMode: function(mode) {
-        const recordingIndicator = document.getElementById('recording-indicator');
-        const cycleIndicator = document.getElementById('cycle-mode-indicator');
-        
-        if (recordingIndicator) {
+        if (cycleModeStatus) {
             if (mode === 'listening') {
-                recordingIndicator.className = 'always-on';
-                recordingIndicator.textContent = '● Listening Mode (5s)';
+                cycleModeStatus.className = 'always-on';
+                cycleModeStatus.textContent = '● Listening Mode (5s)';
             } else {
-                recordingIndicator.className = 'output-mode';
-                recordingIndicator.textContent = '◉ Output Mode (5s)';
+                cycleModeStatus.className = 'output-mode';
+                cycleModeStatus.textContent = '◉ Output Mode (5s)';
             }
         }
         
-        if (cycleIndicator) {
-            cycleIndicator.textContent = mode === 'listening' ? 
+        if (cycleModeIndicator) {
+            cycleModeIndicator.textContent = mode === 'listening' ? 
                 'Now listening for your speech...' : 
                 'Displaying Braille output...';
         }
@@ -576,7 +576,7 @@ const uiController = {
             }
         }
 
-        playModeSound(mode); // Add this line
+        playModeSound(mode);
     }
 };
 
