@@ -167,30 +167,67 @@ function speakIntroduction() {
         speakingIndicator.classList.remove('hidden');
     }
     
-    // Play introduction audio
-    speakText(introText, function() {
-        console.log('Introduction completed, dispatching event to start recording phase');
-        introCompleted = true;
+    // Mark as completed immediately to avoid getting stuck
+    introCompleted = true;
+    
+    // Try to speak the text, but with a fallback to ensure we proceed even if TTS fails
+    try {
+        // Play introduction audio with a timeout to ensure we don't get stuck
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('TTS timeout')), 3000);
+        });
         
-        // Hide the speaking indicator
-        if (speakingIndicator) {
-            speakingIndicator.classList.add('hidden');
+        Promise.race([
+            new Promise(resolve => {
+                speakText(introText, () => {
+                    console.log('Introduction completed via TTS callback');
+                    finishIntroduction(speakingIndicator);
+                    resolve();
+                });
+            }),
+            timeoutPromise
+        ]).catch(error => {
+            console.warn('TTS timed out, proceeding anyway:', error);
+            finishIntroduction(speakingIndicator);
+        });
+    } catch (error) {
+        console.error('Error during speech intro, proceeding anyway:', error);
+        finishIntroduction(speakingIndicator);
+    }
+    
+    // Always ensure we proceed after a maximum delay
+    setTimeout(() => {
+        if (!window.hasMovedPastIntro) {
+            console.log('Forcing transition from introduction after timeout');
+            finishIntroduction(speakingIndicator);
         }
-        
-        // Dispatch a custom event that the phase controller will listen for
-        const event = new CustomEvent('introCompleted');
-        window.dispatchEvent(event);
-        
-        // As a fallback, also call the app's cycle function
-        if (window.app && typeof window.app.startListeningCycle === 'function') {
-            window.app.startListeningCycle();
-        }
-        
-        // Direct call to phase controller if available
-        if (window.phaseControl && typeof window.phaseControl.showPhase === 'function') {
-            window.phaseControl.showPhase('recording');
-        }
-    });
+    }, 4000);
+}
+
+// Helper function to finish introduction and transition to next phase
+function finishIntroduction(speakingIndicator) {
+    if (window.hasMovedPastIntro) return; // Prevent duplicate transitions
+    window.hasMovedPastIntro = true;
+    
+    // Hide the speaking indicator
+    if (speakingIndicator) {
+        speakingIndicator.classList.add('hidden');
+    }
+    
+    console.log('Dispatching introCompleted event');
+    // Dispatch a custom event that the phase controller will listen for
+    const event = new CustomEvent('introCompleted');
+    window.dispatchEvent(event);
+    
+    // Direct call to phase controller if available
+    if (window.phaseControl && typeof window.phaseControl.showPhase === 'function') {
+        window.phaseControl.showPhase('recording');
+    }
+    
+    // As a fallback, also call the app's cycle function
+    if (window.app && typeof window.app.startListeningCycle === 'function') {
+        window.app.startListeningCycle();
+    }
 }
 
 // Automatically speak matched word - call this function when a match is found

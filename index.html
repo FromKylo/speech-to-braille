@@ -290,6 +290,9 @@
             let phaseTimer = null;
             const PHASE_DURATION = 5000; // 5 seconds per phase
             
+            // Flag to track if we've processed the introduction event
+            window.hasMovedPastIntro = false;
+            
             // Phase elements
             const introPhase = document.getElementById('introduction-phase');
             const recordingPhase = document.getElementById('recording-phase');
@@ -312,6 +315,11 @@
             function showPhase(phase) {
                 console.log(`Transitioning to phase: ${phase}`);
                 
+                // If we're trying to transition from introduction to any other phase
+                if (currentPhase === 'introduction' && phase !== 'introduction') {
+                    window.hasMovedPastIntro = true;
+                }
+                
                 // Update troubleshooting info
                 const phaseIndicator = document.getElementById('current-phase-indicator');
                 if (phaseIndicator) {
@@ -326,6 +334,17 @@
                 // Show the selected phase
                 if (phase === 'introduction') {
                     introPhase.classList.add('phase-active');
+                    
+                    // Automatically transition to recording phase after 5 seconds
+                    // This is a fallback if TTS or events fail
+                    setTimeout(() => {
+                        if (currentPhase === 'introduction' && !window.hasMovedPastIntro) {
+                            console.log('Automatic timeout from introduction phase');
+                            window.hasMovedPastIntro = true;
+                            showPhase('recording');
+                        }
+                    }, 5000);
+                    
                 } else if (phase === 'recording') {
                     recordingPhase.classList.add('phase-active');
                     startPhaseTimer(recordingTimer, 'output');
@@ -409,7 +428,10 @@
             // Listen for introduction completion - with improved event handling
             window.addEventListener('introCompleted', function(e) {
                 console.log('Caught introCompleted event, transitioning to recording phase');
-                showPhase('recording');
+                if (currentPhase === 'introduction') {
+                    window.hasMovedPastIntro = true;
+                    showPhase('recording');
+                }
             });
             
             // Override app's cycle mechanism to use our new phase system
@@ -418,6 +440,7 @@
                     console.log('startListeningCycle called, current phase:', currentPhase);
                     // Only transition if we're in the introduction phase
                     if (currentPhase === 'introduction') {
+                        window.hasMovedPastIntro = true;
                         showPhase('recording');
                     }
                 };
@@ -425,6 +448,15 @@
             
             // Start with introduction phase
             showPhase('introduction');
+            
+            // Fallback timer for the entire introduction phase 
+            setTimeout(() => {
+                if (currentPhase === 'introduction') {
+                    console.log('Global fallback timer triggered - forcing transition to recording phase');
+                    window.hasMovedPastIntro = true;
+                    showPhase('recording');
+                }
+            }, 7000);
             
             // Make phase control available globally
             window.phaseControl = {
