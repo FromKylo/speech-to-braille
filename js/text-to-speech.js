@@ -15,6 +15,7 @@ const defaultVoiceSettings = {
 let cachedVoice = null;
 let isSpeaking = false;
 let resumeTimer = null; // Timer for Chrome resume fix
+let introCompleted = false; // Track if introduction has been completed
 
 // Chrome-specific fix: Keep the speech synthesis active
 function startChromeWorkaround() {
@@ -41,7 +42,12 @@ function startChromeWorkaround() {
 // Initialize speech synthesis on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Wait a bit to avoid conflicts with speech-init.js
-    setTimeout(initSpeechSynthesis, 1000);
+    setTimeout(() => {
+        initSpeechSynthesis().then(() => {
+            // Auto-start introduction phase after voice is ready
+            speakIntroduction();
+        });
+    }, 1000);
 });
 
 // Initialize and set up the default voice
@@ -146,26 +152,66 @@ function stopSpeaking() {
 
 // Speak the introduction text automatically
 function speakIntroduction() {
-    const introText = "Welcome to the Speech to Braille converter! This application will help you learn Braille.";
-    speakText(introText);
+    const introText = "Let's learn braille!";
+    console.log("Starting introduction phase");
+    
+    // Update UI to show introduction phase
+    const introElement = document.getElementById('intro-text');
+    if (introElement) {
+        introElement.textContent = introText;
+    }
+    
+    // Show introduction section if not already visible
+    const introSection = document.getElementById('introduction-section');
+    if (introSection) {
+        introSection.classList.add('active');
+        introSection.classList.remove('hidden');
+    }
+    
+    // Play introduction audio
+    speakText(introText, function() {
+        console.log('Introduction completed, starting recording phase');
+        introCompleted = true;
+        
+        // Start the recording/output cycle after introduction
+        if (window.app && typeof window.app.startListeningCycle === 'function') {
+            window.app.startListeningCycle();
+        }
+    });
 }
 
 // Automatically speak matched word - call this function when a match is found
 function speakMatchedWord(word) {
     if (!word) return;
-    speakText(`Matched word: ${word}`);
+    // Only speak the word without prefix to make it clearer
+    speakText(word);
 }
 
-// Speak welcome message and start listening cycle
+// Play recording phase audio cue
+function playRecordingAudio() {
+    const recordingSound = document.getElementById('listening-mode-sound');
+    if (recordingSound) {
+        recordingSound.play().catch(err => console.error('Error playing recording sound:', err));
+    }
+}
+
+// Play output phase audio cue
+function playOutputAudio() {
+    const outputSound = document.getElementById('output-mode-sound');
+    if (outputSound) {
+        outputSound.play().catch(err => console.error('Error playing output sound:', err));
+    }
+}
+
+// Speak welcome message and start listening cycle - deprecated in favor of speakIntroduction
 function speakWelcome() {
-    const welcomeText = "Welcome to the Speech to Braille converter! Speak into your microphone and see the braille translation.";
-    speakText(welcomeText, function() {
-        // Start the listening cycle after welcome message is done
-        if (window.app && typeof window.app.startListeningCycle === 'function') {
-            console.log('Starting listening cycle after welcome message');
-            window.app.startListeningCycle();
-        }
-    });
+    if (introCompleted) {
+        console.log('Introduction already completed, skipping welcome');
+        return;
+    }
+    
+    // Use the new introduction function instead
+    speakIntroduction();
 }
 
 // Export functions for use in other modules
@@ -176,6 +222,9 @@ window.textToSpeech = {
     speak: speakText,
     stop: stopSpeaking,
     speakMatchedWord,
+    speakIntroduction,
     speakWelcome,
-    speakIntroduction
+    playRecordingAudio,
+    playOutputAudio,
+    introCompleted: () => introCompleted
 };

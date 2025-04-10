@@ -15,10 +15,7 @@ const CYCLE_DURATION = 5000; // 5 seconds for each phase
 function initApp() {
     console.log('Initializing application...');
     
-    // Speak welcome message if text-to-speech is available
-    if (window.textToSpeech && typeof textToSpeech.speakWelcome === 'function') {
-        textToSpeech.speakWelcome();
-    }
+    // No need to call speakWelcome here - we'll auto-start speakIntroduction from text-to-speech.js
     
     // Force-enable the start button initially to ensure it's clickable
     const startBtn = document.getElementById('start-speech-btn');
@@ -351,8 +348,8 @@ function startListeningCycle() {
 
 // Function to update UI based on cycle mode
 function updateCycleUI() {
-    // Show the appropriate section based on the current mode
-    if (window.textToSpeech && !textToSpeech.introCompleted) {
+    // Check if introduction is completed
+    if (window.textToSpeech && typeof textToSpeech.introCompleted === 'function' && !textToSpeech.introCompleted()) {
         console.log('Introduction not completed yet, showing intro section');
         document.querySelectorAll('.app-section').forEach(section => {
             if (section.id === 'introduction-section') {
@@ -393,8 +390,17 @@ function updateCycleUI() {
         }
         
         // Play listening mode sound
-        if (window.soundEffects) {
+        if (window.textToSpeech && typeof textToSpeech.playRecordingAudio === 'function') {
+            textToSpeech.playRecordingAudio();
+        } else if (window.soundEffects) {
             window.soundEffects.playListeningModeSound();
+        }
+        
+        // Update recording indicator state
+        const recordingIndicator = document.getElementById('recording-indicator');
+        if (recordingIndicator) {
+            recordingIndicator.classList.remove('recording-off');
+            recordingIndicator.classList.add('recording-on');
         }
         
         // Update UI to show we're in listening mode
@@ -447,8 +453,16 @@ function updateCycleUI() {
         }
         
         // Play output mode sound
-        if (window.soundEffects) {
+        if (window.textToSpeech && typeof textToSpeech.playOutputAudio === 'function') {
+            textToSpeech.playOutputAudio();
+        } else if (window.soundEffects) {
             window.soundEffects.playOutputModeSound();
+        }
+        
+        // Ensure output indicator is visible and blinking
+        const outputIndicator = document.getElementById('output-indicator');
+        if (outputIndicator) {
+            outputIndicator.classList.remove('hidden');
         }
         
         // Update UI to show we're in output mode
