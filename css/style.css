@@ -583,3 +583,15 @@ details[open] summary {
     margin-top: 15px;
     margin-bottom: 15px;
 }
+
+/* Always listening indicator style */
+.always-on {
+    color: white;
+    background-color: #4285f4;
+    animation: pulse 2s infinite;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin: 15px auto;
+    display: inline-block;
+}

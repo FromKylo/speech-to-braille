@@ -187,6 +187,14 @@ class SpeechRecognitionManager {
                 // This will trigger onend event
                 this.recognition.stop();
                 console.log('Web Speech API recognition stopped');
+                
+                // Automatically restart after a short delay to maintain always-on behavior
+                setTimeout(() => {
+                    if (!this.isRecording) {
+                        console.log('Auto-restarting speech recognition');
+                        this.startRecognition();
+                    }
+                }, 1000);
             } catch (e) {
                 console.error('Error stopping Web Speech API:', e);
                 this.triggerEvent('error', e.message);
@@ -196,6 +204,14 @@ class SpeechRecognitionManager {
             console.log('Local recognition would stop here');
             this.updateUIState(false);
             this.triggerEvent('end');
+            
+            // Auto-restart local recognition as well
+            setTimeout(() => {
+                if (!this.isRecording) {
+                    console.log('Auto-restarting local speech recognition');
+                    this.startRecognition();
+                }
+            }, 1000);
         }
     }
     

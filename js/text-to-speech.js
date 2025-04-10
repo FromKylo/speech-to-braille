@@ -112,6 +112,15 @@ class TextToSpeech {
     speakWelcome() {
         const welcomeMessage = "Speech to Braille Refreshable Display. Let's learn braille!";
         this.speak(welcomeMessage);
+        
+        // Auto-start speech recognition after welcome message
+        if (typeof window.app !== 'undefined' && 
+            typeof window.app.startSpeechRecognition === 'function') {
+            setTimeout(() => {
+                console.log('Auto-starting speech recognition');
+                window.app.startSpeechRecognition();
+            }, 2000); // Give the welcome message time to play
+        }
     }
     
     /**
@@ -194,22 +203,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
 });
 
-// Add event listener to page load to ensure button is enabled
+// Add event listener to page load to ensure button is enabled and start speech recognition
 window.addEventListener('load', () => {
-    // Final check to make absolutely sure the button is enabled
+    // Hide start/stop buttons since we're auto-starting
+    const startBtn = document.getElementById('start-speech-btn');
+    const stopBtn = document.getElementById('stop-speech-btn');
+    
+    if (startBtn) startBtn.style.display = 'none';
+    if (stopBtn) stopBtn.style.display = 'none';
+    
+    // Show always-on recording indicator
+    const recordingIndicator = document.getElementById('recording-indicator');
+    if (recordingIndicator) {
+        recordingIndicator.textContent = '● Always Listening';
+        recordingIndicator.classList.add('always-on');
+    }
+    
+    // Auto-start speech recognition after a short delay
     setTimeout(() => {
-        const startBtn = document.getElementById('start-speech-btn');
-        if (startBtn) {
-            startBtn.disabled = false;
-            console.log('Window loaded: Enabling start button');
-        }
-        
-        // Force start speech recognition if needed
         if (typeof window.app !== 'undefined' && 
-            typeof window.app.startSpeechRecognition === 'function' && 
-            !window.recognitionActive) {
+            typeof window.app.startSpeechRecognition === 'function') {
             console.log('Auto-initializing speech recognition');
-            // Don't auto-start, just make sure it's ready
             window.app.startSpeechRecognition();
         }
     }, 2000);
