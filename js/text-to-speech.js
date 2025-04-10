@@ -8,9 +8,18 @@ class TextToSpeech {
         this.speakingIndicator = document.getElementById('speaking-indicator');
         this.isSpeaking = false;
         this.voices = [];
+        this.initialized = false;
+        this.englishVoice = null;
+        this.filipinoVoice = null;
         
-        // Initialize voices when they are available (Chrome-specific event)
+        // Initialize voices when they are available
         this.synth.onvoiceschanged = () => this.initVoices();
+        this.initVoices(); // Try initial load
+        
+        // Fallback initialization after a delay
+        setTimeout(() => {
+            if (!this.initialized) this.initVoices();
+        }, 1000);
     }
     
     /**
@@ -18,40 +27,59 @@ class TextToSpeech {
      */
     initVoices() {
         this.voices = this.synth.getVoices();
+        
         if (this.voices.length > 0) {
-            console.log(`Loaded ${this.voices.length} voices`);
+            // Find the best voices for each language
+            this.englishVoice = this.voices.find(voice => 
+                (voice.lang.includes('en-US') || voice.lang.includes('en-GB')) && voice.localService
+            ) || this.voices.find(voice => voice.lang.includes('en'));
             
-            // Select the best voice for Chrome/Android
-            this.selectedVoice = this.voices.find(voice => 
-                voice.lang.includes('en-US') || voice.lang.includes('en-GB')
-            ) || this.voices[0];
+            // For Filipino/Tagalog voice
+            this.filipinoVoice = this.voices.find(voice => 
+                voice.lang.includes('fil') || voice.lang.includes('tl') || voice.lang.includes('fil-PH')
+            );
             
-            console.log(`Selected voice: ${this.selectedVoice.name}`);
+            // Default to English voice if Filipino not found
+            if (!this.filipinoVoice) {
+                this.filipinoVoice = this.englishVoice;
+            }
             
-            // Speak welcome message after voices are initialized
+            // Default voice if nothing was found
+            if (!this.englishVoice) {
+                this.englishVoice = this.voices[0];
+            }
+            
+            console.log(`Voices loaded. English: ${this.englishVoice?.name}, Filipino: ${this.filipinoVoice?.name}`);
+            this.initialized = true;
+            
+            // Speak welcome message and ensure button is enabled
             this.speakWelcome();
+            this.ensureStartButtonEnabled();
         }
     }
 
     /**
      * Speak the provided text
      * @param {string} text - Text to be spoken
+     * @param {string} language - Language code (optional, 'en' or 'fil')
      */
-    speak(text) {
+    speak(text, language = 'en') {
         if (!text || this.isSpeaking) return;
         
         // Create speech utterance
         const utterance = new SpeechSynthesisUtterance(text);
         
+        // Select appropriate voice based on language
+        if (language === 'fil' && this.filipinoVoice) {
+            utterance.voice = this.filipinoVoice;
+        } else {
+            utterance.voice = this.englishVoice;
+        }
+        
         // Set speaking properties
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
-        
-        // Use selected voice if available
-        if (this.selectedVoice) {
-            utterance.voice = this.selectedVoice;
-        }
         
         // Show speaking indicator
         this.showSpeakingIndicator();
@@ -69,6 +97,12 @@ class TextToSpeech {
         
         // Start speaking
         this.isSpeaking = true;
+        
+        // Make sure to clear previous speech (important for Chrome)
+        if (this.synth.speaking) {
+            this.synth.cancel();
+        }
+        
         this.synth.speak(utterance);
     }
     
@@ -116,6 +150,17 @@ class TextToSpeech {
         this.speak("This is a test of the speech synthesis system");
         return true;
     }
+    
+    /**
+     * Ensure the start button is enabled
+     */
+    ensureStartButtonEnabled() {
+        const startBtn = document.getElementById('start-speech-btn');
+        if (startBtn && startBtn.disabled) {
+            console.log('Text-to-speech: Enabling start button');
+            startBtn.disabled = false;
+        }
+    }
 }
 
 // Create global instance
@@ -139,5 +184,33 @@ document.addEventListener('DOMContentLoaded', () => {
             debugButton.addEventListener('click', window.testSpeech);
             container.appendChild(debugButton);
         }
+        
+        // Ensure start button is enabled
+        const startBtn = document.getElementById('start-speech-btn');
+        if (startBtn) {
+            startBtn.disabled = false;
+            console.log('DOM loaded: Enabling start button');
+        }
     }, 1000);
+});
+
+// Add event listener to page load to ensure button is enabled
+window.addEventListener('load', () => {
+    // Final check to make absolutely sure the button is enabled
+    setTimeout(() => {
+        const startBtn = document.getElementById('start-speech-btn');
+        if (startBtn) {
+            startBtn.disabled = false;
+            console.log('Window loaded: Enabling start button');
+        }
+        
+        // Force start speech recognition if needed
+        if (typeof window.app !== 'undefined' && 
+            typeof window.app.startSpeechRecognition === 'function' && 
+            !window.recognitionActive) {
+            console.log('Auto-initializing speech recognition');
+            // Don't auto-start, just make sure it's ready
+            window.app.startSpeechRecognition();
+        }
+    }, 2000);
 });
