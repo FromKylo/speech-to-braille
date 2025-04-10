@@ -4,184 +4,342 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4285f4">
-    <meta name="description" content="A simple Progressive Web App template">
-    <!-- Cross-origin isolation for WebAssembly -->
-    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
-    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
-    <!-- Add speech initializer script at the top -->
-    <script src="js/speech-init.js"></script>
-    <title>Speech to Braille Refreshable Module</title>
+    <meta name="description" content="Text-to-Speech Debugging">
+    <title>Text-to-Speech Debug</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1, h2, h3 {
+            color: #4285f4;
+        }
+        .debug-controls {
+            margin: 20px 0;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        #stop-btn {
+            background-color: #ea4335;
+        }
+        #stop-btn:hover {
+            background-color: #d33426;
+        }
+        .debug-info {
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        #speech-status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #speech-log {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .config-controls {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        details {
+            margin-top: 15px;
+        }
+        summary {
+            cursor: pointer;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
     <header>
-        <h1>Speech to Braille Refreshable Module</h1>
+        <h1>Text-to-Speech Debugging</h1>
     </header>
     
     <main>
-        <div id="connection-status" class="status">
-            Checking connection...
-        </div>
-        
-        <button id="install-button" class="install-button">Install App</button>
-        
-        <!-- Phase 1: Introduction Section -->
-        <div id="introduction-section" class="app-section active">
-            <div id="welcome-banner" class="welcome-banner">
-                <h2>Welcome to Speech to Braille Refreshable Display</h2>
-                <p>Let's learn braille!</p>
-                <div class="intro-progress">
-                    <div class="intro-spinner"></div>
-                    <p>Initializing application...</p>
-                </div>
+        <div class="card">
+            <h2>Text-to-Speech Testing</h2>
+            <div class="debug-controls">
+                <textarea id="text-input" rows="4" placeholder="Enter text to be spoken...">Hello, this is a test of the text-to-speech functionality.</textarea>
+                <button id="speak-btn">Speak Text</button>
+                <button id="stop-btn">Stop Speaking</button>
             </div>
-        </div>
-        
-        <!-- Phase 2: Listening Mode Section -->
-        <div id="listening-section" class="app-section hidden">
-            <div class="card">
-                <h2>Speech Recognition</h2>
-                <p>Speak into your microphone and see the text appear in real-time.</p>
-                <div id="speech-controls">
-                    <div id="cycle-mode-status" class="always-on">● Listening Mode (5s)</div>
-                    <div id="cycle-mode-indicator" class="cycle-indicator">Now listening for your speech...</div>
-                </div>
-                
-                <div id="loading-container" class="loading-container">
-                    <div class="progress-bar">
-                        <div id="progress-bar" class="progress progress-striped"></div>
-                    </div>
-                    <div id="progress-status" class="progress-status">Preparing to download model...</div>
-                </div>
-                
-                <div id="model-status">
-                    Recognition Model: <span class="model-badge web-speech" id="model-badge">Web Speech API (Auto)</span>
-                    <span id="mic-status" class="mic-status">Mic: Unknown</span>
-                </div>
-                <div id="speech-output">
-                    <p id="interim-text"></p>
-                    <p id="final-text"></p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Phase 3: Output Mode Section -->
-        <div id="output-section" class="app-section hidden">
-            <div class="card">
-                <h2>Braille Translation</h2>
-                <p>Matches from your speech are converted to Braille:</p>
-                
-                <div id="braille-status" class="status">
-                    Loading Braille database...
-                </div>
-                
-                <div id="braille-result" class="braille-result hidden">
-                    <div class="braille-match-info">
-                        <h3>Matched Word: <span id="matched-word">None</span></h3>
-                        <p>Language: <span id="braille-language">N/A</span></p>
-                        <button id="speak-word-btn" class="speak-btn">
-                            <span class="speak-icon">🔊</span> Speak Word
-                        </button>
-                        <div id="speaking-indicator" class="speaking-indicator hidden">
-                            <span class="speak-icon">🔊</span> Reading word aloud...
-                        </div>
-                    </div>
-                    <div class="braille-display">
-                        <div class="braille-symbol-container">
-                            <h4>Braille Symbol:</h4>
-                            <div id="braille-symbol" class="braille-symbol">⠿</div>
-                        </div>
-                        <div class="braille-array-container">
-                            <h4>Braille Array:</h4>
-                            <pre id="braille-array" class="braille-array">[1,2,3,4,5,6]</pre>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="no-match-info" class="braille-no-match hidden">
-                    <p>No matching words found in the current sentence.</p>
-                    <p>Try speaking a different phrase containing words from the Braille database.</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Troubleshooting Details Card -->
-        <div id="troubleshooting-section" class="app-section hidden">
-            <div class="card">
-                <h2>Troubleshooting Details</h2>
-                <p>Technical information to help diagnose issues with the application.</p>
-                
+            
+            <div class="debug-info">
+                <h3>Debug Information</h3>
+                <div id="speech-status">Status: Ready</div>
+                <div id="speech-log"></div>
                 <details>
-                    <summary>Cached Content</summary>
-                    <div class="details-content">
-                        <p>This content will be available even when you're offline.</p>
-                        <p>Last updated: <span id="last-updated">Loading...</span></p>
+                    <summary>TTS Configuration</summary>
+                    <div class="config-controls">
+                        <label for="voice-select">Voice:</label>
+                        <select id="voice-select"></select>
+                        
+                        <label for="rate-control">Rate:</label>
+                        <input type="range" id="rate-control" min="0.5" max="2" step="0.1" value="1">
+                        <span id="rate-value">1</span>
+                        
+                        <label for="pitch-control">Pitch:</label>
+                        <input type="range" id="pitch-control" min="0.5" max="2" step="0.1" value="1">
+                        <span id="pitch-value">1</span>
                     </div>
                 </details>
-                
                 <details>
-                    <summary>Cache Resources</summary>
-                    <div class="details-content">
-                        <p>This section displays the cached resources in this application:</p>
-                        <button id="refresh-button">Refresh Cache Info</button>
-                        <div id="dynamic-content">
-                            <p>Loading cache information...</p>
-                        </div>
-                    </div>
-                </details>
-                
-                <details>
-                    <summary>IndexedDB Models</summary>
-                    <div class="details-content" id="indexeddb-content">
-                        <p>Loading IndexedDB information...</p>
+                    <summary>Speaker Indicator (for compatibility with original code)</summary>
+                    <div id="speaking-indicator" class="hidden">
+                        Speaking...
                     </div>
                 </details>
             </div>
-        </div>
-        
-        <!-- Add speech loading indicator for Web Speech API -->
-        <div id="speech-loading-container" class="loading-container speech-loading-container">
-            <div class="progress-bar">
-                <div id="speech-progress-bar" class="progress progress-striped"></div>
-            </div>
-            <div id="speech-loading-status" class="progress-status">Initializing speech recognition...</div>
-        </div>
-        
-        <!-- Hidden start/stop buttons for backward compatibility with the JS -->
-        <div style="display: none;">
-            <button id="start-speech-btn">Start Speaking</button>
-            <button id="stop-speech-btn">Stop</button>
-            <select id="speech-method">
-                <option value="webspeech">Web Speech API</option>
-                <option value="local">Local Model</option>
-            </select>
         </div>
     </main>
-    
-    <footer>
-        <p>Progressive Web App Template &copy; 2025</p>
-    </footer>
 
-    <!-- Import dependencies -->
-    <script src="js/alternatives/speech-recognition.js"></script>
-    <script src="js/braille-translator.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const textInput = document.getElementById('text-input');
+            const speakBtn = document.getElementById('speak-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const speechStatus = document.getElementById('speech-status');
+            const speechLog = document.getElementById('speech-log');
+            const voiceSelect = document.getElementById('voice-select');
+            const rateControl = document.getElementById('rate-control');
+            const pitchControl = document.getElementById('pitch-control');
+            const rateValue = document.getElementById('rate-value');
+            const pitchValue = document.getElementById('pitch-value');
+            
+            // Logging function
+            function log(message) {
+                const entry = document.createElement('div');
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                speechLog.prepend(entry);
+                console.log(message);
+            }
+            
+            // Check if speech synthesis is available
+            if (!('speechSynthesis' in window)) {
+                log("ERROR: Speech Synthesis API not supported in this browser");
+                speechStatus.textContent = 'Status: ERROR - Speech Synthesis not supported';
+                speechStatus.style.color = 'red';
+                speakBtn.disabled = true;
+                stopBtn.disabled = true;
+                return;
+            }
+            
+            log("Speech Synthesis API is available");
+            
+            // Get available voices
+            function loadVoices() {
+                const voices = speechSynthesis.getVoices();
+                
+                if (voices.length === 0) {
+                    log("No voices available yet, waiting...");
+                    return;
+                }
+                
+                log(`Loaded ${voices.length} voices`);
+                
+                // Clear previous options
+                voiceSelect.innerHTML = '';
+                
+                // Add voices to select
+                voices.forEach((voice, i) => {
+                    const option = document.createElement('option');
+                    option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' — DEFAULT' : ''}`;
+                    option.setAttribute('data-voice-index', i);
+                    voiceSelect.appendChild(option);
+                    
+                    // Log voice details
+                    log(`Voice ${i}: ${voice.name} (${voice.lang})${voice.default ? ' [DEFAULT]' : ''}${voice.localService ? ' [Local]' : ' [Network]'}`);
+                });
+                
+                // Find the voices from the original module for compatibility
+                const englishVoice = voices.find(voice => 
+                    (voice.lang.includes('en-US') || voice.lang.includes('en-GB')) && voice.localService
+                ) || voices.find(voice => voice.lang.includes('en'));
+                
+                if (englishVoice) {
+                    log(`Found preferred English voice: ${englishVoice.name}`);
+                    
+                    // Select this voice in the dropdown
+                    const englishVoiceIndex = voices.indexOf(englishVoice);
+                    if (englishVoiceIndex >= 0) {
+                        voiceSelect.selectedIndex = englishVoiceIndex;
+                    }
+                }
+            }
+            
+            // Initial voice loading
+            loadVoices();
+            
+            // Chrome requires waiting for voiceschanged event
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = loadVoices;
+            }
+            
+            // Update rate/pitch value displays
+            rateControl.addEventListener('input', () => {
+                rateValue.textContent = rateControl.value;
+            });
+            
+            pitchControl.addEventListener('input', () => {
+                pitchValue.textContent = pitchControl.value;
+            });
+            
+            // Speak button handler
+            speakBtn.addEventListener('click', () => {
+                const text = textInput.value.trim();
+                
+                if (!text) {
+                    log("No text to speak");
+                    return;
+                }
+                
+                // Cancel any ongoing speech
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                }
+                
+                // Create utterance
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Set selected voice
+                const selectedOption = voiceSelect.selectedOptions[0];
+                if (selectedOption) {
+                    const voiceIndex = selectedOption.getAttribute('data-voice-index');
+                    const voices = speechSynthesis.getVoices();
+                    
+                    if (voices[voiceIndex]) {
+                        utterance.voice = voices[voiceIndex];
+                    }
+                }
+                
+                // Set rate and pitch
+                utterance.rate = parseFloat(rateControl.value);
+                utterance.pitch = parseFloat(pitchControl.value);
+                
+                // Set event handlers
+                utterance.onstart = () => {
+                    log(`Started speaking: "${text}"`);
+                    speechStatus.textContent = 'Status: Speaking...';
+                    
+                    // Show speaking indicator for compatibility with original code
+                    const speakingIndicator = document.getElementById('speaking-indicator');
+                    if (speakingIndicator) {
+                        speakingIndicator.classList.remove('hidden');
+                    }
+                };
+                
+                utterance.onend = () => {
+                    log('Finished speaking');
+                    speechStatus.textContent = 'Status: Finished';
+                    
+                    // Hide speaking indicator
+                    const speakingIndicator = document.getElementById('speaking-indicator');
+                    if (speakingIndicator) {
+                        speakingIndicator.classList.add('hidden');
+                    }
+                };
+                
+                utterance.onerror = (event) => {
+                    log(`Error: ${event.error}`);
+                    speechStatus.textContent = `Status: Error - ${event.error}`;
+                    
+                    // Hide speaking indicator
+                    const speakingIndicator = document.getElementById('speaking-indicator');
+                    if (speakingIndicator) {
+                        speakingIndicator.classList.add('hidden');
+                    }
+                };
+                
+                // Speak
+                try {
+                    speechSynthesis.speak(utterance);
+                } catch (err) {
+                    log(`Exception: ${err.message}`);
+                    speechStatus.textContent = `Status: Exception - ${err.message}`;
+                }
+            });
+            
+            // Stop button handler
+            stopBtn.addEventListener('click', () => {
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                    log('Speech stopped');
+                    speechStatus.textContent = 'Status: Stopped';
+                    
+                    // Hide speaking indicator
+                    const speakingIndicator = document.getElementById('speaking-indicator');
+                    if (speakingIndicator) {
+                        speakingIndicator.classList.add('hidden');
+                    }
+                }
+            });
+            
+            // Test with the original text-to-speech module if available
+            if (window.textToSpeech) {
+                const testOriginalBtn = document.createElement('button');
+                testOriginalBtn.textContent = 'Test Original TTS Module';
+                testOriginalBtn.style.backgroundColor = '#34a853';
+                testOriginalBtn.style.marginTop = '15px';
+                
+                testOriginalBtn.addEventListener('click', () => {
+                    log('Testing original TextToSpeech module...');
+                    try {
+                        window.textToSpeech.speak(textInput.value.trim());
+                    } catch (err) {
+                        log(`Error with original module: ${err.message}`);
+                    }
+                });
+                
+                document.querySelector('.debug-controls').appendChild(testOriginalBtn);
+            } else {
+                log('Original TextToSpeech module not found');
+            }
+        });
+    </script>
+    
+    <!-- Load the original text-to-speech module to test it -->
     <script src="js/text-to-speech.js"></script>
-    <script src="utils/braille-array-formatter.js"></script>
-    
-    <!-- Import application modules -->
-    <script src="js/ui-controller.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/cache-manager.js"></script>
-    <script src="js/sound-effects.js"></script>
-
-    <!-- Sound indicators for mode switching -->
-    <audio id="listening-mode-sound" preload="auto">
-        <source src="sounds/listening-mode.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="output-mode-sound" preload="auto">
-        <source src="sounds/output-mode.mp3" type="audio/mpeg">
-    </audio>
 </body>
 </html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4285f4">
+    <meta name="description" content="A simple Progressive Web App template">
+    <!-- Cross-origin isolation for WebAssembly -->
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    <!-- Add speech initializer script at the top -->
+    <script src="js/speech-init.js"></script>
+    <title>Speech to Braille Refreshable Module</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
+</head>
+<body>
+    <header>
+        <h1>Speech to Braille Refreshable Module</h1>
+    </header>
+    
+    <main>
+        <div id="connection-status" class="status">
+            Checking connection...
+        </div>
+        
+        <button id="install-button" class="install-button">Install App</button>
+        
+        <!-- Phase 1: Introduction Section -->
+        <div id="introduction-section" class="app-section active">
+            <div id="welcome-banner" class="welcome-banner">
+                <h2>Welcome to Speech to Braille Refreshable Display</h2>
+                <p>Let's learn braille!</p>
+                <div class="intro-progress">
+                    <div class="intro-spinner"></div>
+                    <p>Initializing application...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Phase 2: Listening Mode Section -->
+        <div id="listening-section" class="app-section hidden">
+            <div class="card">
+                <h2>Speech Recognition</h2>
+                <p>Speak into your microphone and see the text appear in real-time.</p>
+                <div id="speech-controls">
+                    <div id="cycle-mode-status" class="always-on">● Listening Mode (5s)</div>
+                    <div id="cycle-mode-indicator" class="cycle-indicator">Now listening for your speech...</div>
+                </div>
+                
+                <div id="loading-container" class="loading-container">
+                    <div class="progress-bar">
+                        <div id="progress-bar" class="progress progress-striped"></div>
+                    </div>
+                    <div id="progress-status" class="progress-status">Preparing to download model...</div>
+                </div>
+                
+                <div id="model-status">
+                    Recognition Model: <span class="model-badge web-speech" id="model-badge">Web Speech API (Auto)</span>
+                    <span id="mic-status" class="mic-status">Mic: Unknown</span>
+                </div>
+                <div id="speech-output">
+                    <p id="interim-text"></p>
+                    <p id="final-text"></p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Phase 3: Output Mode Section -->
+        <div id="output-section" class="app-section hidden">
+            <div class="card">
+                <h2>Braille Translation</h2>
+                <p>Matches from your speech are converted to Braille:</p>
+                
+                <div id="braille-status" class="status">
+                    Loading Braille database...
+                </div>
+                
+                <div id="braille-result" class="braille-result hidden">
+                    <div class="braille-match-info">
+                        <h3>Matched Word: <span id="matched-word">None</span></h3>
+                        <p>Language: <span id="braille-language">N/A</span></p>
+                        <button id="speak-word-btn" class="speak-btn">
+                            <span class="speak-icon">🔊</span> Speak Word
+                        </button>
+                        <div id="speaking-indicator" class="speaking-indicator hidden">
+                            <span class="speak-icon">🔊</span> Reading word aloud...
+                        </div>
+                    </div>
+                    <div class="braille-display">
+                        <div class="braille-symbol-container">
+                            <h4>Braille Symbol:</h4>
+                            <div id="braille-symbol" class="braille-symbol">⠿</div>
+                        </div>
+                        <div class="braille-array-container">
+                            <h4>Braille Array:</h4>
+                            <pre id="braille-array" class="braille-array">[1,2,3,4,5,6]</pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="no-match-info" class="braille-no-match hidden">
+                    <p>No matching words found in the current sentence.</p>
+                    <p>Try speaking a different phrase containing words from the Braille database.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Troubleshooting Details Card -->
+        <div id="troubleshooting-section" class="app-section hidden">
+            <div class="card">
+                <h2>Troubleshooting Details</h2>
+                <p>Technical information to help diagnose issues with the application.</p>
+                
+                <details>
+                    <summary>Cached Content</summary>
+                    <div class="details-content">
+                        <p>This content will be available even when you're offline.</p>
+                        <p>Last updated: <span id="last-updated">Loading...</span></p>
+                    </div>
+                </details>
+                
+                <details>
+                    <summary>Cache Resources</summary>
+                    <div class="details-content">
+                        <p>This section displays the cached resources in this application:</p>
+                        <button id="refresh-button">Refresh Cache Info</button>
+                        <div id="dynamic-content">
+                            <p>Loading cache information...</p>
+                        </div>
+                    </div>
+                </details>
+                
+                <details>
+                    <summary>IndexedDB Models</summary>
+                    <div class="details-content" id="indexeddb-content">
+                        <p>Loading IndexedDB information...</p>
+                    </div>
+                </details>
+            </div>
+        </div>
+        
+        <!-- Add speech loading indicator for Web Speech API -->
+        <div id="speech-loading-container" class="loading-container speech-loading-container">
+            <div class="progress-bar">
+                <div id="speech-progress-bar" class="progress progress-striped"></div>
+            </div>
+            <div id="speech-loading-status" class="progress-status">Initializing speech recognition...</div>
+        </div>
+        
+        <!-- Hidden start/stop buttons for backward compatibility with the JS -->
+        <div style="display: none;">
+            <button id="start-speech-btn">Start Speaking</button>
+            <button id="stop-speech-btn">Stop</button>
+            <select id="speech-method">
+                <option value="webspeech">Web Speech API</option>
+                <option value="local">Local Model</option>
+            </select>
+        </div>
+    </main>
+    
+    <footer>
+        <p>Progressive Web App Template &copy; 2025</p>
+    </footer>
+
+    <!-- Import dependencies -->
+    <script src="js/alternatives/speech-recognition.js"></script>
+    <script src="js/braille-translator.js"></script>
+    <script src="js/text-to-speech.js"></script>
+    <script src="utils/braille-array-formatter.js"></script>
+    
+    <!-- Import application modules -->
+    <script src="js/ui-controller.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/cache-manager.js"></script>
+    <script src="js/sound-effects.js"></script>
+
+    <!-- Sound indicators for mode switching -->
+    <audio id="listening-mode-sound" preload="auto">
+        <source src="sounds/listening-mode.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="output-mode-sound" preload="auto">
+        <source src="sounds/output-mode.mp3" type="audio/mpeg">
+    </audio>
+</body>
+</html>
