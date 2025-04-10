@@ -141,6 +141,19 @@
                         Recognition Model: <span class="model-badge web-speech" id="model-badge">Web Speech API</span>
                         <span id="mic-status" class="mic-status">Mic: Unknown</span>
                     </div>
+                    
+                    <!-- BLE Connection Status for Arduino ESP32 -->
+                    <div id="ble-connection" class="connection-section">
+                        <div class="status-header">
+                            <h4>Braille BLE Device:</h4>
+                            <span id="ble-status" class="status offline">Not Connected</span>
+                        </div>
+                        <div class="ble-controls">
+                            <button id="connect-ble-btn" class="action-button">Connect to Braille Device</button>
+                            <button id="disconnect-ble-btn" class="action-button" style="display: none;">Disconnect</button>
+                        </div>
+                        <div id="ble-message" class="small-text"></div>
+                    </div>
                 </div>
             </div>
             
@@ -178,6 +191,25 @@
                             <div class="braille-array-container">
                                 <h4>Braille Array:</h4>
                                 <pre id="braille-array" class="braille-array small-text">[1,2,3,4,5,6]</pre>
+                            </div>
+                        </div>
+                        
+                        <!-- Visual Braille Dot Display -->
+                        <div class="braille-dot-display">
+                            <h4>Braille Dot Pattern:</h4>
+                            <div class="braille-cells-container" id="braille-cells-container">
+                                <!-- Default single cell display - will be dynamically updated -->
+                                <div class="braille-cell-wrapper">
+                                    <div class="braille-cell" id="braille-cell">
+                                        <div class="braille-dot" data-dot="1">1</div>
+                                        <div class="braille-dot" data-dot="4">4</div>
+                                        <div class="braille-dot" data-dot="2">2</div>
+                                        <div class="braille-dot" data-dot="5">5</div>
+                                        <div class="braille-dot" data-dot="3">3</div>
+                                        <div class="braille-dot" data-dot="6">6</div>
+                                    </div>
+                                    <div class="braille-cell-label">Current Cell</div>
+                                </div>
                             </div>
                         </div>
                         
@@ -274,6 +306,11 @@
     <script src="js/braille-translator.js"></script>
     <script src="js/text-to-speech.js"></script>
     <script src="utils/braille-array-formatter.js"></script>
+    
+    <!-- BLE integration -->
+    <script src="js/ble-controller.js"></script>
+    <script src="js/ble-ui.js"></script>
+    <script src="js/braille-visualizer.js"></script>
     
     <!-- Main application modules -->
     <script src="js/ui-controller.js"></script>

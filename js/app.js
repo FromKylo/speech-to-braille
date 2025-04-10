@@ -312,6 +312,27 @@ function processSpeechForBraille(text) {
         // Update the UI with the formatted array
         uiController.updateBrailleArray(formattedArray);
         
+        // Update the visual braille dot display
+        if (window.brailleVisualizer) {
+            brailleVisualizer.updateDisplay(result.array);
+        }
+        
+        // Send braille data to connected ESP32 via BLE
+        if (window.bleController && bleController.isConnected()) {
+            console.log('Sending braille data to ESP32:', result.array);
+            bleController.sendBrailleData(result.array)
+                .then(success => {
+                    if (success) {
+                        console.log('Braille data sent successfully to ESP32');
+                    } else {
+                        console.warn('Failed to send braille data to ESP32');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sending braille data to ESP32:', error);
+                });
+        }
+        
         // We're now using uiController.showBrailleMatch to handle speech
         // but let's add a fallback just in case
         if (!document.getElementById('speak-word-btn') && window.textToSpeech) {
@@ -325,6 +346,11 @@ function processSpeechForBraille(text) {
     } else {
         // No match found
         uiController.showNoMatch();
+        
+        // Clear the braille visualizer when no match is found
+        if (window.brailleVisualizer) {
+            brailleVisualizer.clearDots();
+        }
     }
 }
 

@@ -94,7 +94,7 @@ Methods:
 - `updateBrailleArray(formattedArray)`: Updates the displayed braille array
 - `setCycleMode(mode)`: Updates UI based on current application phase
 
-### Phase Controller
+### Main Site (Phases)
 
 **Embedded in: `index.html`**
 
