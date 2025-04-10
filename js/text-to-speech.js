@@ -156,26 +156,39 @@ function speakIntroduction() {
     console.log("Starting introduction phase");
     
     // Update UI to show introduction phase
-    const introElement = document.getElementById('intro-text');
+    const introElement = document.getElementById('intro-phrase');
     if (introElement) {
         introElement.textContent = introText;
     }
     
-    // Show introduction section if not already visible
-    const introSection = document.getElementById('introduction-section');
-    if (introSection) {
-        introSection.classList.add('active');
-        introSection.classList.remove('hidden');
+    // Show the speaking indicator during introduction
+    const speakingIndicator = document.getElementById('intro-speaking-status');
+    if (speakingIndicator) {
+        speakingIndicator.classList.remove('hidden');
     }
     
     // Play introduction audio
     speakText(introText, function() {
-        console.log('Introduction completed, starting recording phase');
+        console.log('Introduction completed, dispatching event to start recording phase');
         introCompleted = true;
         
-        // Start the recording/output cycle after introduction
+        // Hide the speaking indicator
+        if (speakingIndicator) {
+            speakingIndicator.classList.add('hidden');
+        }
+        
+        // Dispatch a custom event that the phase controller will listen for
+        const event = new CustomEvent('introCompleted');
+        window.dispatchEvent(event);
+        
+        // As a fallback, also call the app's cycle function
         if (window.app && typeof window.app.startListeningCycle === 'function') {
             window.app.startListeningCycle();
+        }
+        
+        // Direct call to phase controller if available
+        if (window.phaseControl && typeof window.phaseControl.showPhase === 'function') {
+            window.phaseControl.showPhase('recording');
         }
     });
 }

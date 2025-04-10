@@ -299,10 +299,24 @@
             const recordingTimer = document.getElementById('recording-timer');
             const outputTimer = document.getElementById('output-timer');
             
+            // Update recognition status in troubleshooting
+            function updateRecognitionStatus(isActive) {
+                const statusElement = document.getElementById('recognition-active-status');
+                if (statusElement) {
+                    statusElement.textContent = isActive ? 'Yes' : 'No';
+                    statusElement.style.color = isActive ? '#34a853' : '#ea4335';
+                }
+            }
+            
             // Phase transition functions
             function showPhase(phase) {
+                console.log(`Transitioning to phase: ${phase}`);
+                
                 // Update troubleshooting info
-                document.getElementById('current-phase-indicator').textContent = phase.charAt(0).toUpperCase() + phase.slice(1);
+                const phaseIndicator = document.getElementById('current-phase-indicator');
+                if (phaseIndicator) {
+                    phaseIndicator.textContent = phase.charAt(0).toUpperCase() + phase.slice(1);
+                }
                 
                 // Hide all phases
                 introPhase.classList.remove('phase-active');
@@ -323,10 +337,15 @@
                         window.soundEffects.playListeningModeSound();
                     }
                     
-                    // Start speech recognition
-                    if (window.app && app.startSpeechRecognition) {
-                        app.startSpeechRecognition();
-                    }
+                    // Start speech recognition - add a small delay to ensure UI is ready
+                    setTimeout(() => {
+                        if (window.app && app.startSpeechRecognition) {
+                            console.log('Starting speech recognition for recording phase');
+                            app.startSpeechRecognition();
+                            updateRecognitionStatus(true);
+                        }
+                    }, 300);
+                    
                 } else if (phase === 'output') {
                     outputPhase.classList.add('phase-active');
                     startPhaseTimer(outputTimer, 'recording');
@@ -336,6 +355,12 @@
                         textToSpeech.playOutputAudio();
                     } else if (window.soundEffects) {
                         window.soundEffects.playOutputModeSound();
+                    }
+                    
+                    // Pause speech recognition
+                    if (window.app && app.stopSpeechRecognition) {
+                        app.stopSpeechRecognition();
+                        updateRecognitionStatus(false);
                     }
                     
                     // Process the current text for braille output
@@ -381,14 +406,16 @@
                 }
             }
             
-            // Listen for introduction completion
-            window.addEventListener('introCompleted', function() {
+            // Listen for introduction completion - with improved event handling
+            window.addEventListener('introCompleted', function(e) {
+                console.log('Caught introCompleted event, transitioning to recording phase');
                 showPhase('recording');
             });
             
             // Override app's cycle mechanism to use our new phase system
             if (window.app) {
                 window.app.startListeningCycle = function() {
+                    console.log('startListeningCycle called, current phase:', currentPhase);
                     // Only transition if we're in the introduction phase
                     if (currentPhase === 'introduction') {
                         showPhase('recording');
