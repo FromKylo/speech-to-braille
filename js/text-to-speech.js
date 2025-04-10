@@ -1,4 +1,7 @@
-// Improved text-to-speech with default voice
+// Improved text-to-speech with default voice and Chrome fixes
+
+// Create a proper namespace
+window.textToSpeech = {};
 
 // Default voice settings
 const defaultVoiceSettings = {
@@ -11,46 +14,78 @@ const defaultVoiceSettings = {
 // Voice cache to avoid re-fetching voices
 let cachedVoice = null;
 let isSpeaking = false;
+let resumeTimer = null; // Timer for Chrome resume fix
+
+// Chrome-specific fix: Keep the speech synthesis active
+function startChromeWorkaround() {
+    // Clear any existing timer
+    if (resumeTimer) {
+        clearInterval(resumeTimer);
+    }
+    
+    // Set up a timer to call resume() every 10 seconds
+    // This prevents Chrome from pausing speech synthesis during inactivity
+    resumeTimer = setInterval(() => {
+        if (window.speechSynthesis) {
+            // Only resume if not speaking to avoid interruptions
+            if (!isSpeaking && window.speechSynthesis.pending === false) {
+                console.log("Applying Chrome resume() fix");
+                window.speechSynthesis.resume();
+            }
+        }
+    }, 10000);
+    
+    console.log("Chrome speech synthesis workaround enabled");
+}
 
 // Initialize speech synthesis on page load
-document.addEventListener('DOMContentLoaded', initSpeechSynthesis);
+document.addEventListener('DOMContentLoaded', () => {
+    // Wait a bit to avoid conflicts with speech-init.js
+    setTimeout(initSpeechSynthesis, 1000);
+});
 
 // Initialize and set up the default voice
 async function initSpeechSynthesis() {
-    // Wait for voices to be loaded
-    if (window.speechSynthesis.getVoices().length === 0) {
-        return new Promise(resolve => {
-            window.speechSynthesis.addEventListener('voiceschanged', () => {
-                setupDefaultVoice();
-                resolve();
+    console.log("Initializing speech synthesis with Chrome fixes");
+    
+    // Start Chrome workaround immediately
+    startChromeWorkaround();
+    
+    if (window.speechSynthesis) {
+        // Wait for voices to be loaded if needed
+        if (window.speechSynthesis.getVoices().length === 0) {
+            return new Promise(resolve => {
+                window.speechSynthesis.onvoiceschanged = () => {
+                    const voices = window.speechSynthesis.getVoices();
+                    // Try to find a good English voice
+                    cachedVoice = voices.find(voice => 
+                        voice.lang.includes('en-US') && voice.default) || 
+                        voices.find(voice => voice.lang.includes('en')) || 
+                        voices[0];
+                    console.log("Voices loaded, selected:", cachedVoice?.name);
+                    resolve();
+                };
             });
-        });
+        } else {
+            const voices = window.speechSynthesis.getVoices();
+            cachedVoice = voices.find(voice => 
+                voice.lang.includes('en-US') && voice.default) || 
+                voices.find(voice => voice.lang.includes('en')) || 
+                voices[0];
+            console.log("Voices already loaded, selected:", cachedVoice?.name);
+        }
     } else {
-        setupDefaultVoice();
-        // Speak the introduction automatically
-        speakIntroduction();
+        console.warn("Speech synthesis not supported in this browser");
     }
 }
 
-// Setup the default voice
-function setupDefaultVoice() {
-    const voices = window.speechSynthesis.getVoices();
-    
-    // Prefer English voices in this order: US English, UK English, any English
-    cachedVoice = voices.find(voice => voice.lang === 'en-US' && !voice.localService) || 
-                  voices.find(voice => voice.lang === 'en-GB' && !voice.localService) ||
-                  voices.find(voice => voice.lang.startsWith('en') && !voice.localService) ||
-                  voices.find(voice => voice.lang === 'en-US') ||
-                  voices.find(voice => voice.lang === 'en-GB') ||
-                  voices.find(voice => voice.lang.startsWith('en')) ||
-                  voices[0]; // Fallback to first available voice
-    
-    console.log('Default voice set to:', cachedVoice ? cachedVoice.name : 'None available');
-}
-
-// Speak text with default voice
+// Function to speak text with the selected voice
 function speakText(text, callback) {
-    if (!text) return;
+    if (!window.speechSynthesis) {
+        console.warn("Speech synthesis not available");
+        if (callback) callback();
+        return;
+    }
     
     // Stop any current speech
     stopSpeaking();
@@ -121,7 +156,26 @@ function speakMatchedWord(word) {
     speakText(`Matched word: ${word}`);
 }
 
+// Speak welcome message and start listening cycle
+function speakWelcome() {
+    const welcomeText = "Welcome to the Speech to Braille converter! Speak into your microphone and see the braille translation.";
+    speakText(welcomeText, function() {
+        // Start the listening cycle after welcome message is done
+        if (window.app && typeof window.app.startListeningCycle === 'function') {
+            console.log('Starting listening cycle after welcome message');
+            window.app.startListeningCycle();
+        }
+    });
+}
+
 // Export functions for use in other modules
 window.speakText = speakText;
 window.stopSpeaking = stopSpeaking;
 window.speakMatchedWord = speakMatchedWord;
+window.textToSpeech = {
+    speak: speakText,
+    stop: stopSpeaking,
+    speakMatchedWord,
+    speakWelcome,
+    speakIntroduction
+};
