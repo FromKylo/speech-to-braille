@@ -353,6 +353,11 @@ function updateCycleUI() {
             speechRecognition.startRecognition();
         }
         
+        // Play listening mode sound
+        if (window.soundEffects) {
+            window.soundEffects.playListeningModeSound();
+        }
+        
         // Update UI to show we're in listening mode
         uiController.setCycleMode('listening');
         
@@ -363,6 +368,11 @@ function updateCycleUI() {
         // Temporarily pause recognition
         if (recognitionActive && typeof speechRecognition !== 'undefined') {
             speechRecognition.pauseRecognition();
+        }
+        
+        // Play output mode sound
+        if (window.soundEffects) {
+            window.soundEffects.playOutputModeSound();
         }
         
         // Update UI to show we're in output mode
