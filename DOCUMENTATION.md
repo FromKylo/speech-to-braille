@@ -161,7 +161,7 @@ Where:
 - `word`: The text representation of the word
 - `shortForm`: Any abbreviated form (if applicable)
 - `braille`: The braille symbol representation (Unicode)
-- `array`: The dot number array in the format {1,2,3} or {{1,2},{3,4}} for contractions
+- `array`: The dot number array in the format {% raw %}{1,2,3}{% endraw %} or {% raw %}{{1,2},{3,4}}{% endraw %} for contractions
 - `language`: The language/braille code (e.g., UEB for Unified English Braille)
 
 The array follows standard braille dot numbering:
