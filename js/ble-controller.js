@@ -16,6 +16,13 @@ const bleController = (function() {
     // Connection status
     let isConnected = false;
     
+    // Current app phase
+    let currentPhase = 'introduction'; // 'introduction', 'recording', or 'output'
+    
+    // Phase constants (must match Arduino code)
+    const PHASE_NOT_OUTPUT = 0;
+    const PHASE_OUTPUT = 1;
+    
     // Service and characteristic UUIDs (must match Arduino code)
     const BRAILLE_SERVICE_UUID = '19b10000-e8f2-537e-4f6c-d104768a1214';
     const BRAILLE_CHAR_UUID = '19b10001-e8f2-537e-4f6c-d104768a1214';
@@ -24,7 +31,8 @@ const bleController = (function() {
     const eventListeners = {
         'connect': [],
         'disconnect': [],
-        'error': []
+        'error': [],
+        'phaseChange': []
     };
     
     // Helper function to trigger events
@@ -111,14 +119,50 @@ const bleController = (function() {
         console.log('Disconnected from BLE device');
     }
     
+    // Set the current phase and notify Arduino
+    async function setPhase(phase) {
+        console.log('Setting phase:', phase);
+        currentPhase = phase;
+        
+        // Notify Arduino of phase change if connected
+        if (isConnected && brailleCharacteristic) {
+            try {
+                // Create a byte array with just the phase indicator
+                const phaseValue = (phase === 'output') ? PHASE_OUTPUT : PHASE_NOT_OUTPUT;
+                const phaseData = new Uint8Array([phaseValue]);
+                
+                console.log('Sending phase update to Arduino:', phaseValue);
+                await brailleCharacteristic.writeValue(phaseData);
+                
+                // If not in output phase, clear braille display
+                if (phase !== 'output') {
+                    console.log('Not in output phase - ensuring dots are lowered');
+                }
+                
+                // Trigger phase change event
+                triggerEvent('phaseChange', { phase: phase });
+                
+                return true;
+            } catch (error) {
+                console.error('Error sending phase update:', error);
+                return false;
+            }
+        }
+        
+        // Still trigger event even if not connected
+        triggerEvent('phaseChange', { phase: phase });
+        return isConnected;
+    }
+    
     // Helper function to convert braille array to a proper format for sending
     // The ESP32 expects a byte array with each element representing the state of a braille cell
-    function prepareBrailleData(brailleArray) {
+    function prepareBrailleData(brailleArray, includePhase = true) {
+        let cellBytes = [];
+        
         // Handle nested arrays for multi-cell braille (contractions)
         if (Array.isArray(brailleArray) && Array.isArray(brailleArray[0])) {
-            // Create a byte array where each byte represents a braille cell
-            // In standard braille cells, we have dots 1-6, so we use bits 0-5 to represent them
-            return new Uint8Array(brailleArray.map(cell => {
+            // Convert each cell to a byte
+            cellBytes = brailleArray.map(cell => {
                 let byte = 0;
                 // Set bits for each dot in the cell
                 for (const dot of cell) {
@@ -128,7 +172,7 @@ const bleController = (function() {
                     }
                 }
                 return byte;
-            }));
+            });
         } 
         // Handle single cell braille
         else if (Array.isArray(brailleArray)) {
@@ -139,11 +183,19 @@ const bleController = (function() {
                     byte |= (1 << (dot - 1));
                 }
             }
-            return new Uint8Array([byte]);
+            cellBytes = [byte];
         }
         // Handle empty array
         else {
-            return new Uint8Array([0]);
+            cellBytes = [0];
+        }
+        
+        // If including phase (default), add phase byte at the beginning
+        if (includePhase) {
+            const phaseValue = (currentPhase === 'output') ? PHASE_OUTPUT : PHASE_NOT_OUTPUT;
+            return new Uint8Array([phaseValue, ...cellBytes]);
+        } else {
+            return new Uint8Array(cellBytes);
         }
     }
     
@@ -155,11 +207,11 @@ const bleController = (function() {
         }
         
         try {
-            // Prepare the braille data
+            // Prepare the braille data with phase information
             const dataToSend = prepareBrailleData(brailleArray);
             
             // Log the data being sent
-            console.log('Sending braille data:', dataToSend);
+            console.log('Sending braille data:', Array.from(dataToSend));
             
             // Write to the characteristic
             await brailleCharacteristic.writeValue(dataToSend);
@@ -189,6 +241,16 @@ const bleController = (function() {
         // Disconnect from BLE device
         disconnect: async function() {
             await disconnect();
+        },
+        
+        // Set the current phase
+        setPhase: async function(phase) {
+            return await setPhase(phase);
+        },
+        
+        // Get the current phase
+        getPhase: function() {
+            return currentPhase;
         },
         
         // Send braille data

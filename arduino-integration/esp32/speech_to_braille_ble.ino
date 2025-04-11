@@ -36,12 +36,26 @@ const int HEARTBEAT_INTERVAL = 1000; // 1 second interval for blink when not con
 unsigned long lastHeartbeatTime = 0;
 bool ledState = false;
 
+// Phase constants
+const uint8_t PHASE_NOT_OUTPUT = 0;
+const uint8_t PHASE_OUTPUT = 1;
+uint8_t currentPhase = PHASE_NOT_OUTPUT;
+
 // BLE objects
 BLEServer* pServer = NULL;
 BLECharacteristic* pCharacteristic = NULL;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 uint8_t currentBrailleState = 0;
+
+// Function to lower all braille dots
+void lowerAllDots() {
+  for (int i = 0; i < NUM_PINS; i++) {
+    digitalWrite(braillePins[0][i], LOW);
+  }
+  currentBrailleState = 0;
+  Serial.println("Lowered all dots");
+}
 
 // Custom callback for BLE connections
 class ServerCallbacks: public BLEServerCallbacks {
@@ -57,10 +71,8 @@ class ServerCallbacks: public BLEServerCallbacks {
     digitalWrite(STATUS_LED_PIN, LOW); // Turn off LED when disconnected
     
     // Reset all pins to off state
-    for (int i = 0; i < NUM_PINS; i++) {
-      digitalWrite(braillePins[0][i], LOW);
-    }
-    currentBrailleState = 0;
+    lowerAllDots();
+    currentPhase = PHASE_NOT_OUTPUT;
   }
 };
 
@@ -69,25 +81,43 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pCharacteristic) {
     std::string value = pCharacteristic->getValue();
     if (value.length() > 0) {
-      Serial.print("Received braille data: ");
+      // First byte is the phase indicator
+      uint8_t phaseIndicator = value[0];
       
-      // Process each braille cell in the value
-      for (int i = 0; i < value.length(); i++) {
-        uint8_t cellValue = value[i];
+      Serial.print("Received data - Phase: ");
+      Serial.println(phaseIndicator == PHASE_OUTPUT ? "OUTPUT" : "NOT OUTPUT");
+      
+      // Update current phase
+      currentPhase = phaseIndicator;
+      
+      // If not in output phase, lower all dots
+      if (currentPhase != PHASE_OUTPUT) {
+        lowerAllDots();
+        return;
+      }
+      
+      // Only process braille data if in OUTPUT phase and data is available
+      if (currentPhase == PHASE_OUTPUT && value.length() > 1) {
+        Serial.print("Setting braille pattern: ");
         
-        // Set pins based on braille cell value
-        // Each bit represents a dot in the braille cell
-        for (int pin = 0; pin < NUM_PINS; pin++) {
-          bool dotState = (cellValue >> pin) & 0x01;
-          digitalWrite(braillePins[0][pin], dotState ? HIGH : LOW);
-          Serial.print(dotState ? "1" : "0");
-        }
-        
-        Serial.println();
-        
-        // Save the current state
-        if (i == 0) { // Just save the first cell for status
-          currentBrailleState = cellValue;
+        // Process each braille cell in the value (starting from second byte)
+        for (int i = 1; i < value.length(); i++) {
+          uint8_t cellValue = value[i];
+          
+          // Set pins based on braille cell value
+          // Each bit represents a dot in the braille cell
+          for (int pin = 0; pin < NUM_PINS; pin++) {
+            bool dotState = (cellValue >> pin) & 0x01;
+            digitalWrite(braillePins[0][pin], dotState ? HIGH : LOW);
+            Serial.print(dotState ? "1" : "0");
+          }
+          
+          Serial.println();
+          
+          // Save the current state
+          if (i == 1) { // Just save the first cell for status
+            currentBrailleState = cellValue;
+          }
         }
       }
     }
@@ -97,7 +127,7 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
 void setup() {
   // Initialize serial for debugging
   Serial.begin(115200);
-  Serial.println("Starting Speech-to-Braille BLE Device");
+  Serial.println("Starting Speech-to-Braille BLE Device with Phase Support");
 
   // Initialize braille pins as outputs and set to LOW
   for (int i = 0; i < NUM_PINS; i++) {
