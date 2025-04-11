@@ -39,6 +39,7 @@ class SpeechRecognitionManager {
             this.recognition.onstart = () => {
                 console.log('Web Speech recognition started');
                 this.isRecording = true;
+                this._recognitionActive = true;
                 this.triggerEvent('start');
                 this.updateUIState(true);
             };
@@ -49,6 +50,7 @@ class SpeechRecognitionManager {
             
             this.recognition.onend = () => {
                 console.log('Web Speech recognition ended');
+                this._recognitionActive = false;
                 // Only restart if we're still in recording mode
                 if (this.isRecording && this.selectedMethod === 'webspeech') {
                     console.log('Restarting Web Speech recognition');
@@ -145,19 +147,60 @@ class SpeechRecognitionManager {
         
         if (this.isRecording) {
             console.log('Already recording, ignoring start request');
+            // On mobile, we need to handle this more gracefully - restart recognition
+            if (this.selectedMethod === 'webspeech' && this.recognition) {
+                try {
+                    // Try to stop first
+                    console.log('Stopping existing recognition before restart');
+                    this.recognition.stop();
+                    
+                    // Set a flag to restart after the onend event
+                    this._pendingRestart = true;
+                } catch (e) {
+                    console.error('Error stopping existing recognition:', e);
+                }
+            }
             return;
         }
         
         if (this.selectedMethod === 'webspeech') {
             if (this.recognition) {
                 try {
-                    console.log('Starting Web Speech API recognition');
-                    this.recognition.start();
+                    // Check if recognition is actually active despite our state tracking
+                    if (this._recognitionActive) {
+                        console.log('Recognition appears to be active already, stopping first');
+                        try {
+                            this.recognition.stop();
+                            // Wait a short moment before starting again
+                            setTimeout(() => {
+                                console.log('Starting Web Speech API recognition after stop');
+                                this.recognition.start();
+                            }, 200);
+                        } catch (stopError) {
+                            console.error('Error when trying to stop before restart:', stopError);
+                            // Try direct start anyway as fallback
+                            this.recognition.start();
+                        }
+                    } else {
+                        console.log('Starting Web Speech API recognition');
+                        this.recognition.start();
+                        this._recognitionActive = true;
+                    }
                     // Note: onstart event will set isRecording and update UI
                 } catch (e) {
                     console.error('Error starting Web Speech API:', e);
-                    this.updateUIState(false);
-                    this.triggerEvent('error', e.message);
+                    
+                    // If we get "already started" error, update our state to match reality
+                    if (e.message && e.message.includes('already started')) {
+                        console.log('Recognition was already running, updating state to match');
+                        this.isRecording = true;
+                        this._recognitionActive = true;
+                        this.updateUIState(true);
+                        this.triggerEvent('start');
+                    } else {
+                        this.updateUIState(false);
+                        this.triggerEvent('error', e.message);
+                    }
                 }
             } else {
                 console.error('Web Speech API not supported');
@@ -186,17 +229,19 @@ class SpeechRecognitionManager {
             try {
                 // This will trigger onend event
                 this.recognition.stop();
+                this._recognitionActive = false;
                 console.log('Web Speech API recognition stopped');
                 
                 // Automatically restart after a short delay to maintain always-on behavior
                 setTimeout(() => {
-                    if (!this.isRecording) {
+                    if (!this.isRecording && !this._pendingRestart) {
                         console.log('Auto-restarting speech recognition');
                         this.startRecognition();
                     }
                 }, 1000);
             } catch (e) {
                 console.error('Error stopping Web Speech API:', e);
+                this._recognitionActive = false;
                 this.triggerEvent('error', e.message);
             }
         } else if (this.selectedMethod === 'local') {

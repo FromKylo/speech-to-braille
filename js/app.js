@@ -351,6 +351,22 @@ function processSpeechForBraille(text) {
         if (window.brailleVisualizer) {
             brailleVisualizer.clearDots();
         }
+        
+        // Send empty array to ESP32 to reset all dots when no match is found
+        if (window.bleController && bleController.isConnected()) {
+            console.log('No match found - sending empty array to reset ESP32 dots');
+            bleController.sendBrailleData([])
+                .then(success => {
+                    if (success) {
+                        console.log('Reset command sent successfully to ESP32');
+                    } else {
+                        console.warn('Failed to send reset command to ESP32');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sending reset command to ESP32:', error);
+                });
+        }
     }
 }
 
