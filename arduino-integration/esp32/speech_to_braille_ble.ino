@@ -41,6 +41,11 @@ const uint8_t PHASE_NOT_OUTPUT = 0;
 const uint8_t PHASE_OUTPUT = 1;
 uint8_t currentPhase = PHASE_NOT_OUTPUT;
 
+// Auto-reset timeout for braille output
+const unsigned long OUTPUT_TIMEOUT = 3000; // 3 seconds without new data to auto-reset
+unsigned long lastOutputTime = 0;
+bool outputActive = false;
+
 // BLE objects
 BLEServer* pServer = NULL;
 BLECharacteristic* pCharacteristic = NULL;
@@ -119,6 +124,10 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
             currentBrailleState = cellValue;
           }
         }
+        
+        // Update last output time and set output active flag
+        lastOutputTime = millis();
+        outputActive = true;
       }
     }
   }
@@ -201,6 +210,13 @@ void loop() {
       digitalWrite(STATUS_LED_PIN, ledState ? HIGH : LOW);
       lastHeartbeatTime = currentTime;
     }
+  }
+  
+  // Auto-reset braille output if no new data received within timeout
+  if (outputActive && (millis() - lastOutputTime >= OUTPUT_TIMEOUT)) {
+    Serial.println("Output timeout - lowering all dots");
+    lowerAllDots();
+    outputActive = false;
   }
   
   // Brief delay in the loop
