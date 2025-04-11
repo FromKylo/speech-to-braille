@@ -859,6 +859,7 @@ details[open] summary {
     width: 30px;
     height: 30px;
     border-radius: 50%;
+    aspect-ratio: 1/1; /* Ensure perfect circle shape */
     background-color: #f0f0f0;
     border: 1px solid #ccc;
     display: flex;
@@ -888,6 +889,25 @@ details[open] summary {
     margin-top: 5px;
     font-size: 0.9rem;
     color: #555;
+}
+
+/* Mobile responsiveness for braille dots */
+@media (max-width: 480px) {
+    .braille-cell {
+        grid-template-columns: repeat(2, 25px);
+        grid-template-rows: repeat(3, 25px);
+        gap: 4px;
+    }
+    
+    .braille-dot {
+        width: 25px;
+        height: 25px;
+        min-width: 25px;
+        min-height: 25px;
+        max-width: 25px;
+        max-height: 25px;
+        font-size: 0.7rem;
+    }
 }
 
 /* Connection status indicators */
@@ -940,4 +960,99 @@ details[open] summary {
     0% { opacity: 0.3; }
     50% { opacity: 1; }
     100% { opacity: 0.3; }
+}
+
+/* Connection status indicators */
+.connection-status {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 8px;
+    background-color: #f5f5f5;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    margin-right: 20px;
+    margin-bottom: 8px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    aspect-ratio: 1/1; /* Ensure perfect circle shape */
+    flex-shrink: 0; /* Prevent distortion */
+}
+
+.status-label {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+/* Status colors */
+.status-dot.online {
+    background-color: #4CAF50;
+    box-shadow: 0 0 10px #4CAF50;
+}
+
+.status-dot.offline {
+    background-color: #F44336;
+}
+
+.status-dot.unknown {
+    background-color: #FFC107;
+}
+
+.status-dot.blinking {
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 480px) {
+    .connection-status {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .status-indicator {
+        margin-right: 0;
+        margin-bottom: 10px;
+        width: 100%;
+    }
+    
+    .status-dot {
+        min-width: 12px;
+        min-height: 12px;
+        max-width: 12px;
+        max-height: 12px;
+    }
+}
+
+/* Fix for other circular elements */
+.countdown-timer {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    aspect-ratio: 1/1;
+    background: conic-gradient(#4285f4 0%, transparent 0%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #333;
 }
