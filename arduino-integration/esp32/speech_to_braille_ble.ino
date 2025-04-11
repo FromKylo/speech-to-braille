@@ -7,9 +7,11 @@
  * Hardware:
  * - Arduino Nano ESP32
  * - Solenoids or servos for braille dots (6 pins)
+ * - LED for connection indicator (pin 13)
  * 
  * Connections:
  * - Braille dots 1-6 connected to pins D2-D7
+ * - Status LED connected to pin D13
  */
 
 #include <BLEDevice.h>
@@ -21,9 +23,18 @@
 #define BRAILLE_SERVICE_UUID        "19b10000-e8f2-537e-4f6c-d104768a1214"
 #define BRAILLE_CHARACTERISTIC_UUID "19b10001-e8f2-537e-4f6c-d104768a1214"
 
-// Braille dot pins (standard 6-dot braille cell)
-const int braillePins[] = {2, 3, 4, 5, 6, 7}; // Pins D2-D7
+// Define the GPIO pins for each braille cell (using the same structure as Version1.ino)
+const int braillePins[1][6] = {
+  {2, 3, 4, 5, 6, 7}      // Braille Cell 1
+};
+const int NUM_CELLS = 1;
 const int NUM_PINS = 6;
+
+// Define the LED pin for connection status
+const int STATUS_LED_PIN = 13;
+const int HEARTBEAT_INTERVAL = 1000; // 1 second interval for blink when not connected
+unsigned long lastHeartbeatTime = 0;
+bool ledState = false;
 
 // BLE objects
 BLEServer* pServer = NULL;
@@ -37,15 +48,17 @@ class ServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
     deviceConnected = true;
     Serial.println("Device connected");
+    digitalWrite(STATUS_LED_PIN, HIGH); // Turn on LED when connected
   }
 
   void onDisconnect(BLEServer* pServer) {
     deviceConnected = false;
     Serial.println("Device disconnected");
+    digitalWrite(STATUS_LED_PIN, LOW); // Turn off LED when disconnected
     
     // Reset all pins to off state
     for (int i = 0; i < NUM_PINS; i++) {
-      digitalWrite(braillePins[i], LOW);
+      digitalWrite(braillePins[0][i], LOW);
     }
     currentBrailleState = 0;
   }
@@ -66,7 +79,7 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
         // Each bit represents a dot in the braille cell
         for (int pin = 0; pin < NUM_PINS; pin++) {
           bool dotState = (cellValue >> pin) & 0x01;
-          digitalWrite(braillePins[pin], dotState ? HIGH : LOW);
+          digitalWrite(braillePins[0][pin], dotState ? HIGH : LOW);
           Serial.print(dotState ? "1" : "0");
         }
         
@@ -88,9 +101,13 @@ void setup() {
 
   // Initialize braille pins as outputs and set to LOW
   for (int i = 0; i < NUM_PINS; i++) {
-    pinMode(braillePins[i], OUTPUT);
-    digitalWrite(braillePins[i], LOW);
+    pinMode(braillePins[0][i], OUTPUT);
+    digitalWrite(braillePins[0][i], LOW);
   }
+
+  // Initialize LED pin as output and set to LOW
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  digitalWrite(STATUS_LED_PIN, LOW);
 
   // Initialize BLE device
   BLEDevice::init("Braille Display");
@@ -144,6 +161,16 @@ void loop() {
   if (deviceConnected && !oldDeviceConnected) {
     Serial.println("Device connected - ready to receive braille data");
     oldDeviceConnected = deviceConnected;
+  }
+  
+  // Heartbeat LED when not connected
+  if (!deviceConnected) {
+    unsigned long currentTime = millis();
+    if (currentTime - lastHeartbeatTime >= HEARTBEAT_INTERVAL) {
+      ledState = !ledState;
+      digitalWrite(STATUS_LED_PIN, ledState ? HIGH : LOW);
+      lastHeartbeatTime = currentTime;
+    }
   }
   
   // Brief delay in the loop

@@ -97,6 +97,35 @@
             Checking connection...
         </div>
         
+        <!-- Connection Status Section -->
+        <div class="card connection-section">
+            <div class="status-header">
+                <h4>Device Connection Status</h4>
+            </div>
+            
+            <div class="connection-status">
+                <div class="status-indicator">
+                    <div id="web-status-dot" class="status-dot offline"></div>
+                    <div class="status-label">Web App: <span id="web-status-text">Not Connected</span></div>
+                </div>
+                
+                <div class="status-indicator">
+                    <div id="arduino-status-dot" class="status-dot unknown blinking"></div>
+                    <div class="status-label">Arduino: <span id="arduino-status-text">Unknown</span></div>
+                </div>
+            </div>
+            
+            <div id="ble-message" class="small-text"></div>
+            
+            <div class="ble-controls">
+                <button id="connect-ble-btn" class="action-button">Connect to Arduino</button>
+                <button id="disconnect-ble-btn" class="action-button" style="display: none; background-color: #e53e3e;">Disconnect</button>
+            </div>
+        </div>
+
+        <!-- Existing BLE Status -->
+        <div id="ble-status" class="status offline" style="display: none;">Not Connected</div>
+        
         <!-- APP PORTION - Where all the phases will appear -->
         <div id="app-container">
             
