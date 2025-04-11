@@ -392,6 +392,16 @@
                     phaseIndicator.textContent = phase.charAt(0).toUpperCase() + phase.slice(1);
                 }
                 
+                // Update Arduino about phase change if BLE controller is available
+                if (window.bleController && window.bleController.isConnected()) {
+                    console.log(`Notifying Arduino of phase change: ${phase}`);
+                    window.bleController.setPhase(phase).then(success => {
+                        if (!success) {
+                            console.warn('Failed to update Arduino about phase change');
+                        }
+                    });
+                }
+                
                 // Hide all phases
                 introPhase.classList.remove('phase-active');
                 recordingPhase.classList.remove('phase-active');
