@@ -1,5 +1,3 @@
-An attempt on creating a Progressive Web App (PWA) for Speech-to-Braille Refreshable Display capstone project. Developed by KiloJoules³
-
 # Speech to Braille System Documentation
 
 ## Table of Contents
