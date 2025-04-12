@@ -21,7 +21,7 @@ The Speech to Braille system is a comprehensive solution designed to convert spo
 ### Live Demo
 
 The Speech to Braille web application is hosted on GitHub Pages and is accessible at:
-[https://speech-to-braille.github.io](https://speech-to-braille.github.io)
+[https://fromkylo.github.io/speech-to-braille/](https://fromkylo.github.io/speech-to-braille/)
 
 The application is fully functional in modern browsers, with Chrome providing the best experience due to its comprehensive support for the Web Speech API and Bluetooth connectivity.
 
