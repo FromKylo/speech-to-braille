@@ -1,0 +1,57 @@
+/* Dark mode specific styles */
+[data-theme="dark"] {
+  --text-primary: #f3f4f6;
+  --text-secondary: #e5e7eb;
+  --text-tertiary: #d1d5db;
+  --text-disabled: #9ca3af;
+  
+  --bg-primary: #1f2937;
+  --bg-secondary: #111827;
+  --bg-tertiary: #374151;
+  
+  --border-default: #4b5563;
+}
+
+/* Dark mode specific component overrides */
+[data-theme="dark"] .card {
+  background-color: var(--bg-primary);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] #speech-output {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .braille-result {
+  background-color: var(--bg-primary);
+}
+
+[data-theme="dark"] .braille-dot {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .braille-dot.active {
+  background-color: var(--primary);
+  border-color: var(--primary-light);
+}
+
+/* Dark mode status indicators */
+[data-theme="dark"] .status-dot.offline {
+  background-color: var(--error);
+  box-shadow: 0 0 6px var(--error);
+}
+
+[data-theme="dark"] .status-dot.online {
+  background-color: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+/* Improve input and select readability in dark mode */
+[data-theme="dark"] input,
+[data-theme="dark"] select {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
