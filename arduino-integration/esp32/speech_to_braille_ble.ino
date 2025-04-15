@@ -24,10 +24,12 @@
 #define BRAILLE_CHARACTERISTIC_UUID "19b10001-e8f2-537e-4f6c-d104768a1214"
 
 // Define the GPIO pins for each braille cell (using the same structure as Version1.ino)
-const int braillePins[1][6] = {
-  {2, 3, 4, 5, 6, 7}      // Braille Cell 1
+const int braillePins[3][6] = {
+  {2, 3, 4, 5, 6, 7},     // Braille Cell 1
+  {8, 9, 10, 11, 12, 13},     // Braille Cell 2
+  {17, 20, 21, 22, 23, 24}  // Braille Cell 3
 };
-const int NUM_CELLS = 1;
+const int NUM_CELLS = 3;
 const int NUM_PINS = 6;
 
 // Define the LED pin for connection status
@@ -55,8 +57,10 @@ uint8_t currentBrailleState = 0;
 
 // Function to lower all braille dots
 void lowerAllDots() {
-  for (int i = 0; i < NUM_PINS; i++) {
-    digitalWrite(braillePins[0][i], LOW);
+  for (int cell = 0; cell < NUM_CELLS; cell++) {
+    for (int i = 0; i < NUM_PINS; i++) {
+      digitalWrite(braillePins[cell][i], LOW);
+    }
   }
   currentBrailleState = 0;
   Serial.println("Lowered all dots");
@@ -106,24 +110,27 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
         Serial.print("Setting braille pattern: ");
         
         // Process each braille cell in the value (starting from second byte)
-        for (int i = 1; i < value.length(); i++) {
-          uint8_t cellValue = value[i];
+        int numCellsToProcess = min(NUM_CELLS, (int)(value.length() - 1));
+        for (int i = 0; i < numCellsToProcess; i++) {
+          uint8_t cellValue = value[i + 1];
           
           // Set pins based on braille cell value
           // Each bit represents a dot in the braille cell
           for (int pin = 0; pin < NUM_PINS; pin++) {
             bool dotState = (cellValue >> pin) & 0x01;
-            digitalWrite(braillePins[0][pin], dotState ? HIGH : LOW);
+            digitalWrite(braillePins[i][pin], dotState ? HIGH : LOW);
             Serial.print(dotState ? "1" : "0");
           }
           
-          Serial.println();
+          Serial.print(" ");
           
-          // Save the current state
-          if (i == 1) { // Just save the first cell for status
+          // Save the current state of the first cell
+          if (i == 0) {
             currentBrailleState = cellValue;
           }
         }
+        
+        Serial.println();
         
         // Update last output time and set output active flag
         lastOutputTime = millis();
@@ -139,9 +146,11 @@ void setup() {
   Serial.println("Starting Speech-to-Braille BLE Device with Phase Support");
 
   // Initialize braille pins as outputs and set to LOW
-  for (int i = 0; i < NUM_PINS; i++) {
-    pinMode(braillePins[0][i], OUTPUT);
-    digitalWrite(braillePins[0][i], LOW);
+  for (int cell = 0; cell < NUM_CELLS; cell++) {
+    for (int i = 0; i < NUM_PINS; i++) {
+      pinMode(braillePins[cell][i], OUTPUT);
+      digitalWrite(braillePins[cell][i], LOW);
+    }
   }
 
   // Initialize LED pin as output and set to LOW
