@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#4285f4">
+    <meta name="theme-color" content="#18A0FB">
     <meta name="description" content="Speech to Braille Converter Application">
     <!-- Cross-origin isolation for WebAssembly -->
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
@@ -11,7 +11,13 @@
     <!-- Speech initializer must be loaded first -->
     <script src="js/speech-init.js"></script>
     <title>Speech to Braille Refreshable Module</title>
+    
+    <!-- Add Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS files -->
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/figma-ui.css">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
     <style>
@@ -346,6 +352,9 @@
     <script src="js/app.js"></script>
     <script src="js/cache-manager.js"></script>
     <script src="js/sound-effects.js"></script>
+    
+    <!-- Add Figma UI script before closing body tag -->
+    <script src="js/figma-ui.js"></script>
     
     <!-- Phase controller script -->
     <script>

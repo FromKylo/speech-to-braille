@@ -1,0 +1,321 @@
+/* Figma UI Design System */
+
+/* Typography */
+:root {
+  /* Font families */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+
+  /* Font sizes */
+  --font-size-xs: 0.75rem;   /* 12px */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-md: 1rem;      /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.25rem;   /* 20px */
+  --font-size-2xl: 1.5rem;   /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
+  --font-size-4xl: 2.25rem;  /* 36px */
+  
+  /* Font weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Line heights */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-loose: 1.8;
+  
+  /* Letter spacing */
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+
+  /* Colors - Figma-like color palette */
+  --color-primary: #18A0FB;
+  --color-primary-dark: #0D8DE8;
+  --color-primary-light: #55B9FC;
+  
+  --color-success: #1BC47D;
+  --color-warning: #F2B500;
+  --color-error: #F24822;
+  --color-information: #18A0FB;
+  
+  /* Neutrals */
+  --color-black: #000000;
+  --color-gray-100: #111111;
+  --color-gray-90: #2C2C2C;
+  --color-gray-80: #424242;
+  --color-gray-70: #5C5C5C;
+  --color-gray-60: #757575;
+  --color-gray-50: #909090;
+  --color-gray-40: #ACACAC;
+  --color-gray-30: #C6C6C6;
+  --color-gray-20: #E1E1E1;
+  --color-gray-10: #F0F0F0;
+  --color-gray-5: #F8F8F8;
+  --color-white: #FFFFFF;
+  
+  /* Semantic colors */
+  --text-primary: var(--color-gray-100);
+  --text-secondary: var(--color-gray-70);
+  --text-tertiary: var(--color-gray-50);
+  --text-disabled: var(--color-gray-30);
+  --text-inverse: var(--color-white);
+  
+  --background-primary: var(--color-white);
+  --background-secondary: var(--color-gray-5);
+  --background-tertiary: var(--color-gray-10);
+  --background-brand: var(--color-primary);
+  
+  --border-default: var(--color-gray-20);
+  --border-focused: var(--color-primary);
+
+  /* Spacing */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+  --space-16: 4rem;    /* 64px */
+  --space-20: 5rem;    /* 80px */
+
+  /* Shadows */
+  --shadow-sm: 0px 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0px 4px 6px rgba(0, 0, 0, 0.05), 0px 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0px 10px 15px rgba(0, 0, 0, 0.04), 0px 4px 6px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0px 20px 25px rgba(0, 0, 0, 0.06), 0px 10px 10px rgba(0, 0, 0, 0.04);
+  --shadow-inner: inset 0px 2px 4px rgba(0, 0, 0, 0.06);
+
+  /* Border radius */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-normal: 250ms;
+  --transition-slow: 350ms;
+}
+
+/* Base styles */
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background-color: var(--background-secondary);
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+}
+
+h1 {
+  font-size: var(--font-size-3xl);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+h2 {
+  font-size: var(--font-size-2xl);
+}
+
+h3 {
+  font-size: var(--font-size-xl);
+}
+
+h4 {
+  font-size: var(--font-size-lg);
+}
+
+p {
+  margin: 0 0 var(--space-4);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Component styles */
+
+/* Buttons */
+.figma-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.4;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+/* Primary button */
+.figma-button-primary {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.figma-button-primary:hover {
+  background-color: var(--color-primary-dark);
+}
+
+/* Secondary button */
+.figma-button-secondary {
+  background-color: white;
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.figma-button-secondary:hover {
+  background-color: var(--background-secondary);
+}
+
+/* Danger button */
+.figma-button-danger {
+  background-color: var(--color-error);
+  color: white;
+}
+
+.figma-button-danger:hover {
+  background-color: #E03E21;
+}
+
+/* Success button */
+.figma-button-success {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.figma-button-success:hover {
+  background-color: #15A96C;
+}
+
+/* Disabled button */
+.figma-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Cards */
+.figma-card {
+  background-color: var(--background-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+/* Status indicators */
+.figma-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  margin-right: var(--space-2);
+  display: inline-block;
+}
+
+.figma-status-online {
+  background-color: var(--color-success);
+  box-shadow: 0 0 6px var(--color-success);
+}
+
+.figma-status-offline {
+  background-color: var(--color-error);
+}
+
+.figma-status-warning {
+  background-color: var(--color-warning);
+}
+
+/* Progress bar */
+.figma-progress-container {
+  height: 6px;
+  background-color: var(--color-gray-10);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: var(--space-2) 0;
+}
+
+.figma-progress-bar {
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width var(--transition-normal) ease;
+}
+
+/* Braille cell visualization */
+.figma-braille-cell {
+  display: grid;
+  grid-template-columns: repeat(2, 30px);
+  grid-template-rows: repeat(3, 30px);
+  gap: 5px;
+  margin: var(--space-2);
+}
+
+.figma-braille-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-gray-10);
+  border: 1px solid var(--color-gray-20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-50);
+  transition: all var(--transition-fast);
+}
+
+.figma-braille-dot.active {
+  background-color: var(--color-primary);
+  color: white;
+  box-shadow: 0 0 8px rgba(24, 160, 251, 0.6);
+  transform: scale(1.05);
+}
+
+/* Animation utilities */
+.figma-animate-pulse {
+  animation: figma-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes figma-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.figma-animate-blink {
+  animation: figma-blink 1.5s ease-in-out infinite;
+}
+
+@keyframes figma-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
