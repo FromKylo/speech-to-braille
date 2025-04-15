@@ -8,6 +8,10 @@ class SpeechRecognitionManager {
         this.selectedMethod = 'webspeech'; // Default to Web Speech API
         this.recognition = null;
         this.localRecognition = null;
+        this._recognitionActive = false; // Track actual recognition state
+        this._pendingRestart = false;
+        this._initializationAttempted = false; // Track if initialization was attempted
+        this._permissionGranted = null; // Track microphone permission: null=unknown, true=granted, false=denied
         this.eventListeners = {
             'start': [],
             'end': [],
@@ -29,56 +33,160 @@ class SpeechRecognitionManager {
      * Initialize Web Speech API recognition
      */
     initWebSpeechRecognition() {
+        // Detect Speech Recognition API
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            this.recognition = new SpeechRecognition();
-            this.recognition.continuous = true;
-            this.recognition.interimResults = true;
-            
-            // Set up event handlers
-            this.recognition.onstart = () => {
-                console.log('Web Speech recognition started');
-                this.isRecording = true;
-                this._recognitionActive = true;
-                this.triggerEvent('start');
-                this.updateUIState(true);
-            };
-            
-            this.recognition.onresult = (event) => {
-                this.handleSpeechResult(event);
-            };
-            
-            this.recognition.onend = () => {
-                console.log('Web Speech recognition ended');
-                this._recognitionActive = false;
-                // Only restart if we're still in recording mode
-                if (this.isRecording && this.selectedMethod === 'webspeech') {
-                    console.log('Restarting Web Speech recognition');
-                    try {
-                        this.recognition.start();
-                    } catch (e) {
-                        console.error('Error restarting recognition:', e);
-                        this.isRecording = false;
-                        this.updateUIState(false);
-                        this.triggerEvent('end');
+            try {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+                this.recognition.continuous = true;
+                this.recognition.interimResults = true;
+                
+                // Set up event handlers with improved error handling
+                this.recognition.onstart = () => {
+                    console.log('Web Speech recognition started');
+                    this.isRecording = true;
+                    this._recognitionActive = true;
+                    this.triggerEvent('start');
+                    this.updateUIState(true);
+                };
+                
+                this.recognition.onresult = (event) => {
+                    this.handleSpeechResult(event);
+                };
+                
+                this.recognition.onend = () => {
+                    console.log('Web Speech recognition ended');
+                    this._recognitionActive = false;
+                    
+                    // Only restart if we're still in recording mode and no pending restart
+                    if (this.isRecording && this.selectedMethod === 'webspeech' && !this._pendingRestart) {
+                        console.log('Auto-restarting Web Speech recognition');
+                        try {
+                            // Add a small delay before restarting to avoid rapid restart issues
+                            setTimeout(() => {
+                                if (this.isRecording && !this._recognitionActive) {
+                                    console.log('Executing delayed restart of recognition');
+                                    this.recognition.start();
+                                    this._recognitionActive = true;
+                                }
+                            }, 300);
+                        } catch (e) {
+                            console.error('Error restarting recognition:', e);
+                            this.isRecording = false;
+                            this.updateUIState(false);
+                            this.triggerEvent('error', 'Failed to restart recognition: ' + e.message);
+                            this.triggerEvent('end');
+                        }
+                    } else {
+                        if (this._pendingRestart) {
+                            console.log('Handling pending restart after onend');
+                            this._pendingRestart = false;
+                            try {
+                                setTimeout(() => {
+                                    this.startRecognition();
+                                }, 300);
+                            } catch (e) {
+                                console.error('Error handling pending restart:', e);
+                                this.isRecording = false;
+                                this.updateUIState(false);
+                                this.triggerEvent('end');
+                            }
+                        } else {
+                            this.isRecording = false;
+                            this.updateUIState(false);
+                            this.triggerEvent('end');
+                        }
                     }
-                } else {
-                    this.isRecording = false;
-                    this.updateUIState(false);
-                    this.triggerEvent('end');
-                }
-            };
-            
-            this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                this.triggerEvent('error', event.error);
-                // Don't update UI state here - let onend handle it
-            };
+                };
+                
+                this.recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    
+                    // Handle specific error types
+                    switch(event.error) {
+                        case 'not-allowed':
+                        case 'permission-denied':
+                            this._permissionGranted = false;
+                            this.triggerEvent('error', 'Microphone permission denied. Please allow microphone access.');
+                            // Show a visible error to the user
+                            this.showError('Microphone permission denied. Please allow microphone access and reload the page.');
+                            break;
+                            
+                        case 'no-speech':
+                            // This is common and not always an error - just log it
+                            console.log('No speech detected, continuing...');
+                            break;
+                            
+                        case 'network':
+                            this.triggerEvent('error', 'Network error occurred. Check your connection.');
+                            this.showError('Network issue detected. Check your internet connection.');
+                            break;
+                            
+                        default:
+                            this.triggerEvent('error', `Recognition error: ${event.error}`);
+                    }
+                    
+                    // Don't update UI state here - let onend handle it
+                };
+                
+                this._initializationAttempted = true;
+                console.log('Web Speech API initialized successfully');
+            } catch (e) {
+                console.error('Failed to initialize Web Speech API:', e);
+                this._initializationAttempted = false;
+                this.triggerEvent('error', 'Failed to initialize speech recognition: ' + e.message);
+            }
         } else {
             console.warn('Web Speech API not supported in this browser');
+            this._initializationAttempted = false;
+            this.triggerEvent('error', 'Speech recognition is not supported in this browser. Please use Chrome or Edge.');
         }
     }
     
+    /**
+     * Show user-visible error message
+     */
+    showError(message) {
+        // Create an error element or use an existing one
+        let errorElement = document.getElementById('speech-recognition-error');
+        
+        if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.id = 'speech-recognition-error';
+            errorElement.style.backgroundColor = '#f8d7da';
+            errorElement.style.color = '#721c24';
+            errorElement.style.padding = '10px';
+            errorElement.style.margin = '10px 0';
+            errorElement.style.borderRadius = '4px';
+            errorElement.style.fontWeight = 'bold';
+            
+            // Find a good place to show the error
+            const container = document.querySelector('.speech-output-container') || 
+                            document.getElementById('speech-output') ||
+                            document.body;
+                            
+            if (container) {
+                container.prepend(errorElement);
+            }
+        }
+        
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        
+        // Auto-hide after a while
+        setTimeout(() => {
+            if (errorElement) {
+                errorElement.style.opacity = '0';
+                errorElement.style.transition = 'opacity 1s';
+                setTimeout(() => {
+                    if (errorElement && errorElement.parentNode) {
+                        errorElement.parentNode.removeChild(errorElement);
+                    }
+                }, 1000);
+            }
+        }, 5000);
+    }
+
     /**
      * Initialize UI elements and event handlers
      */
@@ -140,52 +248,62 @@ class SpeechRecognitionManager {
     }
     
     /**
+     * Check and request microphone permission explicitly
+     */
+    async checkMicrophonePermission() {
+        try {
+            console.log('Explicitly checking microphone permission...');
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Permission granted
+            this._permissionGranted = true;
+            console.log('Microphone permission granted');
+            
+            // Stop the tracks immediately as we only needed to check permission
+            stream.getTracks().forEach(track => track.stop());
+            
+            return true;
+        } catch (err) {
+            console.error('Microphone permission error:', err);
+            this._permissionGranted = false;
+            this.triggerEvent('error', 'Microphone permission denied: ' + err.message);
+            this.showError('Microphone access denied. Please allow microphone access in your browser settings and reload the page.');
+            return false;
+        }
+    }
+    
+    /**
      * Start speech recognition based on selected method
      */
-    startRecognition() {
+    async startRecognition() {
         console.log(`Attempting to start ${this.selectedMethod} recognition`);
         
         if (this.isRecording) {
             console.log('Already recording, ignoring start request');
-            // On mobile, we need to handle this more gracefully - restart recognition
-            if (this.selectedMethod === 'webspeech' && this.recognition) {
-                try {
-                    // Try to stop first
-                    console.log('Stopping existing recognition before restart');
-                    this.recognition.stop();
-                    
-                    // Set a flag to restart after the onend event
-                    this._pendingRestart = true;
-                } catch (e) {
-                    console.error('Error stopping existing recognition:', e);
-                }
-            }
             return;
+        }
+        
+        // Check if initialization failed previously
+        if (!this._initializationAttempted && this.selectedMethod === 'webspeech') {
+            console.log('Attempting to re-initialize Web Speech API');
+            this.initWebSpeechRecognition();
+        }
+        
+        // Check microphone permission first if not already granted
+        if (this._permissionGranted === null || this._permissionGranted === false) {
+            const permissionGranted = await this.checkMicrophonePermission();
+            if (!permissionGranted) {
+                console.error('Cannot start recognition without microphone permission');
+                return;
+            }
         }
         
         if (this.selectedMethod === 'webspeech') {
             if (this.recognition) {
                 try {
-                    // Check if recognition is actually active despite our state tracking
-                    if (this._recognitionActive) {
-                        console.log('Recognition appears to be active already, stopping first');
-                        try {
-                            this.recognition.stop();
-                            // Wait a short moment before starting again
-                            setTimeout(() => {
-                                console.log('Starting Web Speech API recognition after stop');
-                                this.recognition.start();
-                            }, 200);
-                        } catch (stopError) {
-                            console.error('Error when trying to stop before restart:', stopError);
-                            // Try direct start anyway as fallback
-                            this.recognition.start();
-                        }
-                    } else {
-                        console.log('Starting Web Speech API recognition');
-                        this.recognition.start();
-                        this._recognitionActive = true;
-                    }
+                    console.log('Starting Web Speech API recognition');
+                    this.recognition.start();
+                    this._recognitionActive = true;
                     // Note: onstart event will set isRecording and update UI
                 } catch (e) {
                     console.error('Error starting Web Speech API:', e);
@@ -200,12 +318,14 @@ class SpeechRecognitionManager {
                     } else {
                         this.updateUIState(false);
                         this.triggerEvent('error', e.message);
+                        this.showError('Failed to start speech recognition: ' + e.message);
                     }
                 }
             } else {
-                console.error('Web Speech API not supported');
+                console.error('Web Speech API not supported or not initialized');
                 this.updateUIState(false);
-                this.triggerEvent('error', 'Web Speech API not supported');
+                this.triggerEvent('error', 'Web Speech API not supported in this browser');
+                this.showError('Speech recognition is not supported in this browser. Please try using Chrome or Edge.');
             }
         } else if (this.selectedMethod === 'local') {
             // Start local recognition - Not fully implemented yet
@@ -389,13 +509,7 @@ window.addEventListener('DOMContentLoaded', () => {
         debugButton.style.backgroundColor = '#7b1fa2';
         debugButton.style.marginLeft = '5px';
         debugButton.addEventListener('click', async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                alert('Microphone access granted! Speech recognition should work.');
-                stream.getTracks().forEach(track => track.stop());
-            } catch (err) {
-                alert(`Microphone access error: ${err.message}\nSpeech recognition requires microphone permissions.`);
-            }
+            await speechRecognition.checkMicrophonePermission();
         });
         speechControls.appendChild(debugButton);
     }

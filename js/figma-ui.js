@@ -67,4 +67,50 @@ document.addEventListener('DOMContentLoaded', function() {
       dot.classList.add('figma-braille-dot');
     });
   });
+  
+  // Apply brand color to headings with the primary color
+  document.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(heading => {
+    const computedStyle = window.getComputedStyle(heading);
+    const color = computedStyle.getPropertyValue('color');
+    
+    // If the heading has a blue color similar to our brand color
+    // Note: This is a simplified check, ideally we'd use the color-utils.js here
+    if (color.includes('rgb(37, 55, 129)') || color.includes('#253781')) {
+      heading.style.color = 'var(--color-primary)';
+    }
+  });
+  
+  // Apply theme colors to various elements
+  applyThemeColors();
 });
+
+/**
+ * Applies theme colors to elements based on their context
+ */
+function applyThemeColors() {
+  // Header backgrounds
+  document.querySelectorAll('.heading-wrapper, [class*="header"], nav').forEach(el => {
+    const computedStyle = window.getComputedStyle(el);
+    const bgColor = computedStyle.getPropertyValue('background-color');
+    
+    // If it's blue-ish, use our primary color
+    if (bgColor.includes('rgb(37, 55, 129)') || bgColor.includes('rgb(24, 160, 251)')) {
+      el.style.backgroundColor = 'var(--color-primary)';
+    }
+  });
+  
+  // Success elements
+  document.querySelectorAll('[class*="success"]').forEach(el => {
+    el.style.color = 'var(--color-success)';
+  });
+  
+  // Warning elements
+  document.querySelectorAll('[class*="warning"]').forEach(el => {
+    el.style.color = 'var(--color-warning)';
+  });
+  
+  // Error elements
+  document.querySelectorAll('[class*="error"]').forEach(el => {
+    el.style.color = 'var(--color-error)';
+  });
+}

@@ -76,6 +76,13 @@ function setupSpeechRecognitionEvents() {
             uiController.setRecordingState(true);
             recognitionActive = true;
             
+            // Add a visual indicator that the microphone is active
+            const micStatus = document.getElementById('mic-status');
+            if (micStatus) {
+                micStatus.textContent = 'Mic: Active';
+                micStatus.className = 'mic-status active';
+            }
+            
             // Clear any previous text when starting recognition
             uiController.clearInterimText();
             uiController.clearFinalText();
@@ -85,6 +92,13 @@ function setupSpeechRecognitionEvents() {
             console.log('Speech recognition ended');
             uiController.setRecordingState(false);
             recognitionActive = false;
+            
+            // Update the microphone status
+            const micStatus = document.getElementById('mic-status');
+            if (micStatus) {
+                micStatus.textContent = 'Mic: Inactive';
+                micStatus.className = 'mic-status inactive';
+            }
         });
         
         speechRecognition.on('result', (text) => {
@@ -105,7 +119,14 @@ function setupSpeechRecognitionEvents() {
             uiController.setRecordingState(false);
             recognitionActive = false;
             
-            // Show error but don't block with alert
+            // Update the microphone status to show error
+            const micStatus = document.getElementById('mic-status');
+            if (micStatus) {
+                micStatus.textContent = 'Mic: Error';
+                micStatus.className = 'mic-status error';
+            }
+            
+            // Show error with visual feedback
             const errorElement = document.createElement('div');
             errorElement.className = 'error-message';
             errorElement.textContent = `Speech recognition error: ${error}`;
@@ -222,7 +243,22 @@ async function startSpeechRecognition() {
         
         // First check if speechRecognition exists
         if (typeof speechRecognition === 'undefined') {
-            throw new Error('Speech recognition module not available');
+            throw new Error('Speech recognition module not available. Try reloading the page.');
+        }
+        
+        // Check if recognition is initialized
+        if (!speechRecognition.recognition && selectedMethod === 'webspeech') {
+            console.log('Re-initializing Web Speech API...');
+            uiController.updateSpeechLoadingProgress(30, 'Reinitializing speech engine...');
+            speechRecognition.initWebSpeechRecognition();
+        }
+        
+        // Explicitly check microphone permissions
+        uiController.updateSpeechLoadingProgress(40, 'Checking microphone permission...');
+        const permissionGranted = await speechRecognition.checkMicrophonePermission();
+        
+        if (!permissionGranted) {
+            throw new Error('Microphone permission denied. Please allow microphone access in your browser settings.');
         }
         
         // Set the selected method if supported
@@ -249,7 +285,7 @@ async function startSpeechRecognition() {
         console.log('Calling speechRecognition.startRecognition()');
         
         // This is the actual call that starts speech recognition
-        speechRecognition.startRecognition();
+        await speechRecognition.startRecognition();
         
         // Complete progress and hide loading bar after a delay
         uiController.updateSpeechLoadingProgress(100, 'Recognition started!');
@@ -259,7 +295,26 @@ async function startSpeechRecognition() {
     } catch (error) {
         console.error('Failed to start recognition:', error);
         uiController.hideSpeechLoadingBar();
-        alert(`Failed to start recognition: ${error.message}. Please try again or check if your browser supports speech recognition.`);
+        
+        // Show a more user-friendly error message
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'error-message';
+        errorMessage.textContent = `Speech recognition error: ${error.message}`;
+        errorMessage.style.color = '#ea4335';
+        errorMessage.style.padding = '10px';
+        errorMessage.style.margin = '10px 0';
+        errorMessage.style.backgroundColor = '#fce8e6';
+        errorMessage.style.borderRadius = '4px';
+        
+        const speechOutput = document.getElementById('speech-output');
+        if (speechOutput) {
+            speechOutput.prepend(errorMessage);
+            setTimeout(() => {
+                errorMessage.style.opacity = '0';
+                errorMessage.style.transition = 'opacity 1s';
+                setTimeout(() => errorMessage.remove(), 1000);
+            }, 5000);
+        }
         
         // Re-enable the start button in case of error
         const startBtn = document.getElementById('start-speech-btn');

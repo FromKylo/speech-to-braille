@@ -31,15 +31,15 @@
   --letter-spacing-normal: 0;
   --letter-spacing-wide: 0.025em;
 
-  /* Colors - Figma-like color palette */
-  --color-primary: #18A0FB;
-  --color-primary-dark: #0D8DE8;
-  --color-primary-light: #55B9FC;
+  /* Colors - Figma UI color palette */
+  --color-primary: #253781;           /* Updated to match Figma UI */
+  --color-primary-dark: #1D2C6A;      /* Darker version of primary */
+  --color-primary-light: #3B4D99;     /* Lighter version of primary */
   
-  --color-success: #1BC47D;
-  --color-warning: #F2B500;
-  --color-error: #F24822;
-  --color-information: #18A0FB;
+  --color-success: #419822;           /* From Figma UI */
+  --color-warning: #D97706;           /* From Figma UI */
+  --color-error: #AB1C1C;             /* From Figma UI */
+  --color-information: #253781;       /* Same as primary */
   
   /* Neutrals */
   --color-black: #000000;
@@ -56,19 +56,19 @@
   --color-gray-5: #F8F8F8;
   --color-white: #FFFFFF;
   
-  /* Semantic colors */
-  --text-primary: var(--color-gray-100);
-  --text-secondary: var(--color-gray-70);
-  --text-tertiary: var(--color-gray-50);
-  --text-disabled: var(--color-gray-30);
-  --text-inverse: var(--color-white);
+  /* Semantic colors - matched to Figma UI */
+  --text-primary: #000000;            /* For headings and important text */
+  --text-secondary: #374151;          /* For regular text */
+  --text-tertiary: #4B5563;           /* For less important text */
+  --text-disabled: #9CA3AF;           /* For disabled text */
+  --text-inverse: #FFFFFF;            /* For text on dark backgrounds */
   
-  --background-primary: var(--color-white);
-  --background-secondary: var(--color-gray-5);
-  --background-tertiary: var(--color-gray-10);
+  --background-primary: #FFFFFF;
+  --background-secondary: #F9FAFB;
+  --background-tertiary: #F3F4F6;
   --background-brand: var(--color-primary);
   
-  --border-default: var(--color-gray-20);
+  --border-default: #E5E7EB;
   --border-focused: var(--color-primary);
 
   /* Spacing */
@@ -197,7 +197,7 @@ a:hover {
 }
 
 .figma-button-danger:hover {
-  background-color: #E03E21;
+  background-color: #C01F1F; /* Slightly darker than --color-error */
 }
 
 /* Success button */
@@ -207,7 +207,7 @@ a:hover {
 }
 
 .figma-button-success:hover {
-  background-color: #15A96C;
+  background-color: #39871E; /* Slightly darker than --color-success */
 }
 
 /* Disabled button */
@@ -276,20 +276,20 @@ a:hover {
   width: 30px;
   height: 30px;
   border-radius: var(--radius-full);
-  background-color: var(--color-gray-10);
-  border: 1px solid var(--color-gray-20);
+  background-color: var(--background-tertiary);
+  border: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: var(--font-size-xs);
-  color: var(--color-gray-50);
+  color: var(--text-tertiary);
   transition: all var(--transition-fast);
 }
 
 .figma-braille-dot.active {
   background-color: var(--color-primary);
   color: white;
-  box-shadow: 0 0 8px rgba(24, 160, 251, 0.6);
+  box-shadow: 0 0 8px rgba(37, 55, 129, 0.6); /* Updated to match new primary color */
   transform: scale(1.05);
 }
 
