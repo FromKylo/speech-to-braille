@@ -572,13 +572,17 @@ const uiController = {
     setCycleMode: function(mode) {
         console.log(`Setting cycle mode UI to: ${mode}`);
         
+        // Get timing values from config with fallbacks
+        const listeningTime = (window.config ? window.config.timings.listeningPhase : 3);
+        const outputTime = (window.config ? window.config.timings.outputPhase : 7);
+        
         if (cycleModeStatus) {
             if (mode === 'listening') {
                 cycleModeStatus.className = 'always-on';
-                cycleModeStatus.textContent = '● Listening Mode (5s)';
+                cycleModeStatus.textContent = `● Listening Mode (${listeningTime}s)`;
             } else {
                 cycleModeStatus.className = 'output-mode';
-                cycleModeStatus.textContent = '◉ Output Mode (5s)';
+                cycleModeStatus.textContent = `◉ Output Mode (${outputTime}s)`;
             }
         } else {
             console.error('cycleModeStatus element not found');

@@ -437,15 +437,28 @@ function startListeningCycle() {
     cycleMode = 'listening';
     updateCycleUI();
     
-    // Start the cycle timer
-    cycleTimer = setInterval(() => {
-        // Toggle between listening and output modes
-        cycleMode = cycleMode === 'listening' ? 'output' : 'listening';
-        console.log(`Cycle timer triggered - switching to ${cycleMode} mode`);
-        updateCycleUI();
-    }, CYCLE_DURATION);
+    // Calculate duration based on current mode and config
+    const getCurrentDuration = () => {
+        return (cycleMode === 'listening' ? 
+            (window.config ? window.config.timings.listeningPhase : 3) : 
+            (window.config ? window.config.timings.outputPhase : 7)) * 1000;
+    };
     
-    console.log(`Cycle timer set with interval of ${CYCLE_DURATION}ms`);
+    // Start the cycle timer with dynamic duration
+    const setupNextCycle = () => {
+        const duration = getCurrentDuration();
+        console.log(`Setting up ${cycleMode} cycle for ${duration}ms`);
+        
+        cycleTimer = setTimeout(() => {
+            // Toggle between listening and output modes
+            cycleMode = cycleMode === 'listening' ? 'output' : 'listening';
+            console.log(`Cycle timer triggered - switching to ${cycleMode} mode`);
+            updateCycleUI();
+            setupNextCycle(); // Setup next cycle with new duration
+        }, duration);
+    };
+    
+    setupNextCycle();
 }
 
 // Function to update UI based on cycle mode

@@ -201,7 +201,7 @@ function speakIntroduction() {
             console.log('Forcing transition from introduction after timeout');
             finishIntroduction(speakingIndicator);
         }
-    }, 4000);
+    }, window.config ? window.config.timings.introductionPhase * 1000 : 10000); // Use config value with fallback
 }
 
 // Helper function to finish introduction and transition to next phase
@@ -222,9 +222,16 @@ function finishIntroduction(speakingIndicator) {
     // Direct call to phase controller if available
     if (window.phaseControl && typeof window.phaseControl.showPhase === 'function') {
         window.phaseControl.showPhase('recording');
+        return; // Added return to prevent multiple transitions
     }
     
-    // As a fallback, also call the app's cycle function
+    // As a fallback, try to find the showPhase function in the window scope
+    if (typeof window.showPhase === 'function') {
+        window.showPhase('recording');
+        return; // Added return to prevent multiple transitions
+    }
+    
+    // As another fallback, also call the app's cycle function
     if (window.app && typeof window.app.startListeningCycle === 'function') {
         window.app.startListeningCycle();
     }

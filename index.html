@@ -90,7 +90,8 @@
             margin: 0 auto;
         }
     </style>
-    <script src="config.js"></script>
+    <!-- Load config early to ensure it's available to all scripts -->
+    <script src="js/config.js"></script>
 </head>
 <body>
     <!-- TITLE PORTION -->
@@ -372,15 +373,33 @@
     <script>
         // Phase control management
         document.addEventListener('DOMContentLoaded', function() {
+            // Ensure config is loaded
+            if (!window.config) {
+                console.error('Configuration not loaded! Falling back to default values.');
+                window.config = {
+                    timings: {
+                        introductionPhase: 10,
+                        listeningPhase: 3,
+                        outputPhase: 7
+                    },
+                    behavior: {
+                        loopListeningIfNoMatch: true
+                    }
+                };
+            }
+            
             // Update UI elements with config values
-            document.getElementById('intro-time').textContent = config.timings.introductionPhase;
-            document.getElementById('listen-time').textContent = config.timings.listeningPhase;
-            document.getElementById('output-time').textContent = config.timings.outputPhase;
+            const introTimeElement = document.getElementById('intro-time');
+            const listenTimeElement = document.getElementById('listen-time');
+            const outputTimeElement = document.getElementById('output-time');
+            
+            if (introTimeElement) introTimeElement.textContent = config.timings.introductionPhase;
+            if (listenTimeElement) listenTimeElement.textContent = config.timings.listeningPhase;
+            if (outputTimeElement) outputTimeElement.textContent = config.timings.outputPhase;
 
             // Phase control variables
             let currentPhase = 'introduction';
             let phaseTimer = null;
-            const PHASE_DURATION = 5000; // 5 seconds per phase
             
             // Flag to track if we've processed the introduction event
             window.hasMovedPastIntro = false;
@@ -433,89 +452,103 @@
                 recordingPhase.classList.remove('phase-active');
                 outputPhase.classList.remove('phase-active');
                 
-                // Show the selected phase
-                if (phase === 'introduction') {
-                    introPhase.classList.add('phase-active');
-                    
-                    // Automatically transition to recording phase after 5 seconds
-                    // This is a fallback if TTS or events fail
-                    setTimeout(() => {
-                        if (currentPhase === 'introduction' && !window.hasMovedPastIntro) {
-                            console.log('Automatic timeout from introduction phase');
-                            window.hasMovedPastIntro = true;
-                            showPhase('recording');
+                // Add a small timeout to force a reflow before showing the next phase
+                setTimeout(() => {
+                    // Show the selected phase
+                    if (phase === 'introduction') {
+                        introPhase.classList.add('phase-active');
+                        
+                        // Use config value for introduction timer
+                        setTimeout(() => {
+                            if (currentPhase === 'introduction' && !window.hasMovedPastIntro) {
+                                console.log('Automatic timeout from introduction phase');
+                                window.hasMovedPastIntro = true;
+                                showPhase('recording');
+                            }
+                        }, config.timings.introductionPhase * 1000);
+                        
+                    } else if (phase === 'recording') {
+                        recordingPhase.classList.add('phase-active');
+                        startPhaseTimer(recordingTimer, 'output', config.timings.listeningPhase);
+                        
+                        // Clear any previous text to ensure we only show current sentence
+                        const finalTextElement = document.getElementById('final-text');
+                        if (finalTextElement) finalTextElement.textContent = '';
+                        const interimTextElement = document.getElementById('interim-text');
+                        if (interimTextElement) interimTextElement.textContent = '';
+                        
+                        // Play recording sound
+                        if (window.textToSpeech && textToSpeech.playRecordingAudio) {
+                            textToSpeech.playRecordingAudio();
+                        } else if (window.soundEffects) {
+                            window.soundEffects.playListeningModeSound();
                         }
-                    }, 5000);
-                    
-                } else if (phase === 'recording') {
-                    recordingPhase.classList.add('phase-active');
-                    startPhaseTimer(recordingTimer, 'output');
-                    
-                    // Clear any previous text to ensure we only show current sentence
-                    const finalTextElement = document.getElementById('final-text');
-                    if (finalTextElement) finalTextElement.textContent = '';
-                    const interimTextElement = document.getElementById('interim-text');
-                    if (interimTextElement) interimTextElement.textContent = '';
-                    
-                    // Play recording sound
-                    if (window.textToSpeech && textToSpeech.playRecordingAudio) {
-                        textToSpeech.playRecordingAudio();
-                    } else if (window.soundEffects) {
-                        window.soundEffects.playListeningModeSound();
-                    }
-                    
-                    // Start speech recognition - add a small delay to ensure UI is ready
-                    setTimeout(() => {
-                        if (window.app && app.startSpeechRecognition) {
-                            console.log('Starting speech recognition for recording phase');
-                            app.startSpeechRecognition();
-                            updateRecognitionStatus(true);
+                        
+                        // Start speech recognition - add a small delay to ensure UI is ready
+                        setTimeout(() => {
+                            if (window.app && app.startSpeechRecognition) {
+                                console.log('Starting speech recognition for recording phase');
+                                app.startSpeechRecognition();
+                                updateRecognitionStatus(true);
+                            }
+                        }, 300);
+                        
+                    } else if (phase === 'output') {
+                        outputPhase.classList.add('phase-active');
+                        startPhaseTimer(outputTimer, 'recording', config.timings.outputPhase);
+                        
+                        // Play output sound
+                        if (window.textToSpeech && textToSpeech.playOutputAudio) {
+                            textToSpeech.playOutputAudio();
+                        } else if (window.soundEffects) {
+                            window.soundEffects.playOutputModeSound();
                         }
-                    }, 300);
-                    
-                } else if (phase === 'output') {
-                    outputPhase.classList.add('phase-active');
-                    startPhaseTimer(outputTimer, 'recording');
-                    
-                    // Play output sound
-                    if (window.textToSpeech && textToSpeech.playOutputAudio) {
-                        textToSpeech.playOutputAudio();
-                    } else if (window.soundEffects) {
-                        window.soundEffects.playOutputModeSound();
+                        
+                        // Pause speech recognition
+                        if (window.app && app.stopSpeechRecognition) {
+                            app.stopSpeechRecognition();
+                            updateRecognitionStatus(false);
+                        }
+                        
+                        // Process the current text for braille output
+                        processFinalText();
                     }
                     
-                    // Pause speech recognition
-                    if (window.app && app.stopSpeechRecognition) {
-                        app.stopSpeechRecognition();
-                        updateRecognitionStatus(false);
-                    }
-                    
-                    // Process the current text for braille output
-                    processFinalText();
-                }
-                
-                currentPhase = phase;
+                    currentPhase = phase;
+                }, 10);
             }
             
             // Timer countdown function
-            function startPhaseTimer(timerElement, nextPhase) {
+            function startPhaseTimer(timerElement, nextPhase, duration) {
                 if (phaseTimer) clearInterval(phaseTimer);
                 
-                let secondsLeft = 5;
-                timerElement.textContent = secondsLeft;
-                timerElement.style.background = 'conic-gradient(#4285f4 0%, transparent 0%)';
+                if (!timerElement) {
+                    console.error('Timer element not found');
+                    return;
+                }
+                
+                let timeLeft = duration;
+                timerElement.textContent = timeLeft;
+                
+                // Update the timer appearance
+                timerElement.style.background = `conic-gradient(#4285f4 0%, transparent 0%)`;
                 
                 phaseTimer = setInterval(() => {
-                    secondsLeft--;
-                    if (secondsLeft <= 0) {
+                    timeLeft -= 1;
+                    
+                    // Update the timer
+                    if (timerElement) {
+                        timerElement.textContent = timeLeft;
+                        
+                        // Update the background conic gradient to show progress
+                        const progress = (1 - timeLeft/duration) * 100;
+                        timerElement.style.background = `conic-gradient(#4285f4 ${progress}%, transparent ${progress}%)`;
+                    }
+                    
+                    // If timer is done, move to next phase
+                    if (timeLeft <= 0) {
                         clearInterval(phaseTimer);
                         showPhase(nextPhase);
-                    } else {
-                        // Update timer display
-                        timerElement.textContent = secondsLeft;
-                        // Update circular progress
-                        const progress = (5 - secondsLeft) / 5 * 100;
-                        timerElement.style.background = `conic-gradient(#4285f4 ${progress}%, transparent ${progress}%)`;
                     }
                 }, 1000);
             }
@@ -525,7 +558,6 @@
                 const finalTextElement = document.getElementById('final-text');
                 if (finalTextElement && finalTextElement.textContent.trim()) {
                     const text = finalTextElement.textContent.trim();
-                    
                     // If braille translator is available, process the text
                     if (window.app && app.processSpeechForBraille) {
                         app.processSpeechForBraille(text);
@@ -557,21 +589,64 @@
             // Start with introduction phase
             showPhase('introduction');
             
-            // Fallback timer for the entire introduction phase 
+            // Fallback timer for the entire introduction phase - use config value
             setTimeout(() => {
                 if (currentPhase === 'introduction') {
                     console.log('Global fallback timer triggered - forcing transition to recording phase');
                     window.hasMovedPastIntro = true;
                     showPhase('recording');
                 }
-            }, 7000);
+            }, config.timings.introductionPhase * 1000);
             
             // Make phase control available globally
             window.phaseControl = {
                 showPhase,
                 getCurrentPhase: () => currentPhase
             };
+
+            // Add debug logging for config
+            console.log('Phase timing configuration:', {
+                introduction: config.timings.introductionPhase + 's',
+                listening: config.timings.listeningPhase + 's',
+                output: config.timings.outputPhase + 's'
+            });
+            
+            // Update any UI elements showing the timings
+            const recordingIndicator = document.getElementById('recording-indicator');
+            if (recordingIndicator) {
+                recordingIndicator.textContent = `● Recording (${config.timings.listeningPhase}s)`;
+            }
+            
+            const outputIndicator = document.getElementById('output-indicator');
+            if (outputIndicator) {
+                outputIndicator.textContent = `◉ Output (${config.timings.outputPhase}s)`;
+            }
         });
+    </script>
+    
+    <!-- Debug helper for phase transitions -->
+    <script>
+        (function() {
+            const debugEl = document.createElement('div');
+            debugEl.style.position = 'fixed';
+            debugEl.style.bottom = '5px';
+            debugEl.style.right = '5px';
+            debugEl.style.background = 'rgba(0,0,0,0.7)';
+            debugEl.style.color = 'white';
+            debugEl.style.padding = '5px';
+            debugEl.style.fontSize = '10px';
+            debugEl.style.fontFamily = 'monospace';
+            debugEl.style.zIndex = '9999';
+            debugEl.id = 'phase-debug-helper';
+            document.body.appendChild(debugEl);
+            
+            // Log phase changes
+            setInterval(() => {
+                const phase = document.querySelector('.phase-container.phase-active');
+                const phaseId = phase ? phase.id : 'unknown';
+                debugEl.innerHTML = `Current visible phase: ${phaseId}<br>hasMovedPastIntro: ${window.hasMovedPastIntro}`;
+            }, 2000);
+        })();
     </script>
 </body>
 </html>
