@@ -6,16 +6,31 @@
 // Speech recognition state
 let recognitionActive = false;
 
+// App configuration
+const CONFIG = {
+    PHASES: {
+        INTRODUCTION: {
+            DURATION: 10000, // 10 seconds for introduction phase
+            NAME: 'introduction'
+        },
+        RECORDING: {
+            DURATION: 3000, // 3 seconds for recording phase
+            NAME: 'recording'
+        },
+        OUTPUT: {
+            DURATION: 7000, // 7 seconds for output phase
+            NAME: 'output'
+        }
+    }
+};
+
 // Add cycle tracking variables
-let cycleMode = 'listening'; // 'listening' or 'output'
+let cycleMode = CONFIG.PHASES.INTRODUCTION.NAME;
 let cycleTimer = null;
-const CYCLE_DURATION = 5000; // 5 seconds for each phase
 
 // Initialize the application
 function initApp() {
-    console.log('Initializing application...');
-    
-    // No need to call speakWelcome here - we'll auto-start speakIntroduction from text-to-speech.js
+    console.log('Initializing application with updated timing configuration...');
     
     // Force-enable the start button initially to ensure it's clickable
     const startBtn = document.getElementById('start-speech-btn');
@@ -151,31 +166,24 @@ function setupSpeechRecognitionEvents() {
 
 // Function to load the local model
 async function loadLocalModel() {
-    // Show loading bar
-    uiController.showLoadingBar();
-    uiController.updateLoadingProgress(0, 'Preparing to download model...');
-    
     try {
-        // First, try to use the local worker in /js directory
-        const localWorkerPath = '/js/vosk-worker.js';
-        let workerPath;
+        console.log('Loading local speech recognition model...');
         
-        try {
-            // Check if our custom worker exists
-            const response = await fetch(localWorkerPath, { method: 'HEAD' });
-            if (response.ok) {
-                workerPath = localWorkerPath;
-                console.log('Using local worker at:', workerPath);
-            } else {
-                workerPath = '/node_modules/vosk-browser/dist/vosk-worker.js';
-                console.log('Local worker not found, using node_modules worker');
-            }
-        } catch (e) {
-            workerPath = '/node_modules/vosk-browser/dist/vosk-worker.js';
-            console.log('Error checking worker path, using fallback:', e);
+        // Show loading UI
+        uiController.showLoadingBar();
+        uiController.updateLoadingProgress(10, 'Initializing local model...');
+        
+        // Check if speech recognition module is available
+        if (typeof speechRecognition === 'undefined') {
+            throw new Error('Speech recognition module not available');
         }
         
-        // Set worker path if method exists
+        // Setup worker path (Vosk worker)
+        const workerPath = 'js/vosk-worker.js';
+        console.log('Setting worker path:', workerPath);
+        
+        uiController.updateLoadingProgress(20, 'Setting up worker...');
+        
         if (typeof speechRecognition.setWorkerPath === 'function') {
             speechRecognition.setWorkerPath(workerPath);
         } else {
@@ -210,9 +218,8 @@ async function loadLocalModel() {
         setTimeout(() => {
             uiController.hideLoadingBar();
             uiController.resetProgressBar();
-        }, 5000);
+        }, 3000);
         
-        alert('Failed to load the speech recognition model. Please try the Web Speech API option instead.');
         return false;
     }
 }
@@ -332,30 +339,39 @@ function stopSpeechRecognition() {
 
 // Function to process speech results for Braille matching
 function processSpeechForBraille(text) {
-    if (!brailleTranslator.isDatabaseLoaded()) {
-        console.warn('Braille database not loaded yet');
+    if (!text || !text.trim()) {
+        console.log('No text to process for Braille');
         return;
     }
     
-    const result = brailleTranslator.processText(text);
+    console.log('Processing text for Braille matching:', text);
     
-    if (result) {
-        // We found a match!
+    // Check if braille translator is available
+    if (typeof brailleTranslator === 'undefined') {
+        console.error('Braille translator not available');
+        return;
+    }
+    
+    // Get Braille translation result
+    const result = brailleTranslator.translate(text);
+    
+    if (result && result.word) {
+        console.log('Braille match found:', result);
+        
+        // Show the matched result in UI
         uiController.showBrailleMatch(result);
         
-        // Debug the raw array content to verify what we're receiving
-        console.log('Raw braille array for ' + result.word + ':', result.array);
-        
-        // Format and display the braille array
+        // Format braille array for display
         let formattedArray;
-        
-        if (typeof formatBrailleArrayForDisplay === 'function') {
-            // Check if the utility function from imported module is available
-            formattedArray = formatBrailleArrayForDisplay(result.array);
-            console.log('Using utility formatBrailleArrayForDisplay function:', formattedArray);
-        } else {
-            // Fallback to our own implementation
-            formattedArray = '{' + (Array.isArray(result.array) ? result.array.join(',') : '') + '}';
+        try {
+            if (typeof brailleArrayFormatter !== 'undefined') {
+                formattedArray = brailleArrayFormatter.format(result.array);
+            } else {
+                // Fallback formatting if formatter is not available
+                formattedArray = JSON.stringify(result.array);
+            }
+        } catch (error) {
+            console.error('Error formatting braille array:', error);
             
             // For nested arrays (contractions)
             if (Array.isArray(result.array) && Array.isArray(result.array[0])) {
@@ -406,152 +422,133 @@ function processSpeechForBraille(text) {
         if (window.brailleVisualizer) {
             brailleVisualizer.clearDots();
         }
-        
-        // Send empty array to ESP32 to reset all dots when no match is found
-        if (window.bleController && bleController.isConnected()) {
-            console.log('No match found - sending empty array to reset ESP32 dots');
-            bleController.sendBrailleData([])
-                .then(success => {
-                    if (success) {
-                        console.log('Reset command sent successfully to ESP32');
-                    } else {
-                        console.warn('Failed to send reset command to ESP32');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error sending reset command to ESP32:', error);
-                });
-        }
     }
 }
 
-// Function to start the listening/output cycle
-function startListeningCycle() {
-    console.log('Starting listening/output cycle');
+// Function to start the application phase cycle
+function startAppCycle() {
+    console.log('Starting application phase cycle');
     
     if (cycleTimer) {
-        clearInterval(cycleTimer);
+        clearTimeout(cycleTimer);
     }
     
-    // Set initial state to listening
-    cycleMode = 'listening';
-    updateCycleUI();
-    
-    // Start the cycle timer
-    cycleTimer = setInterval(() => {
-        // Toggle between listening and output modes
-        cycleMode = cycleMode === 'listening' ? 'output' : 'listening';
-        console.log(`Cycle timer triggered - switching to ${cycleMode} mode`);
-        updateCycleUI();
-    }, CYCLE_DURATION);
-    
-    console.log(`Cycle timer set with interval of ${CYCLE_DURATION}ms`);
+    // Set initial state to introduction
+    cycleMode = CONFIG.PHASES.INTRODUCTION.NAME;
+    updatePhaseUI();
 }
 
-// Function to update UI based on cycle mode
-function updateCycleUI() {
+// Function to update UI based on current phase
+function updatePhaseUI() {
     // Check if introduction is completed
-    if (window.textToSpeech && typeof textToSpeech.introCompleted === 'function' && !textToSpeech.introCompleted()) {
-        console.log('Introduction not completed yet, showing intro section');
-        document.querySelectorAll('.app-section').forEach(section => {
-            if (section.id === 'introduction-section') {
-                section.classList.add('active');
-                section.classList.remove('hidden');
-            } else {
-                section.classList.remove('active');
-                section.classList.add('hidden');
-            }
-        });
-        return;
-    }
-    
-    // Now handle the actual modes after intro is complete
-    if (cycleMode === 'listening') {
-        console.log('Switching to LISTENING mode');
+    if (cycleMode === CONFIG.PHASES.INTRODUCTION.NAME) {
+        console.log('Showing INTRODUCTION phase');
         
-        // Show listening section, hide others
-        document.querySelectorAll('.app-section').forEach(section => {
-            if (section.id === 'listening-section') {
-                section.classList.add('active');
-                section.classList.remove('hidden');
-                section.classList.add('phase-transition');
-                setTimeout(() => section.classList.remove('phase-transition'), 700);
-            } else if (section.id === 'troubleshooting-section') {
-                // Always show troubleshooting
-                section.classList.add('active');
-                section.classList.remove('hidden');
+        document.querySelectorAll('.phase-container').forEach(phase => {
+            if (phase.id === 'introduction-phase') {
+                phase.classList.add('phase-active');
             } else {
-                section.classList.remove('active');
-                section.classList.add('hidden');
+                phase.classList.remove('phase-active');
             }
         });
         
-        // Enable speech recognition
-        if (!recognitionActive && typeof speechRecognition !== 'undefined') {
-            speechRecognition.startRecognition();
+        // Start intro speech if available
+        if (window.textToSpeech && typeof textToSpeech.speakIntroduction === 'function') {
+            textToSpeech.speakIntroduction();
         }
         
-        // Play listening mode sound
+        // Schedule next phase after introduction duration
+        cycleTimer = setTimeout(() => {
+            cycleMode = CONFIG.PHASES.RECORDING.NAME;
+            updatePhaseUI();
+        }, CONFIG.PHASES.INTRODUCTION.DURATION);
+        
+    } else if (cycleMode === CONFIG.PHASES.RECORDING.NAME) {
+        console.log('Showing RECORDING phase');
+        
+        document.querySelectorAll('.phase-container').forEach(phase => {
+            if (phase.id === 'recording-phase') {
+                phase.classList.add('phase-active');
+            } else {
+                phase.classList.remove('phase-active');
+            }
+        });
+        
+        // Start speech recognition
+        if (!recognitionActive) {
+            startSpeechRecognition();
+        }
+        
+        // Update the timer display
+        const recordingTimer = document.getElementById('recording-timer');
+        if (recordingTimer) {
+            let secondsLeft = CONFIG.PHASES.RECORDING.DURATION / 1000;
+            recordingTimer.textContent = secondsLeft;
+            
+            // Update timer every second
+            const timerInterval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft <= 0) {
+                    clearInterval(timerInterval);
+                } else {
+                    recordingTimer.textContent = secondsLeft;
+                    // Update circular progress
+                    const progress = (CONFIG.PHASES.RECORDING.DURATION / 1000 - secondsLeft) / (CONFIG.PHASES.RECORDING.DURATION / 1000) * 100;
+                    recordingTimer.style.background = `conic-gradient(#4285f4 ${progress}%, transparent ${progress}%)`;
+                }
+            }, 1000);
+        }
+        
+        // Play recording mode sound
         if (window.textToSpeech && typeof textToSpeech.playRecordingAudio === 'function') {
             textToSpeech.playRecordingAudio();
         } else if (window.soundEffects) {
             window.soundEffects.playListeningModeSound();
         }
         
-        // Update recording indicator state
-        const recordingIndicator = document.getElementById('recording-indicator');
-        if (recordingIndicator) {
-            recordingIndicator.classList.remove('recording-off');
-            recordingIndicator.classList.add('recording-on');
-        }
+        // Schedule next phase after recording duration
+        cycleTimer = setTimeout(() => {
+            cycleMode = CONFIG.PHASES.OUTPUT.NAME;
+            updatePhaseUI();
+        }, CONFIG.PHASES.RECORDING.DURATION);
         
-        // Update UI to show we're in listening mode
-        if (typeof uiController !== 'undefined' && typeof uiController.setCycleMode === 'function') {
-            uiController.setCycleMode('listening');
-        } else {
-            console.error('uiController or setCycleMode function not available');
-            
-            // Fallback direct DOM manipulation
-            const cycleModeStatus = document.getElementById('cycle-mode-status');
-            const cycleModeIndicator = document.getElementById('cycle-mode-indicator');
-            
-            if (cycleModeStatus) {
-                cycleModeStatus.className = 'always-on';
-                cycleModeStatus.textContent = '● Listening Mode (5s)';
-            }
-            
-            if (cycleModeIndicator) {
-                cycleModeIndicator.textContent = 'Now listening for your speech...';
-            }
-        }
+    } else if (cycleMode === CONFIG.PHASES.OUTPUT.NAME) {
+        console.log('Showing OUTPUT phase');
         
-        // Clear any previous interim text
-        if (typeof uiController !== 'undefined') {
-            uiController.clearInterimText();
-        }
-    } else {
-        console.log('Switching to OUTPUT mode');
-        
-        // Show output section, hide others
-        document.querySelectorAll('.app-section').forEach(section => {
-            if (section.id === 'output-section') {
-                section.classList.add('active');
-                section.classList.remove('hidden');
-                section.classList.add('phase-transition');
-                setTimeout(() => section.classList.remove('phase-transition'), 700);
-            } else if (section.id === 'troubleshooting-section') {
-                // Always show troubleshooting
-                section.classList.add('active');
-                section.classList.remove('hidden');
+        document.querySelectorAll('.phase-container').forEach(phase => {
+            if (phase.id === 'output-phase') {
+                phase.classList.add('phase-active');
             } else {
-                section.classList.remove('active');
-                section.classList.add('hidden');
+                phase.classList.remove('phase-active');
             }
         });
         
-        // Temporarily pause recognition
-        if (recognitionActive && typeof speechRecognition !== 'undefined') {
-            speechRecognition.pauseRecognition();
+        // Stop speech recognition during output phase
+        if (recognitionActive) {
+            stopSpeechRecognition();
+        }
+        
+        // Process the current text for braille output
+        processFinalText();
+        
+        // Update the timer display
+        const outputTimer = document.getElementById('output-timer');
+        if (outputTimer) {
+            let secondsLeft = CONFIG.PHASES.OUTPUT.DURATION / 1000;
+            outputTimer.textContent = secondsLeft;
+            
+            // Update timer every second
+            const timerInterval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft <= 0) {
+                    clearInterval(timerInterval);
+                } else {
+                    outputTimer.textContent = secondsLeft;
+                    // Update circular progress
+                    const progress = (CONFIG.PHASES.OUTPUT.DURATION / 1000 - secondsLeft) / (CONFIG.PHASES.OUTPUT.DURATION / 1000) * 100;
+                    outputTimer.style.background = `conic-gradient(#4285f4 ${progress}%, transparent ${progress}%)`;
+                }
+            }, 1000);
         }
         
         // Play output mode sound
@@ -561,45 +558,37 @@ function updateCycleUI() {
             window.soundEffects.playOutputModeSound();
         }
         
-        // Ensure output indicator is visible and blinking
-        const outputIndicator = document.getElementById('output-indicator');
-        if (outputIndicator) {
-            outputIndicator.classList.remove('hidden');
-        }
+        // Schedule next phase after output duration
+        cycleTimer = setTimeout(() => {
+            cycleMode = CONFIG.PHASES.RECORDING.NAME;
+            updatePhaseUI();
+        }, CONFIG.PHASES.OUTPUT.DURATION);
+    }
+    
+    // Update the phase indicator in troubleshooting section
+    const phaseIndicator = document.getElementById('current-phase-indicator');
+    if (phaseIndicator) {
+        phaseIndicator.textContent = cycleMode.charAt(0).toUpperCase() + cycleMode.slice(1);
+    }
+    
+    // Update Arduino about phase change if BLE controller is available
+    if (window.bleController && window.bleController.isConnected()) {
+        window.bleController.setPhase(cycleMode).then(success => {
+            if (!success) {
+                console.warn('Failed to update Arduino about phase change');
+            }
+        });
+    }
+}
+
+// Process the final text to find braille matches
+function processFinalText() {
+    const finalTextElement = document.getElementById('final-text');
+    if (finalTextElement && finalTextElement.textContent.trim()) {
+        const text = finalTextElement.textContent.trim();
         
-        // Update UI to show we're in output mode
-        if (typeof uiController !== 'undefined' && typeof uiController.setCycleMode === 'function') {
-            uiController.setCycleMode('output');
-        } else {
-            console.error('uiController or setCycleMode function not available');
-            
-            // Fallback direct DOM manipulation
-            const cycleModeStatus = document.getElementById('cycle-mode-status');
-            const cycleModeIndicator = document.getElementById('cycle-mode-indicator');
-            
-            if (cycleModeStatus) {
-                cycleModeStatus.className = 'output-mode';
-                cycleModeStatus.textContent = '◉ Output Mode (5s)';
-            }
-            
-            if (cycleModeIndicator) {
-                cycleModeIndicator.textContent = 'Displaying Braille output...';
-            }
-        }
-        
-        // Process the most recent recognized text
-        const finalTextElement = document.getElementById('final-text');
-        if (finalTextElement && finalTextElement.textContent.trim()) {
-            // Get the most recent sentence or fragment
-            const text = finalTextElement.textContent.trim();
-            const sentences = text.split(/[.!?]+/);
-            const lastSentence = sentences[sentences.length - 1].trim();
-            
-            if (lastSentence) {
-                // Process this text for braille matching
-                processSpeechForBraille(lastSentence);
-            }
-        }
+        // Process this text for braille matching
+        processSpeechForBraille(text);
     }
 }
 
@@ -613,9 +602,7 @@ function forceReload() {
 // Initialize app when loaded
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
-    
-    // Start the listening/output cycle after a delay - now handled by speakWelcome
-    // This is now controlled by the text-to-speech.js once the welcome message is done
+    startAppCycle();
 });
 
 // Expose public methods
@@ -625,34 +612,7 @@ window.app = {
     stopSpeechRecognition,
     processSpeechForBraille,
     forceReload,
-    startListeningCycle,
-    getCurrentCycleMode: () => cycleMode
+    startAppCycle,
+    getCurrentPhase: () => cycleMode,
+    getConfig: () => CONFIG
 };
-
-// Modify your section transition function or event handlers to speak introduction automatically
-function showIntroductionSection() {
-    // Your existing code to show the introduction section
-    // ...
-    
-    // Speak introduction automatically
-    if (window.speakIntroduction) {
-        window.speakIntroduction();
-    }
-}
-
-// Modify your word matching function to automatically speak matched words
-function handleWordMatch(matchedWord) {
-    // Your existing code to handle matched word
-    // ...
-    
-    // Update the UI
-    const matchedWordElement = document.getElementById('matched-word');
-    if (matchedWordElement) {
-        matchedWordElement.textContent = matchedWord;
-    }
-    
-    // Automatically speak the matched word
-    if (window.speakMatchedWord) {
-        window.speakMatchedWord(matchedWord);
-    }
-}

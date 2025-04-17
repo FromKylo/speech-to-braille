@@ -63,106 +63,55 @@ function initDOMReferences() {
 
 // Function to show database debug info
 function showDatabaseDebugInfo() {
-    // Check if the CSV file exists and display diagnostic information
-    const debugDiv = document.createElement('div');
-    debugDiv.className = 'database-debug-info';
-    debugDiv.style.marginTop = '10px';
-    debugDiv.style.padding = '10px';
-    debugDiv.style.backgroundColor = '#f8f9fa';
-    debugDiv.style.border = '1px solid #dee2e6';
-    debugDiv.style.borderRadius = '4px';
+    console.log('Showing database debug info');
     
-    const debugTitle = document.createElement('h4');
-    debugTitle.textContent = 'Diagnostic Information';
-    debugTitle.style.margin = '0 0 10px 0';
-    debugDiv.appendChild(debugTitle);
+    // Create debug info elements
+    const debugInfoContainer = document.createElement('div');
+    debugInfoContainer.className = 'debug-info';
     
-    // Check file availability
-    fetch('/ueb-philb-braille-database.csv', { 
-        method: 'HEAD',
-        cache: 'no-store'
-    })
-    .then(response => {
-        const fileInfo = document.createElement('p');
-        if (response.ok) {
-            fileInfo.textContent = '✅ Database file is accessible via direct path';
-            fileInfo.style.color = '#155724';
-        } else {
-            fileInfo.textContent = '❌ Database file is not accessible via direct path';
-            fileInfo.style.color = '#721c24';
-        }
-        debugDiv.appendChild(fileInfo);
-        
-        // Add server information
-        const serverInfo = document.createElement('p');
-        serverInfo.textContent = `Server base URL: ${window.location.origin}`;
-        debugDiv.appendChild(serverInfo);
-        
-        // Add helpful suggestions
-        const suggestions = document.createElement('ul');
-        suggestions.innerHTML = `
-            <li>Make sure the file "ueb-philb-braille-database.csv" exists in the root directory</li>
-            <li>Check if the file permissions allow it to be read</li>
-            <li>Try refreshing the page with Ctrl+F5 to clear cache</li>
-            <li>Check the browser console for additional error details</li>
+    // Get config timing information if available
+    let configInfo = "Configuration not available";
+    if (window.app && app.getConfig) {
+        const config = app.getConfig();
+        configInfo = `
+            Introduction: ${config.PHASES.INTRODUCTION.DURATION/1000}s, 
+            Recording: ${config.PHASES.RECORDING.DURATION/1000}s, 
+            Output: ${config.PHASES.OUTPUT.DURATION/1000}s
         `;
-        debugDiv.appendChild(suggestions);
-    })
-    .catch(error => {
-        const errorInfo = document.createElement('p');
-        errorInfo.textContent = `Error checking file: ${error.message}`;
-        errorInfo.style.color = '#721c24';
-        debugDiv.appendChild(errorInfo);
-    })
-    .finally(() => {
-        brailleStatus.appendChild(debugDiv);
-    });
+    }
+    
+    debugInfoContainer.innerHTML = `
+        <h4>Debug Information</h4>
+        <p>Phase Timing: ${configInfo}</p>
+        <p>Browser: ${navigator.userAgent}</p>
+        <p>Online: ${navigator.onLine ? 'Yes' : 'No'}</p>
+        <p>Time: ${new Date().toLocaleTimeString()}</p>
+    `;
+    
+    // Add to the braille status element
+    if (brailleStatus) {
+        brailleStatus.appendChild(debugInfoContainer);
+    }
 }
 
 // Function to update model status indicator  
 function updateModelStatus(model) {
     if (!modelBadge) return;
     
-    modelBadge.className = 'model-badge';
-    
-    switch(model) {
+    switch (model) {
         case 'webspeech':
-            modelBadge.classList.add('web-speech');
             modelBadge.textContent = 'Web Speech API';
+            modelBadge.className = 'model-badge web';
             break;
         case 'local':
-            modelBadge.classList.add('vosk-model');
             modelBadge.textContent = 'Local Model';
+            modelBadge.className = 'model-badge local';
             break;
+        case 'none':
         default:
-            modelBadge.classList.add('no-model');
-            modelBadge.textContent = 'Not Selected';
-    }
-}
-
-// Function to update UI based on recording state
-function setRecordingState(isRecording) {
-    console.log(`Setting recording state: ${isRecording}`);
-    window.recognitionActive = isRecording;
-    
-    // Update button states
-    if (startSpeechBtn) startSpeechBtn.disabled = isRecording;
-    if (stopSpeechBtn) stopSpeechBtn.disabled = !isRecording;
-    
-    // Update recording indicator
-    if (recordingIndicator) {
-        if (isRecording) {
-            recordingIndicator.className = 'recording-on';
-            recordingIndicator.textContent = '● Recording';
-        } else {
-            recordingIndicator.className = 'recording-off';
-            recordingIndicator.textContent = '● Recording';
-        }
-    }
-    
-    // Clear interim text if stopping
-    if (!isRecording && interimTextElement) {
-        interimTextElement.textContent = '';
+            modelBadge.textContent = 'No Model';
+            modelBadge.className = 'model-badge offline';
+            break;
     }
 }
 
@@ -178,11 +127,18 @@ function playModeSound(mode) {
     outputSound.currentTime = 0;
     
     // Play the appropriate sound
-    if (mode === 'listening') {
+    if (mode === 'recording') {
         listeningSound.play().catch(err => console.log('Could not play sound:', err));
     } else if (mode === 'output') {
         outputSound.play().catch(err => console.log('Could not play sound:', err));
     }
+}
+
+// Helper function to force reload the page clearing cache
+function forceReload() {
+    console.log('Forcing page reload with cache clear...');
+    // Add timestamp to URL to bypass cache
+    window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
 }
 
 // UI-related methods for export
@@ -313,6 +269,7 @@ const uiController = {
         
         if (typeof speechRecognition !== 'undefined' && typeof speechRecognition.isSupported === 'function') {
             const isSupported = speechRecognition.isSupported();
+            
             console.log('Speech recognition supported:', isSupported);
             
             if (isSupported) {
@@ -460,6 +417,33 @@ const uiController = {
         if (startSpeechBtn) startSpeechBtn.disabled = isRecording;
         if (stopSpeechBtn) stopSpeechBtn.disabled = !isRecording;
         
+        // Update recording indicator
+        if (recordingIndicator) {
+            if (isRecording) {
+                recordingIndicator.className = 'recording-on';
+                recordingIndicator.textContent = '● Recording';
+                if (window.app && window.app.getConfig) {
+                    recordingIndicator.textContent = `● Recording (${window.app.getConfig().PHASES.RECORDING.DURATION/1000}s)`;
+                }
+            } else {
+                recordingIndicator.className = 'recording-off';
+                recordingIndicator.textContent = '● Recording';
+            }
+        }
+        
+        // Update the recognition status in troubleshooting area
+        const recognitionStatus = document.getElementById('recognition-active-status');
+        if (recognitionStatus) {
+            recognitionStatus.textContent = isRecording ? 'Yes' : 'No';
+            recognitionStatus.style.color = isRecording ? '#34a853' : '#ea4335';
+        }
+        
+        // Update last updated timestamp
+        const lastUpdated = document.getElementById('last-updated');
+        if (lastUpdated) {
+            lastUpdated.textContent = new Date().toLocaleTimeString();
+        }
+        
         // Clear interim text if stopping
         if (!isRecording && interimTextElement) {
             interimTextElement.textContent = '';
@@ -492,40 +476,50 @@ const uiController = {
     showBrailleMatch: function(result) {
         if (!noMatchInfo || !brailleResult || !matchedWordElement || 
             !brailleLanguageElement || !brailleSymbolElement) return;
-            
-        noMatchInfo.classList.add('hidden');
-        brailleResult.classList.remove('hidden');
         
-        // Update UI with matched word and braille symbol
+        // Hide no match message and show braille result
+        noMatchInfo.style.display = 'none';
+        brailleResult.style.display = 'block';
+        
+        // Update UI with the result
         matchedWordElement.textContent = result.word;
-        brailleSymbolElement.textContent = result.braille;
+        brailleLanguageElement.textContent = result.language || 'UEB';
+        brailleSymbolElement.innerHTML = result.symbol || '';
         
-        // Display the language directly without formatting
-        brailleLanguageElement.textContent = result.language;
-        
-        // Auto-speak the word (adding delay to ensure TTS is ready)
-        setTimeout(() => {
-            if (window.textToSpeech) {
-                window.textToSpeech.speak(result.word);
-            }
-        }, 500);
+        // Speak the matched word if in output phase
+        if (window.app && 
+            window.app.getCurrentPhase && 
+            window.app.getCurrentPhase() === 'output' &&
+            window.textToSpeech) {
+            window.textToSpeech.speakMatchedWord(result.word);
+        }
     },
     
+    // Show no match found
     showNoMatch: function() {
-        if (!brailleResult || !noMatchInfo) return;
-        brailleResult.classList.add('hidden');
-        noMatchInfo.classList.remove('hidden');
+        if (!noMatchInfo || !brailleResult) return;
+        
+        // Hide braille result and show no match message
+        brailleResult.style.display = 'none';
+        noMatchInfo.style.display = 'block';
+        
+        // Clear fields
+        if (matchedWordElement) matchedWordElement.textContent = 'None';
+        if (brailleLanguageElement) brailleLanguageElement.textContent = 'N/A';
+        if (brailleSymbolElement) brailleSymbolElement.innerHTML = '';
+        if (brailleArrayElement) brailleArrayElement.textContent = '[]';
     },
     
+    // Update braille array display
     updateBrailleArray: function(formattedArray) {
         if (brailleArrayElement) brailleArrayElement.textContent = formattedArray;
     },
-
+    
     // Show speech loading bar
     showSpeechLoadingBar: function() {
         if (speechLoadingContainer) speechLoadingContainer.style.display = 'block';
     },
-
+    
     // Hide speech loading bar
     hideSpeechLoadingBar: function() {
         if (speechLoadingContainer) speechLoadingContainer.style.display = 'none';
@@ -543,7 +537,7 @@ const uiController = {
     // Add new method to speak the matched word
     speakMatchedWord: function() {
         // Check if we're in output mode
-        if (window.app && window.app.getCurrentCycleMode() !== 'output') {
+        if (window.app && window.app.getCurrentPhase && window.app.getCurrentPhase() !== 'output') {
             console.log('Cannot speak word - not in output mode');
             return;
         }
@@ -568,83 +562,41 @@ const uiController = {
         }
     },
 
-    // Add new method to update UI based on cycle mode
-    setCycleMode: function(mode) {
-        console.log(`Setting cycle mode UI to: ${mode}`);
-        
-        if (cycleModeStatus) {
-            if (mode === 'listening') {
-                cycleModeStatus.className = 'always-on';
-                cycleModeStatus.textContent = '● Listening Mode (5s)';
-            } else {
-                cycleModeStatus.className = 'output-mode';
-                cycleModeStatus.textContent = '◉ Output Mode (5s)';
-            }
-        } else {
-            console.error('cycleModeStatus element not found');
-        }
-        
-        if (cycleModeIndicator) {
-            cycleModeIndicator.textContent = mode === 'listening' ? 
-                'Now listening for your speech...' : 
-                'Displaying Braille output...';
-        } else {
-            console.error('cycleModeIndicator element not found');
-        }
-        
-        // If in output mode, make sure to speak the currently matched word
-        if (mode === 'output') {
-            const matchedWord = document.getElementById('matched-word');
-            if (matchedWord && matchedWord.textContent && matchedWord.textContent !== 'None') {
-                if (window.textToSpeech) {
-                    window.textToSpeech.speak(matchedWord.textContent);
-                }
-            }
-        }
+    // Add new method to update UI based on phase
+    setPhaseDisplay: function(phase) {
+        console.log(`Setting phase display to: ${phase}`);
 
-        // Play appropriate sound for mode change
-        if (typeof playModeSound === 'function') {
-            playModeSound(mode);
-        } else if (window.soundEffects) {
-            if (mode === 'listening') {
-                window.soundEffects.playListeningModeSound();
-            } else {
-                window.soundEffects.playOutputModeSound();
-            }
+        // Get the phase durations from app configuration if available
+        let phaseDurations = {
+            introduction: 10,
+            recording: 3,
+            output: 7
+        };
+        
+        if (window.app && window.app.getConfig) {
+            const config = window.app.getConfig();
+            phaseDurations = {
+                introduction: config.PHASES.INTRODUCTION.DURATION / 1000,
+                recording: config.PHASES.RECORDING.DURATION / 1000,
+                output: config.PHASES.OUTPUT.DURATION / 1000
+            };
         }
+        
+        // Update status display
+        if (recordingIndicator && phase === 'recording') {
+            recordingIndicator.textContent = `● Recording (${phaseDurations.recording}s)`;
+        }
+        
+        // Update current phase indicator in troubleshooting area
+        const phaseIndicator = document.getElementById('current-phase-indicator');
+        if (phaseIndicator) {
+            phaseIndicator.textContent = phase.charAt(0).toUpperCase() + phase.slice(1);
+        }
+        
+        // Play appropriate sound for phase change
+        playModeSound(phase);
     }
 };
-
-// Helper function to force reload the page clearing cache
-function forceReload() {
-    console.log('Forcing page reload with cache clear...');
-    // Add timestamp to URL to bypass cache
-    window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
-}
-
-// When showing the introduction section, speak the welcome text
-function showIntroductionSection() {
-    // Your existing code to display the introduction section
-    // ...
-    
-    // Automatically speak the introduction
-    setTimeout(() => {
-        if (window.speakText) {
-            window.speakText("Welcome to the Speech to Braille converter! This application will help you learn Braille.");
-        }
-    }, 1000); // Short delay to ensure everything is loaded
-}
-
-// When displaying a matched word, speak it automatically
-function displayMatchedWord(word, brailleSymbol, brailleArray, language) {
-    // Your existing code to update the UI
-    // ...
-    
-    // Automatically speak the matched word
-    if (window.speakText) {
-        window.speakText(`Matched word: ${word}`);
-    }
-}
 
 // Export UI controller
 window.uiController = uiController;

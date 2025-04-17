@@ -1,152 +1,132 @@
-// Improved text-to-speech with default voice and Chrome fixes
+/**
+ * Text-to-Speech Module for Speech to Braille App
+ * Provides speech synthesis and audio feedback
+ */
 
-// Create a proper namespace
-window.textToSpeech = {};
+// Track if introduction has been completed
+let introCompleted = false;
 
-// Default voice settings
-const defaultVoiceSettings = {
-    lang: 'en-US',
-    pitch: 1.0,
-    rate: 1.0,
-    volume: 1.0
-};
-
-// Voice cache to avoid re-fetching voices
-let cachedVoice = null;
-let isSpeaking = false;
-let resumeTimer = null; // Timer for Chrome resume fix
-let introCompleted = false; // Track if introduction has been completed
-
-// Chrome-specific fix: Keep the speech synthesis active
-function startChromeWorkaround() {
-    // Clear any existing timer
-    if (resumeTimer) {
-        clearInterval(resumeTimer);
+// Initialize when page is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Pre-initialize speech synthesis to prevent delay on first use
+    if ('speechSynthesis' in window) {
+        // Create a silent utterance to initialize the engine
+        const silent = new SpeechSynthesisUtterance('');
+        silent.volume = 0;
+        window.speechSynthesis.speak(silent);
+        window.speechSynthesis.cancel();
+        
+        console.log('Speech synthesis initialized');
+    } else {
+        console.warn('Speech synthesis not supported in this browser');
     }
-    
-    // Set up a timer to call resume() every 10 seconds
-    // This prevents Chrome from pausing speech synthesis during inactivity
-    resumeTimer = setInterval(() => {
-        if (window.speechSynthesis) {
-            // Only resume if not speaking to avoid interruptions
-            if (!isSpeaking && window.speechSynthesis.pending === false) {
-                console.log("Applying Chrome resume() fix");
-                window.speechSynthesis.resume();
-            }
-        }
-    }, 10000);
-    
-    console.log("Chrome speech synthesis workaround enabled");
-}
-
-// Initialize speech synthesis on page load
-document.addEventListener('DOMContentLoaded', () => {
-    // Wait a bit to avoid conflicts with speech-init.js
-    setTimeout(() => {
-        initSpeechSynthesis().then(() => {
-            // Auto-start introduction phase after voice is ready
-            speakIntroduction();
-        });
-    }, 1000);
 });
 
-// Initialize and set up the default voice
-async function initSpeechSynthesis() {
-    console.log("Initializing speech synthesis with Chrome fixes");
+// Get the preferred voice for speech
+function getPreferredVoice() {
+    if (!('speechSynthesis' in window)) return null;
     
-    // Start Chrome workaround immediately
-    startChromeWorkaround();
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return null;
     
-    if (window.speechSynthesis) {
-        // Wait for voices to be loaded if needed
-        if (window.speechSynthesis.getVoices().length === 0) {
-            return new Promise(resolve => {
-                window.speechSynthesis.onvoiceschanged = () => {
-                    const voices = window.speechSynthesis.getVoices();
-                    // Try to find a good English voice
-                    cachedVoice = voices.find(voice => 
-                        voice.lang.includes('en-US') && voice.default) || 
-                        voices.find(voice => voice.lang.includes('en')) || 
-                        voices[0];
-                    console.log("Voices loaded, selected:", cachedVoice?.name);
-                    resolve();
-                };
-            });
-        } else {
-            const voices = window.speechSynthesis.getVoices();
-            cachedVoice = voices.find(voice => 
-                voice.lang.includes('en-US') && voice.default) || 
-                voices.find(voice => voice.lang.includes('en')) || 
-                voices[0];
-            console.log("Voices already loaded, selected:", cachedVoice?.name);
-        }
-    } else {
-        console.warn("Speech synthesis not supported in this browser");
+    // Preferred voices in order (Google US English, then any US English, then any English)
+    const googleUSVoice = voices.find(voice => voice.name === 'Google US English' && voice.lang.startsWith('en'));
+    if (googleUSVoice) return googleUSVoice;
+    
+    const usEnglishVoice = voices.find(voice => voice.lang === 'en-US');
+    if (usEnglishVoice) return usEnglishVoice;
+    
+    const englishVoice = voices.find(voice => voice.lang.startsWith('en'));
+    if (englishVoice) return englishVoice;
+    
+    // Default to first available voice if no English voice found
+    return voices[0];
+}
+
+// Chrome-specific workaround for ensuring voices are loaded
+function ensureVoicesLoaded(callback) {
+    if (!('speechSynthesis' in window)) return callback(false);
+    
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+        return callback(true);
     }
+    
+    // Set up an event for when voices are loaded
+    window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        return callback(true);
+    };
+    
+    // Fallback if voices don't load within 2 seconds
+    setTimeout(() => {
+        if (!window.speechSynthesis.onvoiceschanged) return;
+        window.speechSynthesis.onvoiceschanged = null;
+        return callback(false);
+    }, 2000);
 }
 
 // Function to speak text with the selected voice
 function speakText(text, callback) {
-    if (!window.speechSynthesis) {
-        console.warn("Speech synthesis not available");
-        if (callback) callback();
+    if (!('speechSynthesis' in window)) {
+        console.warn('Speech synthesis not supported');
+        if (typeof callback === 'function') callback();
         return;
     }
     
-    // Stop any current speech
-    stopSpeaking();
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
     
+    // Create utterance
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = defaultVoiceSettings.lang;
-    utterance.pitch = defaultVoiceSettings.pitch;
-    utterance.rate = defaultVoiceSettings.rate;
-    utterance.volume = defaultVoiceSettings.volume;
     
-    // Set the default voice if available
-    if (cachedVoice) {
-        utterance.voice = cachedVoice;
-    }
-    
-    // Set up speaking indicator
-    const speakingIndicator = document.getElementById('speaking-indicator');
-    if (speakingIndicator) {
-        speakingIndicator.classList.remove('hidden');
-    }
-    isSpeaking = true;
-    
-    // Set up callbacks
-    utterance.onend = function() {
-        isSpeaking = false;
-        if (speakingIndicator) {
-            speakingIndicator.classList.add('hidden');
-        }
-        if (callback && typeof callback === 'function') {
-            callback();
-        }
+    // Add event handlers
+    utterance.onend = () => {
+        // Update speaking indicator status
+        const speakingIndicator = document.getElementById('speaking-indicator');
+        if (speakingIndicator) speakingIndicator.classList.add('hidden');
+        
+        if (typeof callback === 'function') callback();
     };
     
-    utterance.onerror = function(event) {
+    utterance.onerror = (event) => {
         console.error('Speech synthesis error:', event);
-        isSpeaking = false;
-        if (speakingIndicator) {
-            speakingIndicator.classList.add('hidden');
-        }
+        
+        // Always hide indicator on error
+        const speakingIndicator = document.getElementById('speaking-indicator');
+        if (speakingIndicator) speakingIndicator.classList.add('hidden');
+        
+        if (typeof callback === 'function') callback();
     };
     
-    // Speak the text
-    window.speechSynthesis.speak(utterance);
+    // Get preferred voice
+    ensureVoicesLoaded((voicesLoaded) => {
+        if (voicesLoaded) {
+            utterance.voice = getPreferredVoice();
+        }
+        
+        // Set parameters
+        utterance.pitch = 1.0;
+        utterance.rate = 1.0;
+        utterance.volume = 1.0;
+        
+        // Show speaking indicator if available
+        const speakingIndicator = document.getElementById('speaking-indicator');
+        if (speakingIndicator) speakingIndicator.classList.remove('hidden');
+        
+        // Speak the text
+        window.speechSynthesis.speak(utterance);
+    });
 }
 
 // Stop any ongoing speech
 function stopSpeaking() {
-    if (window.speechSynthesis) {
+    if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        isSpeaking = false;
         
+        // Hide speaking indicator
         const speakingIndicator = document.getElementById('speaking-indicator');
-        if (speakingIndicator) {
-            speakingIndicator.classList.add('hidden');
-        }
+        if (speakingIndicator) speakingIndicator.classList.add('hidden');
     }
 }
 
@@ -167,14 +147,17 @@ function speakIntroduction() {
         speakingIndicator.classList.remove('hidden');
     }
     
-    // Mark as completed immediately to avoid getting stuck
-    introCompleted = true;
-    
     // Try to speak the text, but with a fallback to ensure we proceed even if TTS fails
     try {
+        // Get the introduction duration from app configuration
+        let introDuration = 10000; // Default to 10 seconds
+        if (window.app && window.app.getConfig && window.app.getConfig().PHASES) {
+            introDuration = window.app.getConfig().PHASES.INTRODUCTION.DURATION;
+        }
+        
         // Play introduction audio with a timeout to ensure we don't get stuck
         const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('TTS timeout')), 3000);
+            setTimeout(() => reject(new Error('TTS timeout')), introDuration * 0.9); // 90% of intro duration as timeout
         });
         
         Promise.race([
@@ -195,39 +178,26 @@ function speakIntroduction() {
         finishIntroduction(speakingIndicator);
     }
     
-    // Always ensure we proceed after a maximum delay
+    // Always ensure we proceed after the intro phase duration is nearly done
     setTimeout(() => {
-        if (!window.hasMovedPastIntro) {
+        if (!introCompleted) {
             console.log('Forcing transition from introduction after timeout');
             finishIntroduction(speakingIndicator);
         }
-    }, 4000);
+    }, window.app && window.app.getConfig ? window.app.getConfig().PHASES.INTRODUCTION.DURATION * 0.95 : 9500); // 95% of intro duration
 }
 
 // Helper function to finish introduction and transition to next phase
 function finishIntroduction(speakingIndicator) {
-    if (window.hasMovedPastIntro) return; // Prevent duplicate transitions
-    window.hasMovedPastIntro = true;
+    if (introCompleted) return; // Prevent duplicate transitions
+    introCompleted = true;
     
     // Hide the speaking indicator
     if (speakingIndicator) {
         speakingIndicator.classList.add('hidden');
     }
     
-    console.log('Dispatching introCompleted event');
-    // Dispatch a custom event that the phase controller will listen for
-    const event = new CustomEvent('introCompleted');
-    window.dispatchEvent(event);
-    
-    // Direct call to phase controller if available
-    if (window.phaseControl && typeof window.phaseControl.showPhase === 'function') {
-        window.phaseControl.showPhase('recording');
-    }
-    
-    // As a fallback, also call the app's cycle function
-    if (window.app && typeof window.app.startListeningCycle === 'function') {
-        window.app.startListeningCycle();
-    }
+    console.log('Introduction phase completed');
 }
 
 // Automatically speak matched word - call this function when a match is found
@@ -241,6 +211,7 @@ function speakMatchedWord(word) {
 function playRecordingAudio() {
     const recordingSound = document.getElementById('listening-mode-sound');
     if (recordingSound) {
+        recordingSound.currentTime = 0;
         recordingSound.play().catch(err => console.error('Error playing recording sound:', err));
     }
 }
@@ -249,19 +220,9 @@ function playRecordingAudio() {
 function playOutputAudio() {
     const outputSound = document.getElementById('output-mode-sound');
     if (outputSound) {
+        outputSound.currentTime = 0;
         outputSound.play().catch(err => console.error('Error playing output sound:', err));
     }
-}
-
-// Speak welcome message and start listening cycle - deprecated in favor of speakIntroduction
-function speakWelcome() {
-    if (introCompleted) {
-        console.log('Introduction already completed, skipping welcome');
-        return;
-    }
-    
-    // Use the new introduction function instead
-    speakIntroduction();
 }
 
 // Export functions for use in other modules
@@ -273,7 +234,6 @@ window.textToSpeech = {
     stop: stopSpeaking,
     speakMatchedWord,
     speakIntroduction,
-    speakWelcome,
     playRecordingAudio,
     playOutputAudio,
     introCompleted: () => introCompleted

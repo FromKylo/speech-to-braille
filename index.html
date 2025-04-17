@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#18A0FB">
-    <meta name="description" content="Speech to Braille Converter Application">
-    <!-- Cross-origin isolation for WebAssembly -->
-    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
-    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
-    <!-- Speech initializer must be loaded first -->
-    <script src="js/speech-init.js"></script>
-    <title>Speech to Braille Refreshable Module</title>
+    <meta name="theme-color" content="#4285f4">
+    <meta name="description" content="Speech-to-Braille PWA for learning and translating speech to braille">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     
-    <!-- Add Inter font from Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Speech to Braille</title>
     
-    <!-- CSS files -->
+    <!-- Main stylesheet -->
     <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Additional stylesheets -->
+    <link rel="stylesheet" href="css/dark-mode.css">
     <link rel="stylesheet" href="css/figma-ui.css">
     <link rel="stylesheet" href="css/speech-fixes.css">
     <link rel="stylesheet" href="css/ui-enhancements.css"> <!-- Add our new CSS -->
@@ -51,223 +49,167 @@
         .blink-recording {
             color: white;
             background-color: #ea4335;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            text-align: center;
-            animation: blink 1.5s infinite;
-            margin: 15px auto;
+            padding: 5px 10px;
+            border-radius: 4px;
+            animation: blink 1s infinite;
             display: inline-block;
         }
-        .blink-output {
-            color: white;
-            background-color: #34a853;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            text-align: center;
-            animation: blink 1.5s infinite;
-            margin: 15px auto;
-            display: inline-block;
-        }
-        .large-text {
-            font-size: 2.5rem;
-            font-weight: bold;
-        }
-        .small-text {
-            font-size: 0.9rem;
-            color: #666;
-        }
-        .braille-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 20px 0;
-        }
-        .centered-content {
-            text-align: center;
-            max-width: 600px;
-            margin: 0 auto;
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
         }
     </style>
 </head>
 <body>
-    <!-- TITLE PORTION -->
     <header>
-        <h1>Speech to Braille Refreshable Module</h1>
+        <div class="logo">
+            <h1>Speech to Braille</h1>
+            <span class="pwa-badge">PWA</span>
+        </div>
+        <nav>
+            <button id="install-button" class="hidden">Install App</button>
+            <button id="theme-toggle">🌙</button>
+        </nav>
     </header>
-    
-    <main>
-        <!-- Connection status -->
-        <div id="connection-status" class="status">
-            Checking connection...
-        </div>
-        
-        <!-- Connection Status Section -->
-        <div class="card connection-section">
-            <div class="status-header">
-                <h4>Device Connection Status</h4>
-            </div>
-            
-            <div class="connection-status">
-                <div class="status-indicator">
-                    <div id="web-status-dot" class="status-dot offline"></div>
-                    <div class="status-label">Web App: <span id="web-status-text">Not Connected</span></div>
-                </div>
-                
-                <div class="status-indicator">
-                    <div id="arduino-status-dot" class="status-dot unknown blinking"></div>
-                    <div class="status-label">Arduino: <span id="arduino-status-text">Unknown</span></div>
-                </div>
-            </div>
-            
-            <div id="ble-message" class="small-text"></div>
-            
-            <div class="ble-controls">
-                <button id="connect-ble-btn" class="action-button">Connect to Arduino</button>
-                <button id="disconnect-ble-btn" class="action-button" style="display: none; background-color: #e53e3e;">Disconnect</button>
-            </div>
-        </div>
 
-        <!-- Existing BLE Status -->
-        <div id="ble-status" class="status offline" style="display: none;">Not Connected</div>
-        
-        <!-- APP PORTION - Where all the phases will appear -->
-        <div id="app-container">
-            
-            <!-- PHASE 1: INTRODUCTION -->
-            <div id="introduction-phase" class="phase-container phase-active">
-                <div class="card centered-content">
-                    <h2>Welcome to Speech to Braille</h2>
-                    <p id="intro-phrase" class="large-text">Let's learn braille!</p>
-                    <div class="intro-progress">
-                        <div class="intro-spinner"></div>
-                        <p>Loading application components...</p>
-                    </div>
-                    <!-- Hidden audio status indicator -->
-                    <div id="intro-speaking-status" class="speaking-indicator hidden">
+    <main>
+        <!-- Phase containers -->
+        <div id="introduction-phase" class="phase-container">
+            <div class="card">
+                <h2>Welcome to Speech to Braille</h2>
+                <div class="intro-content">
+                    <p id="intro-phrase">Loading introduction...</p>
+                    <div id="intro-speaking-status" class="speaking-status">
                         <span class="speak-icon">🔊</span> Playing introduction...
                     </div>
                 </div>
             </div>
-            
-            <!-- PHASE 2: RECORDING (5 seconds) -->
-            <div id="recording-phase" class="phase-container">
-                <div class="card">
-                    <h2>Speech Recognition</h2>
-                    <div class="recording-header">
-                        <div id="recording-indicator" class="blink-recording">● Recording (5s)</div>
-                        <div class="countdown-timer" id="recording-timer">5</div>
-                    </div>
-                    
-                    <p>Speak into your microphone and I'll listen for words to convert to braille.</p>
-                    
-                    <!-- Current sentence display -->
-                    <div class="speech-output-container">
-                        <h3>Current Sentence:</h3>
-                        <div id="speech-output" class="speech-output-box">
-                            <p id="interim-text"></p>
-                            <p id="final-text"></p>
-                        </div>
-                    </div>
-                    
-                    <!-- Status indicators -->
-                    <div id="model-status">
-                        Recognition Model: <span class="model-badge web-speech" id="model-badge">Web Speech API</span>
-                        <span id="mic-status" class="mic-status">Mic: Unknown</span>
-                    </div>
-                    
-                    <!-- BLE Connection Status for Arduino ESP32 -->
-                    <div id="ble-connection" class="connection-section">
-                        <div class="status-header">
-                            <h4>Braille BLE Device:</h4>
-                            <span id="ble-status" class="status offline">Not Connected</span>
-                        </div>
-                        <div class="ble-controls">
-                            <button id="connect-ble-btn" class="action-button">Connect to Braille Device</button>
-                            <button id="disconnect-ble-btn" class="action-button" style="display: none;">Disconnect</button>
-                        </div>
-                        <div id="ble-message" class="small-text"></div>
+        </div>
+        
+        <!-- PHASE 2: RECORDING (3 seconds) -->
+        <div id="recording-phase" class="phase-container">
+            <div class="card">
+                <h2>Speech Recognition</h2>
+                <div class="recording-header">
+                    <div id="recording-indicator" class="blink-recording">● Recording (3s)</div>
+                    <div class="countdown-timer" id="recording-timer">3</div>
+                </div>
+                
+                <p>Speak into your microphone and I'll listen for words to convert to braille.</p>
+                
+                <!-- Current sentence display -->
+                <div class="speech-output-container">
+                    <h3>Current Sentence:</h3>
+                    <div id="speech-output" class="speech-output-box">
+                        <p id="interim-text"></p>
+                        <p id="final-text"></p>
                     </div>
                 </div>
-            </div>
-            
-            <!-- PHASE 3: OUTPUT (5 seconds) -->
-            <div id="output-phase" class="phase-container">
-                <div class="card">
-                    <h2>Braille Translation</h2>
-                    <div class="output-header">
-                        <div id="output-indicator" class="blink-output">◉ Output (5s)</div>
-                        <div class="countdown-timer" id="output-timer">5</div>
+                
+                <!-- Status indicators -->
+                <div id="model-status">
+                    <div class="status-row">
+                        <span>Model:</span>
+                        <span id="model-badge" class="model-badge">Initializing...</span>
                     </div>
-                    
-                    <div id="braille-status" class="status hidden">
-                        Loading Braille database...
-                    </div>
-                    
-                    <!-- Braille match result -->
-                    <div id="braille-result" class="braille-result">
-                        <div class="braille-word-container centered-content">
-                            <h3>Matched Word:</h3>
-                            <div id="matched-word" class="large-text">Loading...</div>
-                        </div>
-                        
-                        <div class="braille-container">
-                            <h3>Braille Symbol:</h3>
-                            <div id="braille-symbol" class="braille-symbol large-text">⠿</div>
-                        </div>
-                        
-                        <div class="braille-details">
-                            <div class="braille-language">
-                                <h4>Language:</h4>
-                                <span id="braille-language" class="small-text">N/A</span>
-                            </div>
-                            
-                            <div class="braille-array-container">
-                                <h4>Braille Array:</h4>
-                                <pre id="braille-array" class="braille-array small-text">[1,2,3,4,5,6]</pre>
-                            </div>
-                        </div>
-                        
-                        <!-- Visual Braille Dot Display -->
-                        <div class="braille-dot-display">
-                            <h4>Braille Dot Pattern:</h4>
-                            <div class="braille-cells-container" id="braille-cells-container">
-                                <!-- Default single cell display - will be dynamically updated -->
-                                <div class="braille-cell-wrapper">
-                                    <div class="braille-cell" id="braille-cell">
-                                        <div class="braille-dot" data-dot="1">1</div>
-                                        <div class="braille-dot" data-dot="4">4</div>
-                                        <div class="braille-dot" data-dot="2">2</div>
-                                        <div class="braille-dot" data-dot="5">5</div>
-                                        <div class="braille-dot" data-dot="3">3</div>
-                                        <div class="braille-dot" data-dot="6">6</div>
-                                    </div>
-                                    <div class="braille-cell-label">Current Cell</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Speaking indicator shows when word is being read aloud -->
-                        <div id="speaking-indicator" class="speaking-indicator hidden">
-                            <span class="speak-icon">🔊</span> Reading word aloud...
-                        </div>
-                    </div>
-                    
-                    <!-- No match info -->
-                    <div id="no-match-info" class="braille-no-match hidden">
-                        <p>No matching words found in your sentence.</p>
-                        <p>Try speaking a different phrase.</p>
+                    <div class="status-row">
+                        <span>Microphone:</span>
+                        <span id="mic-status" class="mic-status">Unavailable</span>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- TROUBLESHOOTING PORTION -->
-        <div id="troubleshooting-section" class="hidden-initially">
+        <!-- PHASE 3: OUTPUT (7 seconds) -->
+        <div id="output-phase" class="phase-container">
             <div class="card">
-                <h2>Troubleshooting</h2>
+                <h2>Braille Output</h2>
+                <div class="output-header">
+                    <div class="output-indicator">◉ Output Mode</div>
+                    <div class="countdown-timer" id="output-timer">7</div>
+                </div>
                 
+                <!-- Braille match display -->
+                <div id="braille-match" class="braille-match">
+                    <!-- No match message -->
+                    <div id="no-match-info" style="display: none;">
+                        <p class="no-match">No Braille match found. Please try again.</p>
+                    </div>
+                    
+                    <!-- Braille result display -->
+                    <div id="braille-result">
+                        <div class="match-container">
+                            <h3>Matched Word:</h3>
+                            <div class="match-row">
+                                <span id="matched-word" class="matched-word">None</span>
+                                <button id="speak-word-btn" class="speak-btn" title="Speak word">
+                                    <span class="speak-icon">🔊</span>
+                                </button>
+                                <div id="speaking-indicator" class="hidden">Speaking...</div>
+                            </div>
+                        </div>
+                        
+                        <div class="braille-info">
+                            <div class="info-row">
+                                <span class="label">Language:</span>
+                                <span id="braille-language">N/A</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Symbol:</span>
+                                <span id="braille-symbol"></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Dot Array:</span>
+                                <span id="braille-array">[]</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Braille Visualizer -->
+                <div id="braille-visualizer" class="braille-visualizer">
+                    <div class="dots-container">
+                        <div class="dot dot-1" data-dot="1"></div>
+                        <div class="dot dot-2" data-dot="2"></div>
+                        <div class="dot dot-3" data-dot="3"></div>
+                        <div class="dot dot-4" data-dot="4"></div>
+                        <div class="dot dot-5" data-dot="5"></div>
+                        <div class="dot dot-6" data-dot="6"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bluetooth section -->
+        <div class="card">
+            <h2>Arduino Connection</h2>
+            <div class="bluetooth-container">
+                <button id="connect-button" class="connect-btn">Connect to ESP32</button>
+                <div id="connection-status" class="status">Not Connected</div>
+            </div>
+            <div id="device-info" class="device-info hidden">
+                <div class="info-row">
+                    <span class="label">Device:</span>
+                    <span id="device-name">None</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Status:</span>
+                    <span id="device-status">Disconnected</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Braille database status -->
+        <div class="card">
+            <h2>Braille Database</h2>
+            <div id="braille-status" class="status">Initializing...</div>
+        </div>
+        
+        <!-- Troubleshooting section -->
+        <div class="card">
+            <h2>Troubleshooting</h2>
+            <div id="troubleshooting-section" class="troubleshooting-section">
                 <details>
                     <summary>Application Status</summary>
                     <div class="details-content">
