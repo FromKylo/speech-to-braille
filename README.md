@@ -1,17 +1,5 @@
 # Speech to Braille System Documentation
 
-## Table of Contents
-1. [Introduction](#introduction)
-2. [User Experience](#user-experience)
-3. [System Architecture](#system-architecture)
-4. [Web Application Components](#web-application-components)
-5. [Hardware Components](#hardware-components)
-6. [Setup Instructions](#setup-instructions)
-7. [Usage Guide](#usage-guide)
-8. [API Reference](#api-reference)
-9. [Troubleshooting](#troubleshooting)
-10. [Future Enhancements](#future-enhancements)
-
 ## Introduction
 
 The Speech to Braille system is a comprehensive solution designed to convert spoken words into braille representations. It consists of a Progressive Web Application (PWA) that captures speech, processes it to find matching braille patterns, and presents both visual braille representations and physical braille output through an optional hardware component.
@@ -95,37 +83,36 @@ The application is fully functional in modern browsers, with Chrome providing th
 
 The system follows a modular architecture with distinct components for speech processing, braille translation, and output handling.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Web Application                         │
-│                                                             │
-│  ┌───────────────┐    ┌───────────────┐    ┌──────────────┐ │
-│  │Speech Recognition│──▶│Braille Translator│──▶│UI Controller│ │
-│  └───────────────┘    └───────────────┘    └──────────────┘ │
-│          │                     │                   │        │
-│  ┌───────┴──────┐      ┌──────┴───────┐    ┌──────┴───────┐ │
-│  │Text-to-Speech│      │Braille Database│   │Braille      │ │
-│  │              │      │                │   │Visualizer   │ │
-│  └──────────────┘      └────────────────┘   └──────────────┘ │
-│          │                                        │         │
-│          └────────────────┬───────────────────────┘         │
-│                           │                                  │
-└───────────────────────────┼──────────────────────────────────┘
-                            │
-                            ▼
-┌───────────────────────────────────────────────────────────────┐
-│                    Bluetooth LE Connection                    │
-└───────────────────────────┬───────────────────────────────────┘
-                            │
-                            ▼
-┌───────────────────────────────────────────────────────────────┐
-│                     Hardware Component                        │
-│                                                               │
-│  ┌───────────────┐    ┌───────────────┐    ┌───────────────┐  │
-│  │BLE Service    │──▶│Arduino ESP32   │──▶│Braille Actuators│  │
-│  └───────────────┘    └───────────────┘    └───────────────┘  │
-│                                                               │
-└───────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+   subgraph WebApp["Web Application"]
+      SpeechRecog["Speech Recognition"]
+      BrailleTranslator["Braille Translator"]
+      UIControl["UI Controller"]
+      TextToSpeech["Text-to-Speech"]
+      BrailleDB["Braille Database"]
+      BrailleVis["Braille Visualizer"]
+      
+      SpeechRecog --> BrailleTranslator
+      BrailleTranslator --> UIControl
+      SpeechRecog -.-> TextToSpeech
+      BrailleTranslator -.-> BrailleDB
+      UIControl --> BrailleVis
+      TextToSpeech -.-> UIControl
+   end
+   
+   WebApp ==> BLEConn["Bluetooth LE Connection"]
+   
+   BLEConn ==> Hardware
+   
+   subgraph Hardware["Hardware Component"]
+      BLEService["BLE Service"]
+      ArduinoESP32["Arduino ESP32"]
+      BrailleActuators["Braille Actuators"]
+      
+      BLEService --> ArduinoESP32
+      ArduinoESP32 --> BrailleActuators
+   end
 ```
 
 ### Data Flow
@@ -580,3 +567,55 @@ Planned improvements for the Speech-to-Braille system:
 7. **Accessibility Improvements**
    - Screen reader optimizations
    - Keyboard navigation enhancements
+
+## Documentation of JavaScript Files and Their Interactions
+
+### [README.md](vscode-remote://codespaces/workspaces/speech-to-braille/README.md)
+
+# Speech to Braille Application
+
+## File Structure and Component Interaction
+
+### Configuration
+
+- **config.js**: Central configuration file that stores all timing parameters and behavioral settings for the application. All other modules import this file to ensure consistent configuration throughout the application.
+
+### Core Application Files
+
+- **app.js**: Main application controller that orchestrates the flow between different phases (introduction, listening, output). It imports the configuration and coordinates the interactions between different modules.
+
+- **speechRecognition.js**: Handles the speech recognition functionality. It takes the listening duration from config.js and sets up timers accordingly. It communicates the recognized speech back to app.js through callbacks.
+
+- **ui.js**: Controls the user interface elements, displaying appropriate screens and timers for each phase. It reads timing information from config.js to show accurate countdowns.
+
+- **databaseModule.js**: Contains the dictionary/database of words that can be translated to Braille. Used to validate if recognized speech contains words that can be translated.
+
+- **brailleTranslator.js**: Handles the conversion of recognized text into Braille representations.
+
+### Flow of Execution
+
+1. **app.js** starts the application and initiates the introduction phase for the duration specified in config.js
+2. After the introduction phase ends, **app.js** calls **speechRecognition.js** to start listening
+3. **speechRecognition.js** listens for the configured duration and returns recognized text
+4. **app.js** passes the recognized text to **databaseModule.js** to check for matching words
+5. If no matches found and looping is enabled in config, the listening phase repeats
+6. Once matches are found, **app.js** sends the text to **brailleTranslator.js** for translation
+7. The translated output is displayed via **ui.js** for the configured output phase duration
+8. The cycle then repeats starting from the introduction phase
+
+### How to Modify Timing Parameters
+
+All timing parameters can be easily modified in the `config.js` file:
+
+```javascript
+const config = {
+  timings: {
+    introductionPhase: 10,    // Duration of introduction phase (seconds)
+    listeningPhase: 3,        // Duration of listening for speech input (seconds)
+    outputPhase: 7,           // Duration of displaying output (seconds)
+  },
+  // Additional configuration options...
+};
+```
+
+Simply change these values to adjust the timing of each phase in the application.
