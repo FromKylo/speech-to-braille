@@ -19,5 +19,10 @@ const config = {
   }
 };
 
-// Export the configuration
-module.exports = config;
+// Make config work in both Node.js and browser environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = config;
+} else {
+  // In browser context
+  window.config = config;
+}

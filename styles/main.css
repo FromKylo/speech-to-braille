@@ -1,0 +1,24 @@
+:root {
+    --intro-phase-duration: 10s;
+    --listening-phase-duration: 3s;
+    --output-phase-duration: 7s;
+}
+
+/* ...existing code... */
+
+.intro-animation {
+    animation-duration: var(--intro-phase-duration);
+    /* ...existing code... */
+}
+
+.listening-animation {
+    animation-duration: var(--listening-phase-duration);
+    /* ...existing code... */
+}
+
+.output-animation {
+    animation-duration: var(--output-phase-duration);
+    /* ...existing code... */
+}
+
+/* ...existing code... */

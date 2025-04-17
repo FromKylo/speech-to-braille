@@ -90,6 +90,7 @@
             margin: 0 auto;
         }
     </style>
+    <script src="config.js"></script>
 </head>
 <body>
     <!-- TITLE PORTION -->
@@ -371,6 +372,11 @@
     <script>
         // Phase control management
         document.addEventListener('DOMContentLoaded', function() {
+            // Update UI elements with config values
+            document.getElementById('intro-time').textContent = config.timings.introductionPhase;
+            document.getElementById('listen-time').textContent = config.timings.listeningPhase;
+            document.getElementById('output-time').textContent = config.timings.outputPhase;
+
             // Phase control variables
             let currentPhase = 'introduction';
             let phaseTimer = null;
