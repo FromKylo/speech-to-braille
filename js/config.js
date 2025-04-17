@@ -5,7 +5,8 @@
  * Edit these values to adjust timing and behavior.
  */
 
-const config = {
+// Define config right away to ensure it exists
+window.config = {
   // Timing parameters (in seconds)
   timings: {
     introductionPhase: 10,    // Duration of introduction phase
@@ -19,13 +20,10 @@ const config = {
   }
 };
 
-// Log the config to ensure it's properly loaded
-console.log('Speech to Braille config loaded:', config);
+// Log that config has been loaded
+console.log('Config loaded:', window.config);
 
-// Make config available globally
+// Also support CommonJS for Node.js environments
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = config;
-} else {
-  // In browser context
-  window.config = config;
+  module.exports = window.config;
 }

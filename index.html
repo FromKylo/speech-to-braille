@@ -8,8 +8,13 @@
     <!-- Cross-origin isolation for WebAssembly -->
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
-    <!-- Speech initializer must be loaded first -->
+    
+    <!-- Load config first to ensure it's available to all scripts -->
+    <script src="js/config.js"></script>
+    
+    <!-- Speech initializer loaded after config -->
     <script src="js/speech-init.js"></script>
+    
     <title>Speech to Braille Refreshable Module</title>
     
     <!-- Add Inter font from Google Fonts -->
@@ -90,8 +95,6 @@
             margin: 0 auto;
         }
     </style>
-    <!-- Load config early to ensure it's available to all scripts -->
-    <script src="js/config.js"></script>
 </head>
 <body>
     <!-- TITLE PORTION -->
@@ -153,13 +156,13 @@
                 </div>
             </div>
             
-            <!-- PHASE 2: RECORDING (5 seconds) -->
+            <!-- PHASE 2: RECORDING (configurable seconds) -->
             <div id="recording-phase" class="phase-container">
                 <div class="card">
                     <h2>Speech Recognition</h2>
                     <div class="recording-header">
-                        <div id="recording-indicator" class="blink-recording">● Recording (5s)</div>
-                        <div class="countdown-timer" id="recording-timer">5</div>
+                        <div id="recording-indicator" class="blink-recording">● Recording (3s)</div>
+                        <div class="countdown-timer" id="recording-timer">3</div>
                     </div>
                     
                     <p>Speak into your microphone and I'll listen for words to convert to braille.</p>
@@ -194,13 +197,13 @@
                 </div>
             </div>
             
-            <!-- PHASE 3: OUTPUT (5 seconds) -->
+            <!-- PHASE 3: OUTPUT (configurable seconds) -->
             <div id="output-phase" class="phase-container">
                 <div class="card">
                     <h2>Braille Translation</h2>
                     <div class="output-header">
-                        <div id="output-indicator" class="blink-output">◉ Output (5s)</div>
-                        <div class="countdown-timer" id="output-timer">5</div>
+                        <div id="output-indicator" class="blink-output">◉ Output (7s)</div>
+                        <div class="countdown-timer" id="output-timer">7</div>
                     </div>
                     
                     <div id="braille-status" class="status hidden">
@@ -339,6 +342,7 @@
     </audio>
 
     <!-- Scripts are loaded in a specific order for dependencies -->
+    <script src="js/config.js"></script>
     <script src="js/alternatives/speech-recognition.js"></script>
     <script src="js/speechRecognition.js"></script>
     <script src="js/braille-translator.js"></script>
@@ -366,287 +370,9 @@
     <!-- Add Figma UI script before closing body tag -->
     <script src="js/figma-ui.js"></script>
     <script src="js/test-speech.js"></script>
-    <script src="js/config.js"></script>
     <script src="js/ui.js"></script>
     
-    <!-- Phase controller script -->
-    <script>
-        // Phase control management
-        document.addEventListener('DOMContentLoaded', function() {
-            // Ensure config is loaded
-            if (!window.config) {
-                console.error('Configuration not loaded! Falling back to default values.');
-                window.config = {
-                    timings: {
-                        introductionPhase: 10,
-                        listeningPhase: 3,
-                        outputPhase: 7
-                    },
-                    behavior: {
-                        loopListeningIfNoMatch: true
-                    }
-                };
-            }
-            
-            // Update UI elements with config values
-            const introTimeElement = document.getElementById('intro-time');
-            const listenTimeElement = document.getElementById('listen-time');
-            const outputTimeElement = document.getElementById('output-time');
-            
-            if (introTimeElement) introTimeElement.textContent = config.timings.introductionPhase;
-            if (listenTimeElement) listenTimeElement.textContent = config.timings.listeningPhase;
-            if (outputTimeElement) outputTimeElement.textContent = config.timings.outputPhase;
-
-            // Phase control variables
-            let currentPhase = 'introduction';
-            let phaseTimer = null;
-            
-            // Flag to track if we've processed the introduction event
-            window.hasMovedPastIntro = false;
-            
-            // Phase elements
-            const introPhase = document.getElementById('introduction-phase');
-            const recordingPhase = document.getElementById('recording-phase');
-            const outputPhase = document.getElementById('output-phase');
-            
-            // Timer elements
-            const recordingTimer = document.getElementById('recording-timer');
-            const outputTimer = document.getElementById('output-timer');
-            
-            // Update recognition status in troubleshooting
-            function updateRecognitionStatus(isActive) {
-                const statusElement = document.getElementById('recognition-active-status');
-                if (statusElement) {
-                    statusElement.textContent = isActive ? 'Yes' : 'No';
-                    statusElement.style.color = isActive ? '#34a853' : '#ea4335';
-                }
-            }
-            
-            // Phase transition functions
-            function showPhase(phase) {
-                console.log(`Transitioning to phase: ${phase}`);
-                
-                // If we're trying to transition from introduction to any other phase
-                if (currentPhase === 'introduction' && phase !== 'introduction') {
-                    window.hasMovedPastIntro = true;
-                }
-                
-                // Update troubleshooting info
-                const phaseIndicator = document.getElementById('current-phase-indicator');
-                if (phaseIndicator) {
-                    phaseIndicator.textContent = phase.charAt(0).toUpperCase() + phase.slice(1);
-                }
-                
-                // Update Arduino about phase change if BLE controller is available
-                if (window.bleController && window.bleController.isConnected()) {
-                    console.log(`Notifying Arduino of phase change: ${phase}`);
-                    window.bleController.setPhase(phase).then(success => {
-                        if (!success) {
-                            console.warn('Failed to update Arduino about phase change');
-                        }
-                    });
-                }
-                
-                // Hide all phases
-                introPhase.classList.remove('phase-active');
-                recordingPhase.classList.remove('phase-active');
-                outputPhase.classList.remove('phase-active');
-                
-                // Add a small timeout to force a reflow before showing the next phase
-                setTimeout(() => {
-                    // Show the selected phase
-                    if (phase === 'introduction') {
-                        introPhase.classList.add('phase-active');
-                        
-                        // Use config value for introduction timer
-                        setTimeout(() => {
-                            if (currentPhase === 'introduction' && !window.hasMovedPastIntro) {
-                                console.log('Automatic timeout from introduction phase');
-                                window.hasMovedPastIntro = true;
-                                showPhase('recording');
-                            }
-                        }, config.timings.introductionPhase * 1000);
-                        
-                    } else if (phase === 'recording') {
-                        recordingPhase.classList.add('phase-active');
-                        startPhaseTimer(recordingTimer, 'output', config.timings.listeningPhase);
-                        
-                        // Clear any previous text to ensure we only show current sentence
-                        const finalTextElement = document.getElementById('final-text');
-                        if (finalTextElement) finalTextElement.textContent = '';
-                        const interimTextElement = document.getElementById('interim-text');
-                        if (interimTextElement) interimTextElement.textContent = '';
-                        
-                        // Play recording sound
-                        if (window.textToSpeech && textToSpeech.playRecordingAudio) {
-                            textToSpeech.playRecordingAudio();
-                        } else if (window.soundEffects) {
-                            window.soundEffects.playListeningModeSound();
-                        }
-                        
-                        // Start speech recognition - add a small delay to ensure UI is ready
-                        setTimeout(() => {
-                            if (window.app && app.startSpeechRecognition) {
-                                console.log('Starting speech recognition for recording phase');
-                                app.startSpeechRecognition();
-                                updateRecognitionStatus(true);
-                            }
-                        }, 300);
-                        
-                    } else if (phase === 'output') {
-                        outputPhase.classList.add('phase-active');
-                        startPhaseTimer(outputTimer, 'recording', config.timings.outputPhase);
-                        
-                        // Play output sound
-                        if (window.textToSpeech && textToSpeech.playOutputAudio) {
-                            textToSpeech.playOutputAudio();
-                        } else if (window.soundEffects) {
-                            window.soundEffects.playOutputModeSound();
-                        }
-                        
-                        // Pause speech recognition
-                        if (window.app && app.stopSpeechRecognition) {
-                            app.stopSpeechRecognition();
-                            updateRecognitionStatus(false);
-                        }
-                        
-                        // Process the current text for braille output
-                        processFinalText();
-                    }
-                    
-                    currentPhase = phase;
-                }, 10);
-            }
-            
-            // Timer countdown function
-            function startPhaseTimer(timerElement, nextPhase, duration) {
-                if (phaseTimer) clearInterval(phaseTimer);
-                
-                if (!timerElement) {
-                    console.error('Timer element not found');
-                    return;
-                }
-                
-                let timeLeft = duration;
-                timerElement.textContent = timeLeft;
-                
-                // Update the timer appearance
-                timerElement.style.background = `conic-gradient(#4285f4 0%, transparent 0%)`;
-                
-                phaseTimer = setInterval(() => {
-                    timeLeft -= 1;
-                    
-                    // Update the timer
-                    if (timerElement) {
-                        timerElement.textContent = timeLeft;
-                        
-                        // Update the background conic gradient to show progress
-                        const progress = (1 - timeLeft/duration) * 100;
-                        timerElement.style.background = `conic-gradient(#4285f4 ${progress}%, transparent ${progress}%)`;
-                    }
-                    
-                    // If timer is done, move to next phase
-                    if (timeLeft <= 0) {
-                        clearInterval(phaseTimer);
-                        showPhase(nextPhase);
-                    }
-                }, 1000);
-            }
-            
-            // Process the final text to find braille matches
-            function processFinalText() {
-                const finalTextElement = document.getElementById('final-text');
-                if (finalTextElement && finalTextElement.textContent.trim()) {
-                    const text = finalTextElement.textContent.trim();
-                    // If braille translator is available, process the text
-                    if (window.app && app.processSpeechForBraille) {
-                        app.processSpeechForBraille(text);
-                    }
-                }
-            }
-            
-            // Listen for introduction completion - with improved event handling
-            window.addEventListener('introCompleted', function(e) {
-                console.log('Caught introCompleted event, transitioning to recording phase');
-                if (currentPhase === 'introduction') {
-                    window.hasMovedPastIntro = true;
-                    showPhase('recording');
-                }
-            });
-            
-            // Override app's cycle mechanism to use our new phase system
-            if (window.app) {
-                window.app.startListeningCycle = function() {
-                    console.log('startListeningCycle called, current phase:', currentPhase);
-                    // Only transition if we're in the introduction phase
-                    if (currentPhase === 'introduction') {
-                        window.hasMovedPastIntro = true;
-                        showPhase('recording');
-                    }
-                };
-            }
-            
-            // Start with introduction phase
-            showPhase('introduction');
-            
-            // Fallback timer for the entire introduction phase - use config value
-            setTimeout(() => {
-                if (currentPhase === 'introduction') {
-                    console.log('Global fallback timer triggered - forcing transition to recording phase');
-                    window.hasMovedPastIntro = true;
-                    showPhase('recording');
-                }
-            }, config.timings.introductionPhase * 1000);
-            
-            // Make phase control available globally
-            window.phaseControl = {
-                showPhase,
-                getCurrentPhase: () => currentPhase
-            };
-
-            // Add debug logging for config
-            console.log('Phase timing configuration:', {
-                introduction: config.timings.introductionPhase + 's',
-                listening: config.timings.listeningPhase + 's',
-                output: config.timings.outputPhase + 's'
-            });
-            
-            // Update any UI elements showing the timings
-            const recordingIndicator = document.getElementById('recording-indicator');
-            if (recordingIndicator) {
-                recordingIndicator.textContent = `● Recording (${config.timings.listeningPhase}s)`;
-            }
-            
-            const outputIndicator = document.getElementById('output-indicator');
-            if (outputIndicator) {
-                outputIndicator.textContent = `◉ Output (${config.timings.outputPhase}s)`;
-            }
-        });
-    </script>
-    
-    <!-- Debug helper for phase transitions -->
-    <script>
-        (function() {
-            const debugEl = document.createElement('div');
-            debugEl.style.position = 'fixed';
-            debugEl.style.bottom = '5px';
-            debugEl.style.right = '5px';
-            debugEl.style.background = 'rgba(0,0,0,0.7)';
-            debugEl.style.color = 'white';
-            debugEl.style.padding = '5px';
-            debugEl.style.fontSize = '10px';
-            debugEl.style.fontFamily = 'monospace';
-            debugEl.style.zIndex = '9999';
-            debugEl.id = 'phase-debug-helper';
-            document.body.appendChild(debugEl);
-            
-            // Log phase changes
-            setInterval(() => {
-                const phase = document.querySelector('.phase-container.phase-active');
-                const phaseId = phase ? phase.id : 'unknown';
-                debugEl.innerHTML = `Current visible phase: ${phaseId}<br>hasMovedPastIntro: ${window.hasMovedPastIntro}`;
-            }, 2000);
-        })();
-    </script>
+    <!-- Phase controller (Must be loaded last) -->
+    <script src="js/phase-controller.js"></script>
 </body>
 </html>

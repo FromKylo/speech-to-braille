@@ -196,12 +196,17 @@ function speakIntroduction() {
     }
     
     // Always ensure we proceed after a maximum delay
+    const introTimeout = window.config && window.config.timings ? 
+        window.config.timings.introductionPhase * 1000 : 10000;
+    
+    console.log(`Setting introduction timeout for ${introTimeout/1000}s`);
+    
     setTimeout(() => {
         if (!window.hasMovedPastIntro) {
             console.log('Forcing transition from introduction after timeout');
             finishIntroduction(speakingIndicator);
         }
-    }, window.config ? window.config.timings.introductionPhase * 1000 : 10000); // Use config value with fallback
+    }, introTimeout);
 }
 
 // Helper function to finish introduction and transition to next phase
