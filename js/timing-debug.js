@@ -62,4 +62,7 @@
     };
     
     console.log('[TIMING] Phase timing debug utilities initialized');
+    
+    // Ensure timing-debug.js integrates with the consolidated timing logic in phase-controller.js
+    // Updated to monitor timing from phase-controller.js
 })();

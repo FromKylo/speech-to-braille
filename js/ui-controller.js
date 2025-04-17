@@ -214,6 +214,9 @@ const uiController = {
                 }
                 resolve();
             }, 500);
+
+            // Call this function during initialization
+            updateTimingCSS();
         });
     },
     
@@ -648,6 +651,14 @@ function displayMatchedWord(word, brailleSymbol, brailleArray, language) {
     if (window.speakText) {
         window.speakText(`Matched word: ${word}`);
     }
+}
+
+// Dynamically update CSS variables for timing based on config.js
+function updateTimingCSS() {
+    const root = document.documentElement;
+    root.style.setProperty('--intro-phase-duration', `${window.config.timings.introductionPhase}s`);
+    root.style.setProperty('--listening-phase-duration', `${window.config.timings.listeningPhase}s`);
+    root.style.setProperty('--output-phase-duration', `${window.config.timings.outputPhase}s`);
 }
 
 // Export UI controller

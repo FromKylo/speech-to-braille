@@ -173,16 +173,8 @@
             // Show the selected phase
             if (phase === 'introduction') {
                 introPhase.classList.add('phase-active');
-                
-                console.log(`Setting introduction timeout for ${window.config.timings.introductionPhase}s`);
-                // Use config value for introduction timer
-                setTimeout(() => {
-                    if (currentPhase === 'introduction' && !window.hasMovedPastIntro) {
-                        console.log('Automatic timeout from introduction phase');
-                        window.hasMovedPastIntro = true;
-                        showPhase('recording');
-                    }
-                }, window.config.timings.introductionPhase * 1000);
+                console.log(`Starting introduction phase timer for ${window.config.timings.introductionPhase}s`);
+                startPhaseTimer(document.getElementById('intro-timer'), 'recording', window.config.timings.introductionPhase);
                 
             } else if (phase === 'recording') {
                 recordingPhase.classList.add('phase-active');
@@ -284,6 +276,22 @@
                 app.processSpeechForBraille(text);
             }
         }
+    }
+
+    // Remove redundant timing logic from other files and centralize here
+    function handleIntroductionPhase() {
+        console.log('Handling introduction phase');
+        showPhase('recording');
+    }
+
+    function handleListeningPhase() {
+        console.log('Handling listening phase');
+        showPhase('output');
+    }
+
+    function handleOutputPhase() {
+        console.log('Handling output phase');
+        showPhase('introduction');
     }
 })();
 

@@ -1,41 +1,32 @@
 // Import configuration
 const config = require('../config');
 
-// ...existing code...
+// Remove redundant timing logic as it has been moved to phase-controller.js
 
 // Update introduction phase timing
 function handleIntroductionPhase() {
-    // Replace hardcoded value of 10 seconds with config value
-    const introTimer = setTimeout(() => {
-        switchToListeningPhase();
-    }, config.timings.introductionPhase * 1000);
+    switchToListeningPhase();
     
     // ...existing code...
 }
 
 // Update listening phase timing
 function handleListeningPhase() {
-    // Replace hardcoded value of 3 seconds with config value
-    const listenTimer = setTimeout(() => {
-        const hasMatches = checkForMatches();
-        
-        if (!hasMatches && config.behavior.loopListeningIfNoMatch) {
-            // Restart listening phase
-            handleListeningPhase();
-        } else {
-            switchToOutputPhase();
-        }
-    }, config.timings.listeningPhase * 1000);
+    const hasMatches = checkForMatches();
+    
+    if (!hasMatches && config.behavior.loopListeningIfNoMatch) {
+        // Restart listening phase
+        handleListeningPhase();
+    } else {
+        switchToOutputPhase();
+    }
     
     // ...existing code...
 }
 
 // Update output phase timing
 function handleOutputPhase() {
-    // Replace hardcoded value of 7 seconds with config value
-    const outputTimer = setTimeout(() => {
-        resetAndStartAgain();
-    }, config.timings.outputPhase * 1000);
+    resetAndStartAgain();
     
     // ...existing code...
 }
