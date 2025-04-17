@@ -642,14 +642,38 @@ window.app = {
     getCurrentCycleMode: () => cycleMode
 };
 
+// Replace timing functions with calls to phase controller
+function startIntroductionPhase() {
+  console.log('Deferring to phase controller for introduction phase');
+  if (window.phaseControl) {
+    window.phaseControl.showPhase('introduction');
+  }
+}
+
+function startListeningPhase() {
+  console.log('Deferring to phase controller for listening phase');
+  if (window.phaseControl) {
+    window.phaseControl.showPhase('recording');
+  }
+}
+
+function startOutputPhase() {
+  console.log('Deferring to phase controller for output phase');
+  if (window.phaseControl) {
+    window.phaseControl.showPhase('output');
+  }
+}
+
 // Modify your section transition function or event handlers to speak introduction automatically
 function showIntroductionSection() {
-    // Your existing code to show the introduction section
-    // ...
-    
     // Speak introduction automatically
     if (window.speakIntroduction) {
         window.speakIntroduction();
+    }
+    
+    // Defer to phase controller
+    if (window.phaseControl) {
+        window.phaseControl.showPhase('introduction');
     }
 }
 

@@ -9,9 +9,8 @@
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
     
-    <!-- Load config first to ensure it's available to all scripts -->
+    <!-- Load configuration first - single source of truth -->
     <script src="config.js"></script>
-    <script src="js/config.js"></script>
     
     <!-- Speech initializer loaded after config -->
     <script src="js/speech-init.js"></script>
@@ -150,6 +149,8 @@
                         <div class="intro-spinner"></div>
                         <p>Loading application components...</p>
                     </div>
+                    <!-- Add intro-timer for consistent timing -->
+                    <div class="countdown-timer" id="intro-timer">10</div>
                     <!-- Hidden audio status indicator -->
                     <div id="intro-speaking-status" class="speaking-indicator hidden">
                         <span class="speak-icon">🔊</span> Playing introduction...
@@ -299,6 +300,17 @@
                         <p>Checking speech recognition capability...</p>
                     </div>
                 </details>
+                
+                <details>
+                    <summary>Timing Debug</summary>
+                    <div class="details-content">
+                        <p>Introduction phase: <span id="intro-time">10</span>s</p>
+                        <p>Listening phase: <span id="listen-time">3</span>s</p>
+                        <p>Output phase: <span id="output-time">7</span>s</p>
+                        <p>Current phase: <span id="current-phase-time">0</span>s</p>
+                        <button id="refresh-timings-btn" class="action-button">Refresh Timings</button>
+                    </div>
+                </details>
             </div>
         </div>
         
@@ -343,7 +355,8 @@
     </audio>
 
     <!-- Scripts are loaded in a specific order for dependencies -->
-    <script src="js/config.js"></script>
+    <!-- Only load config.js once from the root directory -->
+    <!-- <script src="js/config.js"></script> --> <!-- Removing duplicate reference -->
     <script src="js/alternatives/speech-recognition.js"></script>
     <script src="js/speechRecognition.js"></script>
     <script src="js/braille-translator.js"></script>

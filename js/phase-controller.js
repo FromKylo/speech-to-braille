@@ -12,15 +12,15 @@
     let introPhase, recordingPhase, outputPhase;
     
     // Timer elements
-    let recordingTimer, outputTimer;
+    let recordingTimer, outputTimer, introTimer;
     
     // Initialize when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Phase controller initializing');
         
-        // Ensure config is loaded
-        if (!window.config) {
-            console.error('Configuration not loaded! Creating default config.');
+        // Ensure config is loaded and valid
+        if (!window.config || !window.config.timings) {
+            console.error('Configuration not loaded or invalid! Creating default config.');
             window.config = {
                 timings: {
                     introductionPhase: 10,
@@ -42,6 +42,9 @@
         
         // Get DOM elements
         initializeElements();
+        
+        // Update CSS variables based on config
+        updateTimingCSS();
         
         // Update UI elements with config values
         updateTimingDisplay();
@@ -73,19 +76,11 @@
         // Start with introduction phase
         showPhase('introduction');
         
-        // Fallback timer for the entire introduction phase
-        setTimeout(() => {
-            if (currentPhase === 'introduction') {
-                console.log(`Global fallback timer triggered after ${window.config.timings.introductionPhase}s - forcing transition to recording phase`);
-                window.hasMovedPastIntro = true;
-                showPhase('recording');
-            }
-        }, window.config.timings.introductionPhase * 1000);
-        
         // Make phase control available globally
         window.phaseControl = {
             showPhase,
-            getCurrentPhase: () => currentPhase
+            getCurrentPhase: () => currentPhase,
+            updateTimingCSS: updateTimingCSS  // Expose for dynamic updates
         };
     });
     
@@ -95,6 +90,7 @@
         recordingPhase = document.getElementById('recording-phase');
         outputPhase = document.getElementById('output-phase');
         
+        introTimer = document.getElementById('intro-timer');
         recordingTimer = document.getElementById('recording-timer');
         outputTimer = document.getElementById('output-timer');
         
@@ -103,8 +99,21 @@
         }
         
         if (!recordingTimer || !outputTimer) {
-            console.error('Timer elements not found!');
+            console.warn('Some timer elements not found!');
         }
+    }
+    
+    // Update CSS variables based on config
+    function updateTimingCSS() {
+        const root = document.documentElement;
+        root.style.setProperty('--intro-phase-duration', `${window.config.timings.introductionPhase}s`);
+        root.style.setProperty('--listening-phase-duration', `${window.config.timings.listeningPhase}s`);
+        root.style.setProperty('--output-phase-duration', `${window.config.timings.outputPhase}s`);
+        console.log('Updated CSS timing variables:', 
+            getComputedStyle(root).getPropertyValue('--intro-phase-duration'),
+            getComputedStyle(root).getPropertyValue('--listening-phase-duration'),
+            getComputedStyle(root).getPropertyValue('--output-phase-duration')
+        );
     }
     
     // Update UI elements with timing values
@@ -174,7 +183,7 @@
             if (phase === 'introduction') {
                 introPhase.classList.add('phase-active');
                 console.log(`Starting introduction phase timer for ${window.config.timings.introductionPhase}s`);
-                startPhaseTimer(document.getElementById('intro-timer'), 'recording', window.config.timings.introductionPhase);
+                startPhaseTimer(introTimer, 'recording', window.config.timings.introductionPhase);
                 
             } else if (phase === 'recording') {
                 recordingPhase.classList.add('phase-active');
@@ -226,6 +235,13 @@
             }
             
             currentPhase = phase;
+            
+            // Dispatch phasechange event for timing-debug.js and other listeners
+            const phaseChangeEvent = new CustomEvent('phasechange', { 
+                detail: { phase: phase, timestamp: Date.now() } 
+            });
+            window.dispatchEvent(phaseChangeEvent);
+            
         }, 10);
     }
     
@@ -234,7 +250,11 @@
         if (phaseTimer) clearInterval(phaseTimer);
         
         if (!timerElement) {
-            console.error('Timer element not found');
+            console.error('Timer element not found for phase: ' + nextPhase);
+            // Set a fallback timeout even if the timer element isn't found
+            phaseTimer = setTimeout(() => {
+                showPhase(nextPhase);
+            }, duration * 1000);
             return;
         }
         
@@ -276,22 +296,6 @@
                 app.processSpeechForBraille(text);
             }
         }
-    }
-
-    // Remove redundant timing logic from other files and centralize here
-    function handleIntroductionPhase() {
-        console.log('Handling introduction phase');
-        showPhase('recording');
-    }
-
-    function handleListeningPhase() {
-        console.log('Handling listening phase');
-        showPhase('output');
-    }
-
-    function handleOutputPhase() {
-        console.log('Handling output phase');
-        showPhase('introduction');
     }
 })();
 

@@ -1,28 +1,39 @@
 /**
- * Application Configuration
+ * Global Configuration for Speech to Braille Application
  * 
- * This file contains all configurable parameters for the application.
- * Edit these values to adjust timing and behavior.
+ * This file contains settings that are used across different components.
+ * Edit these values to adjust application behavior.
  */
 
-const config = {
-  // Timing parameters (in seconds)
-  timings: {
-    introductionPhase: 10,    // Duration of introduction phase
-    listeningPhase: 3,        // Duration of listening for speech input
-    outputPhase: 7,           // Duration of displaying output
-  },
-  
-  // Behavior settings
-  behavior: {
-    loopListeningIfNoMatch: true,  // Whether to loop listening phase if no words match database
-  }
+window.config = {
+    // Timing settings for application phases (in seconds)
+    timings: {
+        introductionPhase: 10,
+        listeningPhase: 3,
+        outputPhase: 7
+    },
+    
+    // Behavioral settings
+    behavior: {
+        loopListeningIfNoMatch: true,
+        autoPronounceOnMatch: true,
+        debugMode: true
+    },
+    
+    // Speech recognition settings
+    speech: {
+        preferOnlineRecognition: true,
+        fallbackToOffline: true,
+        language: 'en-US',
+        continuous: true
+    },
+    
+    // Arduino settings for BLE communication
+    arduino: {
+        serviceUUID: "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
+        characteristicUUID: "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+    }
 };
 
-// Make config work in both Node.js and browser environments
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = config;
-} else {
-  // In browser context
-  window.config = config;
-}
+// Log that config is loaded
+console.log('Configuration loaded:', window.config);
