@@ -1,0 +1,132 @@
+/**
+ * Button styles for Speech to Braille application
+ */
+
+/* Base button styles */
+button {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: var(--primary-dark);
+}
+
+button:disabled {
+  background-color: var(--bg-tertiary);
+  cursor: not-allowed;
+  color: var(--text-disabled);
+}
+
+/* Button variants */
+.btn-primary {
+  background-color: var(--primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.btn-success {
+  background-color: var(--success);
+}
+
+.btn-success:hover {
+  background-color: #2d9144;
+}
+
+.btn-warning {
+  background-color: var(--warning);
+  color: #333;
+}
+
+.btn-warning:hover {
+  background-color: #f0b400;
+}
+
+.btn-danger {
+  background-color: var(--error);
+}
+
+.btn-danger:hover {
+  background-color: #d33426;
+}
+
+/* Specific button styles */
+#start-speech-btn {
+  background-color: var(--success);
+}
+
+#start-speech-btn:hover {
+  background-color: #2d9144;
+}
+
+#stop-speech-btn {
+  background-color: var(--error);
+}
+
+#stop-speech-btn:hover {
+  background-color: #d33426;
+}
+
+/* Speak button styles */
+.speak-btn {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--warning);
+  color: #333;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.speak-btn:hover {
+  background-color: #f0b400;
+  transform: scale(1.05);
+}
+
+.speak-btn:active {
+  transform: scale(0.98);
+}
+
+.speak-btn.speaking {
+  background-color: var(--success);
+  color: white;
+  animation: pulse-speak 1.5s infinite;
+}
+
+/* Connect button */
+.connect-btn {
+  background-color: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+}
+
+.connect-btn .btn-icon {
+  font-size: 1.2em;
+}
+
+/* Button sizes */
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.btn-lg {
+  padding: 1rem 2rem;
+  font-size: 1.25rem;
+}

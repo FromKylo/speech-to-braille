@@ -1,0 +1,89 @@
+/**
+ * Card component styles for Speech to Braille application
+ */
+
+/* Base card styles */
+.card {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-md);
+}
+
+.card h2 {
+  margin-top: 0;
+  color: var(--primary);
+  margin-bottom: 1rem;
+}
+
+/* Card variants */
+.card-info {
+  border-left: 4px solid var(--info);
+}
+
+.card-success {
+  border-left: 4px solid var(--success);
+}
+
+.card-warning {
+  border-left: 4px solid var(--warning);
+}
+
+.card-error {
+  border-left: 4px solid var(--error);
+}
+
+/* Card header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Card content */
+.card-body {
+  padding: 0.5rem 0;
+}
+
+/* Card footer */
+.card-footer {
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Special card layouts */
+.info-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.info-row .label {
+  font-weight: bold;
+  margin-right: 1rem;
+  flex: 0 0 100px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .card {
+    padding: 1rem;
+  }
+  
+  .info-row {
+    flex-direction: column;
+  }
+  
+  .info-row .label {
+    margin-bottom: 0.25rem;
+  }
+}

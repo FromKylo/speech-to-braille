@@ -1,0 +1,116 @@
+/**
+ * Troubleshooting styles for Speech to Braille application
+ */
+
+/* Details and summary elements */
+details {
+  margin-bottom: 15px;
+}
+
+details summary {
+  padding: 12px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+details summary:hover {
+  background-color: var(--bg-tertiary);
+}
+
+details[open] summary {
+  margin-bottom: 10px;
+  background-color: var(--bg-tertiary);
+}
+
+/* Details content */
+.details-content {
+  padding: 15px;
+  margin: 10px 0;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+}
+
+/* Status messages */
+.success {
+  color: #155724;
+  background-color: #d4edda;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.warning {
+  color: #856404;
+  background-color: #fff3cd;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.error {
+  color: #721c24;
+  background-color: #f8d7da;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* Cache display styling */
+.cache-summary {
+  background-color: var(--bg-secondary);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.cache-details {
+  margin-bottom: 15px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 15px;
+  background-color: var(--bg-primary);
+}
+
+.cache-details h3 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.cache-items {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-left: 20px;
+  margin-top: 10px;
+}
+
+.cache-items li {
+  margin-bottom: 5px;
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.indexeddb-details {
+  margin-top: 10px;
+  padding: 15px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+}
+
+.cache-timestamp {
+  font-style: italic;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-top: 20px;
+  font-size: 0.9rem;
+}
+
+/* Refresh button */
+#refresh-button {
+  margin-bottom: 15px;
+}

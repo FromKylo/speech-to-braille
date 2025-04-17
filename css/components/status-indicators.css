@@ -1,0 +1,175 @@
+/**
+ * Status indicator styles for Speech to Braille application
+ */
+
+/* Base status styles */
+.status {
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  background-color: var(--bg-tertiary);
+}
+
+.online {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.offline {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Recording indicator */
+#recording-indicator {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.recording-off {
+  color: var(--text-secondary);
+  background-color: var(--bg-tertiary);
+}
+
+.recording-on, .blink-recording {
+  color: white;
+  font-weight: bold;
+  background-color: var(--error);
+  animation: blink 1.5s infinite;
+}
+
+/* Speaking indicator */
+.speaking-indicator {
+  display: flex;
+  align-items: center;
+  background-color: var(--warning);
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  margin-top: 0.5rem;
+  animation: pulse 1.5s infinite;
+}
+
+.speaking-indicator.hidden {
+  display: none;
+}
+
+.speak-icon {
+  margin-right: 0.5rem;
+}
+
+/* Output mode indicator */
+.output-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--error);
+  color: white;
+  border-radius: var(--radius-md);
+  font-weight: bold;
+}
+
+.output-indicator::before {
+  content: "●";
+  margin-right: 6px;
+  animation: blink 1.5s infinite;
+}
+
+/* Model status */
+#model-status {
+  padding: 0.5rem;
+  margin-top: 1rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-tertiary);
+  font-size: 0.9rem;
+}
+
+.model-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  margin-left: 0.5rem;
+  font-weight: 500;
+  color: white;
+}
+
+.web-speech {
+  background-color: var(--info);
+}
+
+.vosk-model {
+  background-color: var(--success);
+}
+
+.no-model {
+  background-color: var(--error);
+}
+
+/* Microphone status indicator */
+.mic-status {
+  margin-left: 15px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.mic-ok {
+  background-color: var(--success);
+  color: white;
+}
+
+.mic-error {
+  background-color: var(--error);
+  color: white;
+}
+
+/* Connection status indicators */
+.connection-status {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-tertiary);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  margin-right: 20px;
+  margin-bottom: 8px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+  aspect-ratio: 1/1;
+  flex-shrink: 0;
+}
+
+.status-label {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* Status dot colors */
+.status-dot.online {
+  background-color: var(--success);
+  box-shadow: 0 0 10px var(--success);
+}
+
+.status-dot.offline {
+  background-color: var(--error);
+}
+
+.status-dot.unknown {
+  background-color: var(--warning);
+}
+
+.status-dot.blinking {
+  animation: blink 1s infinite;
+}

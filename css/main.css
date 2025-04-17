@@ -1,0 +1,71 @@
+/**
+ * Main CSS file for Speech to Braille Application
+ * Imports all component CSS files
+ */
+
+/* Base styles */
+@import url('components/base.css');
+
+/* Layout */
+@import url('components/layout.css');
+
+/* Card components */
+@import url('components/cards.css');
+
+/* Status indicators */
+@import url('components/status-indicators.css');
+
+/* Button styles */
+@import url('components/buttons.css');
+
+/* Progress bars and loaders */
+@import url('components/progress.css');
+
+/* Braille display */
+@import url('components/braille-display.css');
+
+/* Phase transitions */
+@import url('components/phase-transitions.css');
+
+/* Speech recognition */
+@import url('components/speech-recognition.css');
+
+/* Arduino connection */
+@import url('components/arduino-connection.css');
+
+/* Troubleshooting styles */
+@import url('components/troubleshooting.css');
+
+/* Animations */
+@import url('components/animations.css');
+
+/* Responsive styles */
+@import url('components/responsive.css');
+
+/* Misc utility classes */
+.hidden {
+  display: none !important;
+}
+
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Accessibility */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.focus-visible:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

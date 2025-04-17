@@ -1,0 +1,120 @@
+/**
+ * Layout styles for Speech to Braille application
+ */
+
+/* Header */
+header {
+  background-color: var(--primary);
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pwa-badge {
+  background-color: white;
+  color: var(--primary);
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  margin-left: 0.5rem;
+}
+
+/* Main content */
+main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Phase containers */
+.phase-container {
+  display: none;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.phase-container.phase-active {
+  display: block;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-top: 2rem;
+  background-color: var(--bg-tertiary);
+}
+
+/* App structure sections */
+.app-section {
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease-in-out;
+  pointer-events: none;
+}
+
+.app-section.active {
+  opacity: 1;
+  height: auto;
+  overflow: visible;
+  pointer-events: all;
+}
+
+/* Container spacing utils */
+.container {
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -15px;
+  margin-left: -15px;
+}
+
+.col {
+  position: relative;
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+}
+
+/* Responsive breakpoints */
+@media (min-width: 576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 992px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1140px;
+  }
+}

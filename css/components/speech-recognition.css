@@ -1,0 +1,98 @@
+/**
+ * Speech recognition specific styles for Speech to Braille application
+ */
+
+/* Speech controls container */
+#speech-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Speech method selector */
+.speech-method-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.speech-method-selector label {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.speech-method-selector select {
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-primary);
+  font-size: 0.9rem;
+}
+
+/* Speech output container */
+.speech-output-container {
+  margin-top: 1rem;
+}
+
+.speech-output-container h3 {
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+/* Speech recognition error handling */
+#speech-recognition-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: var(--radius-sm);
+  font-weight: bold;
+  animation: pulse 2s infinite;
+  border: 1px solid #f5c6cb;
+}
+
+/* Speech loading */
+.speech-loading-container {
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+/* Error message animation */
+.error-message {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #fce8e6;
+  color: #ea4335;
+  border-radius: var(--radius-sm);
+  animation: fadeIn 0.3s ease-in;
+  transition: opacity 1s;
+}
+
+/* Speech diagnostic panel */
+#speech-diagnostics {
+  transition: all 0.3s ease;
+}
+
+#speech-diagnostics:hover {
+  transform: scale(1.05);
+}
+
+/* Diagnostic buttons */
+#diag-check-mic, 
+#diag-force-restart {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+#diag-check-mic:hover,
+#diag-force-restart:hover {
+  background-color: var(--primary-dark);
+}

@@ -8,16 +8,11 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     
-    <title>Speech to Braille</title>
+    <title>Speech to Braille Converter</title>
     
-    <!-- Main stylesheet -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- Consolidated CSS with component imports -->
+    <link rel="stylesheet" href="css/main.css">
     
-    <!-- Additional stylesheets -->
-    <link rel="stylesheet" href="css/dark-mode.css">
-    <link rel="stylesheet" href="css/figma-ui.css">
-    <link rel="stylesheet" href="css/speech-fixes.css">
-    <link rel="stylesheet" href="css/ui-enhancements.css"> <!-- Add our new CSS -->
     <style>
         /* Critical inline styles for phase transitions */
         .phase-container {
@@ -68,8 +63,7 @@
             <span class="pwa-badge">PWA</span>
         </div>
         <nav>
-            <button id="install-button" class="hidden">Install App</button>
-            <button id="theme-toggle">🌙</button>
+            <!-- Navigation items would go here -->
         </nav>
     </header>
 
@@ -181,23 +175,21 @@
             </div>
         </div>
         
-        <!-- Bluetooth section -->
+        <!-- ESP32 Connection UI -->
         <div class="card">
             <h2>Arduino Connection</h2>
             <div class="bluetooth-container">
-                <button id="connect-button" class="connect-btn">Connect to ESP32</button>
-                <div id="connection-status" class="status">Not Connected</div>
+                <button id="scan-btn" class="action-button">Scan for Devices</button>
+                <button id="connect-btn" class="connect-btn">Connect</button>
+                <button id="disconnect-btn" class="action-button" disabled>Disconnect</button>
             </div>
-            <div id="device-info" class="device-info hidden">
-                <div class="info-row">
-                    <span class="label">Device:</span>
-                    <span id="device-name">None</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Status:</span>
-                    <span id="device-status">Disconnected</span>
-                </div>
+            <div id="ble-status" class="connection-status">
+                <div class="status-dot offline"></div>
+                <div class="status-label">Disconnected</div>
             </div>
+            
+            <div id="device-list" class="device-list"></div>
+            <div id="connection-info" class="connection-info hidden"></div>
         </div>
         
         <!-- Braille database status -->
@@ -278,232 +270,32 @@
         <source src="sounds/output-mode.mp3" type="audio/mpeg">
     </audio>
 
-    <!-- Scripts are loaded in a specific order for dependencies -->
-    <script src="js/alternatives/speech-recognition.js"></script>
-    <script src="js/braille-translator.js"></script>
-    <script src="js/text-to-speech.js"></script>
-    <script src="utils/braille-array-formatter.js"></script>
+    <!-- Core modules - loaded in dependency order -->
+    <script src="js/core/speech-recognition.js"></script>
+    <script src="js/core/braille-translator.js"></script>
+    <script src="js/core/ui-controller.js"></script>
+    <script src="js/core/app.js"></script>
     
-    <!-- BLE integration -->
-    <script src="js/ble-controller.js"></script>
-    <script src="js/ble-ui.js"></script>
-    <script src="js/braille-visualizer.js"></script>
+    <!-- Features modules -->
+    <script src="js/features/text-to-speech.js"></script>
+    <script src="js/features/braille-visualizer.js"></script>
+    <script src="js/features/ble-controller.js"></script>
     
-    <!-- Main application modules -->
-    <script src="js/ui-controller.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/cache-manager.js"></script>
-    <script src="js/sound-effects.js"></script>
+    <!-- Utility modules -->
+    <script src="js/utils/braille-array-formatter.js"></script>
     
-    <!-- UI Enhancements -->
-    <script src="js/ui-enhancements.js"></script>
-    <script src="js/theme-switcher.js"></script>
-    
-    <!-- Diagnostic tools -->
-    <script src="js/speech-diagnostics.js"></script>
-    
-    <!-- Add Figma UI script before closing body tag -->
-    <script src="js/figma-ui.js"></script>
-    
-    <!-- Phase controller script -->
+    <!-- Service worker registration -->
     <script>
-        // Phase control management
-        document.addEventListener('DOMContentLoaded', function() {
-            // Phase control variables
-            let currentPhase = 'introduction';
-            let phaseTimer = null;
-            const PHASE_DURATION = 5000; // 5 seconds per phase
-            
-            // Flag to track if we've processed the introduction event
-            window.hasMovedPastIntro = false;
-            
-            // Phase elements
-            const introPhase = document.getElementById('introduction-phase');
-            const recordingPhase = document.getElementById('recording-phase');
-            const outputPhase = document.getElementById('output-phase');
-            
-            // Timer elements
-            const recordingTimer = document.getElementById('recording-timer');
-            const outputTimer = document.getElementById('output-timer');
-            
-            // Update recognition status in troubleshooting
-            function updateRecognitionStatus(isActive) {
-                const statusElement = document.getElementById('recognition-active-status');
-                if (statusElement) {
-                    statusElement.textContent = isActive ? 'Yes' : 'No';
-                    statusElement.style.color = isActive ? '#34a853' : '#ea4335';
-                }
-            }
-            
-            // Phase transition functions
-            function showPhase(phase) {
-                console.log(`Transitioning to phase: ${phase}`);
-                
-                // If we're trying to transition from introduction to any other phase
-                if (currentPhase === 'introduction' && phase !== 'introduction') {
-                    window.hasMovedPastIntro = true;
-                }
-                
-                // Update troubleshooting info
-                const phaseIndicator = document.getElementById('current-phase-indicator');
-                if (phaseIndicator) {
-                    phaseIndicator.textContent = phase.charAt(0).toUpperCase() + phase.slice(1);
-                }
-                
-                // Update Arduino about phase change if BLE controller is available
-                if (window.bleController && window.bleController.isConnected()) {
-                    console.log(`Notifying Arduino of phase change: ${phase}`);
-                    window.bleController.setPhase(phase).then(success => {
-                        if (!success) {
-                            console.warn('Failed to update Arduino about phase change');
-                        }
-                    });
-                }
-                
-                // Hide all phases
-                introPhase.classList.remove('phase-active');
-                recordingPhase.classList.remove('phase-active');
-                outputPhase.classList.remove('phase-active');
-                
-                // Show the selected phase
-                if (phase === 'introduction') {
-                    introPhase.classList.add('phase-active');
-                    
-                    // Automatically transition to recording phase after 5 seconds
-                    // This is a fallback if TTS or events fail
-                    setTimeout(() => {
-                        if (currentPhase === 'introduction' && !window.hasMovedPastIntro) {
-                            console.log('Automatic timeout from introduction phase');
-                            window.hasMovedPastIntro = true;
-                            showPhase('recording');
-                        }
-                    }, 5000);
-                    
-                } else if (phase === 'recording') {
-                    recordingPhase.classList.add('phase-active');
-                    startPhaseTimer(recordingTimer, 'output');
-                    
-                    // Clear any previous text to ensure we only show current sentence
-                    const finalTextElement = document.getElementById('final-text');
-                    if (finalTextElement) finalTextElement.textContent = '';
-                    const interimTextElement = document.getElementById('interim-text');
-                    if (interimTextElement) interimTextElement.textContent = '';
-                    
-                    // Play recording sound
-                    if (window.textToSpeech && textToSpeech.playRecordingAudio) {
-                        textToSpeech.playRecordingAudio();
-                    } else if (window.soundEffects) {
-                        window.soundEffects.playListeningModeSound();
-                    }
-                    
-                    // Start speech recognition - add a small delay to ensure UI is ready
-                    setTimeout(() => {
-                        if (window.app && app.startSpeechRecognition) {
-                            console.log('Starting speech recognition for recording phase');
-                            app.startSpeechRecognition();
-                            updateRecognitionStatus(true);
-                        }
-                    }, 300);
-                    
-                } else if (phase === 'output') {
-                    outputPhase.classList.add('phase-active');
-                    startPhaseTimer(outputTimer, 'recording');
-                    
-                    // Play output sound
-                    if (window.textToSpeech && textToSpeech.playOutputAudio) {
-                        textToSpeech.playOutputAudio();
-                    } else if (window.soundEffects) {
-                        window.soundEffects.playOutputModeSound();
-                    }
-                    
-                    // Pause speech recognition
-                    if (window.app && app.stopSpeechRecognition) {
-                        app.stopSpeechRecognition();
-                        updateRecognitionStatus(false);
-                    }
-                    
-                    // Process the current text for braille output
-                    processFinalText();
-                }
-                
-                currentPhase = phase;
-            }
-            
-            // Timer countdown function
-            function startPhaseTimer(timerElement, nextPhase) {
-                if (phaseTimer) clearInterval(phaseTimer);
-                
-                let secondsLeft = 5;
-                timerElement.textContent = secondsLeft;
-                timerElement.style.background = 'conic-gradient(#4285f4 0%, transparent 0%)';
-                
-                phaseTimer = setInterval(() => {
-                    secondsLeft--;
-                    if (secondsLeft <= 0) {
-                        clearInterval(phaseTimer);
-                        showPhase(nextPhase);
-                    } else {
-                        // Update timer display
-                        timerElement.textContent = secondsLeft;
-                        // Update circular progress
-                        const progress = (5 - secondsLeft) / 5 * 100;
-                        timerElement.style.background = `conic-gradient(#4285f4 ${progress}%, transparent ${progress}%)`;
-                    }
-                }, 1000);
-            }
-            
-            // Process the final text to find braille matches
-            function processFinalText() {
-                const finalTextElement = document.getElementById('final-text');
-                if (finalTextElement && finalTextElement.textContent.trim()) {
-                    const text = finalTextElement.textContent.trim();
-                    
-                    // If braille translator is available, process the text
-                    if (window.app && app.processSpeechForBraille) {
-                        app.processSpeechForBraille(text);
-                    }
-                }
-            }
-            
-            // Listen for introduction completion - with improved event handling
-            window.addEventListener('introCompleted', function(e) {
-                console.log('Caught introCompleted event, transitioning to recording phase');
-                if (currentPhase === 'introduction') {
-                    window.hasMovedPastIntro = true;
-                    showPhase('recording');
-                }
+        // Register service worker for PWA support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope:', registration.scope);
+                }).catch(error => {
+                    console.error('ServiceWorker registration failed:', error);
+                });
             });
-            
-            // Override app's cycle mechanism to use our new phase system
-            if (window.app) {
-                window.app.startListeningCycle = function() {
-                    console.log('startListeningCycle called, current phase:', currentPhase);
-                    // Only transition if we're in the introduction phase
-                    if (currentPhase === 'introduction') {
-                        window.hasMovedPastIntro = true;
-                        showPhase('recording');
-                    }
-                };
-            }
-            
-            // Start with introduction phase
-            showPhase('introduction');
-            
-            // Fallback timer for the entire introduction phase 
-            setTimeout(() => {
-                if (currentPhase === 'introduction') {
-                    console.log('Global fallback timer triggered - forcing transition to recording phase');
-                    window.hasMovedPastIntro = true;
-                    showPhase('recording');
-                }
-            }, 7000);
-            
-            // Make phase control available globally
-            window.phaseControl = {
-                showPhase,
-                getCurrentPhase: () => currentPhase
-            };
-        });
+        }
     </script>
 </body>
 </html>

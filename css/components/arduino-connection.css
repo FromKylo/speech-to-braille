@@ -1,0 +1,123 @@
+/**
+ * Arduino/BLE connection styles for Speech to Braille application
+ */
+
+/* Connection section container */
+.connection-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+}
+
+/* Connection header */
+.status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.status-header h4 {
+  margin: 0;
+  color: var(--primary);
+}
+
+/* BLE control buttons */
+.ble-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.action-button {
+  padding: 8px 16px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.action-button:hover {
+  background-color: var(--primary-dark);
+}
+
+.action-button:disabled {
+  background-color: var(--bg-tertiary);
+  cursor: not-allowed;
+  color: var(--text-disabled);
+}
+
+/* Device selection list */
+.device-list {
+  margin: 1rem 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 0;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.device-item {
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.device-item:last-child {
+  border-bottom: none;
+}
+
+.device-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.device-name {
+  font-weight: 500;
+}
+
+.device-id {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-left: 1rem;
+}
+
+/* Connection info display */
+.connection-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+/* Connection messages */
+.connection-message {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.connection-message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.connection-message.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.connection-message.info {
+  background-color: #cce5ff;
+  color: #004085;
+}

@@ -1,0 +1,97 @@
+/**
+ * Phase transition styles for Speech to Braille application
+ */
+
+/* Phase container animation */
+.phase-transition {
+  animation: phaseChange 0.7s ease-in-out;
+}
+
+/* Phase headers with timers */
+.recording-header,
+.output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+/* Phase indicators */
+.blink-recording,
+.output-indicator {
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+}
+
+/* Introduction phase styling */
+.intro-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+#intro-phrase {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary);
+  margin: 1.5rem 0;
+}
+
+/* Recording phase styling */
+#recording-phase .speech-output-container {
+  margin-top: 1.5rem;
+}
+
+.speech-output-box {
+  min-height: 100px;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-secondary);
+}
+
+#interim-text {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+#final-text {
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+/* Output phase styling */
+#output-phase .braille-match {
+  opacity: 0;
+  animation: fadeIn 0.5s forwards;
+  animation-delay: 0.3s;
+}
+
+/* Welcome banner enhancements */
+#welcome-banner {
+  padding: 30px;
+  text-align: center;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  background-color: var(--primary);
+  color: white;
+  margin-bottom: 2rem;
+  animation: fadeIn 2s ease-out;
+}
+
+#welcome-banner h2 {
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+  color: white;
+}
+
+#welcome-banner p {
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  color: white;
+}

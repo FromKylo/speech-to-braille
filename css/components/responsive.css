@@ -1,0 +1,114 @@
+/**
+ * Responsive styles for Speech to Braille application
+ */
+
+/* Mobile devices (< 576px) */
+@media (max-width: 576px) {
+  body {
+    font-size: 14px;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+  
+  .info-row {
+    flex-direction: column;
+  }
+  
+  .info-row .label {
+    margin-bottom: 0.25rem;
+  }
+  
+  .speech-method-selector {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .speech-method-selector select {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  
+  .connection-status {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .status-indicator {
+    margin-right: 0;
+    margin-bottom: 10px;
+    width: 100%;
+  }
+  
+  #speech-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  #speech-controls button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .ble-controls {
+    flex-direction: column;
+  }
+  
+  .ble-controls button {
+    width: 100%;
+  }
+  
+  .match-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .matched-word {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Small devices (576px - 768px) */
+@media (min-width: 576px) and (max-width: 768px) {
+  .ble-controls {
+    flex-wrap: wrap;
+  }
+  
+  .status-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .status-header h4 {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Medium devices (768px - 992px) */
+@media (min-width: 768px) and (max-width: 992px) {
+  .braille-display {
+    gap: 1rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background-color: white;
+    color: black;
+  }
+  
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+  
+  button, .action-button, .connect-btn, #speech-controls {
+    display: none;
+  }
+  
+  .braille-match, .braille-display, .braille-info {
+    page-break-inside: avoid;
+  }
+}

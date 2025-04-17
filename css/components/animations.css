@@ -1,0 +1,69 @@
+/**
+ * Animation styles for Speech to Braille application
+ */
+
+/* Fade In animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Pulse animation for indicators */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+/* Special pulse for speak button */
+@keyframes pulse-speak {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Blinking animation */
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Progress bar stripes animation */
+@keyframes progress-bar-stripes {
+  from { background-position: 40px 0; }
+  to { background-position: 0 0; }
+}
+
+/* Spinning animation for loaders */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Phase change animation */
+@keyframes phaseChange {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Classes for applying animations */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+.blink {
+  animation: blink 1.5s infinite;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+.phase-change {
+  animation: phaseChange 0.7s ease-in-out;
+}
