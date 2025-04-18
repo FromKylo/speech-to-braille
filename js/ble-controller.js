@@ -199,33 +199,186 @@ const bleController = (function() {
         }
     }
     
-    // Send braille data to the ESP32
-    async function sendBrailleData(brailleArray) {
-        if (!isConnected || !brailleCharacteristic) {
-            console.warn('Not connected to BLE device');
-            return false;
+    // Add these properties to the class or module
+    const pendingTransmissions = new Map(); // To track messages waiting for acknowledgment
+    let averageLatency = 0;
+    let transmissionCount = 0;
+    let lastLatency = 0;
+    let maxLatency = 0;
+    let minLatency = Number.MAX_VALUE;
+
+    /**
+     * Send braille data to the ESP32 with timing measurements
+     * @param {Array} brailleArray - Array of dot indices that should be raised
+     * @returns {Promise<boolean>} - Whether the transmission was successful
+     */
+    function sendBrailleData(brailleArray) {
+        return new Promise((resolve, reject) => {
+            if (!isConnected || !brailleCharacteristic) {
+                console.warn('Cannot send braille data - not connected to BLE device');
+                return resolve(false);
+            }
+            
+            try {
+                // Create a unique message ID for this transmission
+                const messageId = Date.now() + '-' + Math.floor(Math.random() * 1000);
+                
+                // Create the payload with timing information
+                const payload = {
+                    id: messageId,
+                    type: 'braille',
+                    data: brailleArray,
+                    sentTimestamp: Date.now()
+                };
+                
+                // Track this transmission for acknowledgment
+                pendingTransmissions.set(messageId, {
+                    sentTime: Date.now(),
+                    payload: payload,
+                    resolve: resolve
+                });
+                
+                // Convert to JSON and then to bytes
+                const jsonData = JSON.stringify(payload);
+                const encoder = new TextEncoder();
+                const data = encoder.encode(jsonData);
+                
+                console.log(`Sending BLE data with ID ${messageId}:`, jsonData);
+                
+                // Write the value with response
+                brailleCharacteristic.writeValue(data)
+                    .then(() => {
+                        console.log(`Data sent successfully for message ${messageId}`);
+                        
+                        // Set a timeout to clean up pending transmissions that don't get acknowledged
+                        setTimeout(() => {
+                            if (pendingTransmissions.has(messageId)) {
+                                console.warn(`Message ${messageId} was not acknowledged within timeout`);
+                                pendingTransmissions.delete(messageId);
+                                // Still resolve as success since we don't want to fail the operation
+                                resolve(true);
+                            }
+                        }, 5000); // 5 second timeout
+                    })
+                    .catch(error => {
+                        console.error('Error sending data to ESP32:', error);
+                        pendingTransmissions.delete(messageId);
+                        reject(error);
+                    });
+                    
+                // For backward compatibility, also send the simple array format
+                // This can be removed once the ESP32 code is updated
+                if (brailleCharacteristic_legacy) {
+                    // Simple array format (as before)
+                    brailleCharacteristic_legacy.writeValue(new Uint8Array(brailleArray))
+                        .catch(error => console.warn('Legacy transmission failed:', error));
+                }
+            } catch (error) {
+                console.error('Error formatting or sending BLE data:', error);
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Set up the notification handler to receive acknowledgments
+     */
+    function setupNotificationHandler(characteristic) {
+        // ... existing code ...
+        
+        characteristic.addEventListener('characteristicvaluechanged', (event) => {
+            try {
+                const decoder = new TextDecoder();
+                const value = decoder.decode(event.target.value);
+                
+                // Try to parse as JSON
+                try {
+                    const data = JSON.parse(value);
+                    
+                    // Check if this is an acknowledgment
+                    if (data.type === 'ACK' && data.id) {
+                        handleAcknowledgment(data);
+                    }
+                    
+                    // Dispatch event for other components to use
+                    dispatchBLEEvent('data', data);
+                } catch (jsonError) {
+                    console.log('Received non-JSON data:', value);
+                    // Handle as plain text/binary data
+                    dispatchBLEEvent('data', value);
+                }
+            } catch (error) {
+                console.error('Error handling BLE notification:', error);
+            }
+        });
+        
+        // ... existing code ...
+    }
+
+    /**
+     * Handle acknowledgment messages from the ESP32
+     */
+    function handleAcknowledgment(ackData) {
+        const messageId = ackData.id;
+        const transmission = pendingTransmissions.get(messageId);
+        
+        if (!transmission) {
+            console.warn(`Received acknowledgment for unknown message: ${messageId}`);
+            return;
         }
         
-        try {
-            // Prepare the braille data with phase information
-            const dataToSend = prepareBrailleData(brailleArray);
-            
-            // Log the data being sent
-            console.log('Sending braille data:', Array.from(dataToSend));
-            
-            // Write to the characteristic
-            await brailleCharacteristic.writeValue(dataToSend);
-            
-            console.log('Braille data sent successfully');
-            return true;
-            
-        } catch (error) {
-            console.error('Error sending braille data:', error);
-            triggerEvent('error', { message: error.message });
-            return false;
+        // Calculate the round-trip time
+        const roundTripTime = Date.now() - transmission.sentTime;
+        
+        // Calculate the one-way latency from device processing information
+        let oneWayLatency = null;
+        if (ackData.deviceProcessingTime !== undefined) {
+            oneWayLatency = Math.round(roundTripTime / 2);
+        } else {
+            oneWayLatency = roundTripTime; // Fall back to round trip if no processing time available
         }
+        
+        // Update statistics
+        lastLatency = oneWayLatency;
+        maxLatency = Math.max(maxLatency, oneWayLatency);
+        minLatency = Math.min(minLatency, oneWayLatency);
+        
+        // Update rolling average
+        transmissionCount++;
+        averageLatency = averageLatency + (oneWayLatency - averageLatency) / transmissionCount;
+        
+        console.log(`Message ${messageId} acknowledged. Latency: ${oneWayLatency}ms, Device processing time: ${ackData.deviceProcessingTime}ms`);
+        
+        // Dispatch a latency event for UI updates
+        dispatchBLEEvent('latency', {
+            messageId: messageId,
+            latency: oneWayLatency,
+            roundTrip: roundTripTime,
+            deviceProcessing: ackData.deviceProcessingTime,
+            average: averageLatency,
+            max: maxLatency,
+            min: minLatency,
+            count: transmissionCount
+        });
+        
+        // Remove from pending and resolve the promise
+        pendingTransmissions.delete(messageId);
+        transmission.resolve(true);
     }
-    
+
+    /**
+     * Get the latest latency statistics
+     */
+    function getLatencyStats() {
+        return {
+            last: lastLatency,
+            average: averageLatency,
+            max: maxLatency,
+            min: minLatency === Number.MAX_VALUE ? 0 : minLatency,
+            count: transmissionCount
+        };
+    }
+
     // Public API
     return {
         // Check connection status
@@ -264,6 +417,11 @@ const bleController = (function() {
                 eventListeners[eventName].push(callback);
             }
             return this;
+        },
+
+        // Get latency statistics
+        getLatencyStats: function() {
+            return getLatencyStats();
         }
     };
 })();

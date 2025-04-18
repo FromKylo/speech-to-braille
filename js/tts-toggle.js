@@ -1,93 +1,32 @@
 /**
- * Text-to-Speech Toggle Functionality
- * Allows users to enable/disable speech output
+ * Text-to-Speech Functionality
+ * TTS is always enabled in this version
  */
 
 (function() {
-    // Default state - enabled
-    let ttsEnabled = true;
+    // TTS is always enabled
+    const ttsEnabled = true;
     
     // Initialize when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
-        initTTSToggle();
+        console.log('TTS initialized - always enabled');
+        patchTTSFunctions();
     });
     
-    // Initialize TTS toggle functionality
-    function initTTSToggle() {
-        const ttsToggle = document.getElementById('tts-toggle');
-        const ttsStatus = document.getElementById('tts-status');
-        
-        if (!ttsToggle) {
-            console.warn('TTS toggle element not found');
-            return;
-        }
-        
-        // Load saved preference if available
-        loadSavedPreference();
-        
-        // Set initial state based on loaded preference
-        ttsToggle.checked = ttsEnabled;
-        updateStatusText();
-        
-        // Add event listener
-        ttsToggle.addEventListener('change', function() {
-            ttsEnabled = ttsToggle.checked;
-            updateStatusText();
-            savePreference();
-            
-            // Announce the change
-            if (ttsEnabled) {
-                // If re-enabling, make a sound
-                trySpeak("Text to speech enabled");
-            }
-        });
-        
-        // Override the original speak functions to check if TTS is enabled
-        patchTTSFunctions();
-        
-        function updateStatusText() {
-            if (ttsStatus) {
-                ttsStatus.textContent = ttsEnabled ? 'Enabled' : 'Disabled';
-            }
-        }
-    }
-    
-    // Check if speech is allowed (based on toggle)
+    // Check if speech is allowed (always returns true)
     function isTTSAllowed() {
-        return ttsEnabled;
+        // Always return true as TTS should always be enabled
+        return true;
     }
     
-    // Save user preference
-    function savePreference() {
-        try {
-            localStorage.setItem('ttsEnabled', ttsEnabled.toString());
-            console.log('TTS preference saved:', ttsEnabled);
-        } catch (e) {
-            console.error('Failed to save TTS preference:', e);
-        }
-    }
-    
-    // Load saved preference
-    function loadSavedPreference() {
-        try {
-            const savedPreference = localStorage.getItem('ttsEnabled');
-            if (savedPreference !== null) {
-                ttsEnabled = savedPreference === 'true';
-                console.log('TTS preference loaded:', ttsEnabled);
-            }
-        } catch (e) {
-            console.error('Failed to load TTS preference:', e);
-        }
-    }
-    
-    // Try to speak text only if TTS is enabled
+    // Try to speak text (always enabled)
     function trySpeak(text) {
-        if (ttsEnabled && window.textToSpeech && typeof window.textToSpeech.speak === 'function') {
+        if (window.textToSpeech && typeof window.textToSpeech.speak === 'function') {
             window.textToSpeech.speak(text);
         }
     }
     
-    // Patch the TTS functions to respect the toggle
+    // Patch the TTS functions to ensure they always work
     function patchTTSFunctions() {
         // Wait until textToSpeech is available
         if (!window.textToSpeech) {
@@ -96,37 +35,22 @@
             return;
         }
         
-        console.log('Patching TTS functions to respect toggle');
+        console.log('Ensuring TTS functions are always enabled');
         
-        // Save original functions
+        // Save original functions in case we need them
         const originalSpeak = window.textToSpeech.speak;
         const originalSpeakMatchedWord = window.textToSpeech.speakMatchedWord;
         
-        // Override speak function
+        // Ensure the functions are properly called
         window.textToSpeech.speak = function(text, callback, settings) {
-            if (isTTSAllowed()) {
-                return originalSpeak.call(this, text, callback, settings);
-            } else {
-                console.log('TTS disabled. Not speaking:', text);
-                // Still call the callback
-                if (callback && typeof callback === 'function') {
-                    setTimeout(callback, 100);
-                }
-                return false;
-            }
+            return originalSpeak.call(this, text, callback, settings);
         };
         
-        // Override speakMatchedWord function
         window.textToSpeech.speakMatchedWord = function(word) {
-            if (isTTSAllowed()) {
-                return originalSpeakMatchedWord.call(this, word);
-            } else {
-                console.log('TTS disabled. Not speaking matched word:', word);
-                return false;
-            }
+            return originalSpeakMatchedWord.call(this, word);
         };
         
-        // Add the isTTSEnabled function to the public API
+        // Add the isTTSEnabled function to the public API (always returns true)
         window.textToSpeech.isTTSEnabled = isTTSAllowed;
     }
     
@@ -134,20 +58,11 @@
     window.ttsToggle = {
         isEnabled: isTTSAllowed,
         enable: function() {
-            const toggle = document.getElementById('tts-toggle');
-            if (toggle) toggle.checked = true;
-            ttsEnabled = true;
-            savePreference();
-            const statusEl = document.getElementById('tts-status');
-            if (statusEl) statusEl.textContent = 'Enabled';
+            // TTS is always enabled, nothing to do
         },
         disable: function() {
-            const toggle = document.getElementById('tts-toggle');
-            if (toggle) toggle.checked = false;
-            ttsEnabled = false;
-            savePreference();
-            const statusEl = document.getElementById('tts-status');
-            if (statusEl) statusEl.textContent = 'Disabled';
+            // This function is kept for API compatibility, but does nothing
+            console.warn('TTS cannot be disabled in this version');
         }
     };
 })();

@@ -172,4 +172,135 @@ document.addEventListener('DOMContentLoaded', function() {
         connectBleBtn.disabled = true;
         bleMessageElement.textContent = 'BLE controller module is not loaded.';
     }
+
+    createLatencyDisplay();
 });
+
+/**
+ * Create and update the BLE latency statistics display
+ */
+function createLatencyDisplay() {
+    const bleConnectionSection = document.getElementById('ble-connection');
+    if (!bleConnectionSection) return;
+    
+    // Check if the latency display already exists
+    let latencyDisplay = document.getElementById('ble-latency-stats');
+    
+    if (!latencyDisplay) {
+        // Create the display if it doesn't exist
+        latencyDisplay = document.createElement('div');
+        latencyDisplay.id = 'ble-latency-stats';
+        latencyDisplay.className = 'ble-latency-stats';
+        latencyDisplay.innerHTML = `
+            <h4>BLE Transmission Stats</h4>
+            <table class="latency-table">
+                <tr>
+                    <td>Last Latency:</td>
+                    <td id="last-latency">--</td>
+                </tr>
+                <tr>
+                    <td>Average:</td>
+                    <td id="avg-latency">--</td>
+                </tr>
+                <tr>
+                    <td>Min / Max:</td>
+                    <td id="min-max-latency">--</td>
+                </tr>
+                <tr>
+                    <td>Transmissions:</td>
+                    <td id="transmission-count">0</td>
+                </tr>
+            </table>
+        `;
+        
+        // Add to the troubleshooting section instead of connection section
+        const troubleshootingSection = document.getElementById('troubleshooting-section');
+        if (troubleshootingSection) {
+            // Check if there's a BLE details section, or create one
+            let bleDetails = troubleshootingSection.querySelector('details[data-section="ble"]');
+            
+            if (!bleDetails) {
+                bleDetails = document.createElement('details');
+                bleDetails.setAttribute('data-section', 'ble');
+                bleDetails.innerHTML = `
+                    <summary>BLE Performance</summary>
+                    <div class="details-content"></div>
+                `;
+                troubleshootingSection.querySelector('.card').appendChild(bleDetails);
+            }
+            
+            bleDetails.querySelector('.details-content').appendChild(latencyDisplay);
+        } else {
+            // Fallback to connection section if troubleshooting not found
+            bleConnectionSection.appendChild(latencyDisplay);
+        }
+    }
+    
+    // Listen for latency events
+    document.addEventListener('ble-event', (event) => {
+        if (event.detail.type === 'latency') {
+            updateLatencyStats(event.detail.data);
+        }
+    });
+    
+    // Set up periodic updates
+    setInterval(updateLatencyStatsFromController, 1000);
+}
+
+/**
+ * Update the latency statistics display
+ */
+function updateLatencyStats(stats) {
+    const lastLatencyElement = document.getElementById('last-latency');
+    const avgLatencyElement = document.getElementById('avg-latency');
+    const minMaxLatencyElement = document.getElementById('min-max-latency');
+    const countElement = document.getElementById('transmission-count');
+    
+    if (lastLatencyElement) {
+        lastLatencyElement.textContent = stats.latency ? `${stats.latency} ms` : '--';
+    }
+    
+    if (avgLatencyElement) {
+        avgLatencyElement.textContent = stats.average ? `${Math.round(stats.average)} ms` : '--';
+    }
+    
+    if (minMaxLatencyElement) {
+        minMaxLatencyElement.textContent = (stats.min && stats.max) ? 
+            `${stats.min} / ${stats.max} ms` : '--';
+    }
+    
+    if (countElement) {
+        countElement.textContent = stats.count || 0;
+    }
+}
+
+/**
+ * Update latency stats from controller data
+ */
+function updateLatencyStatsFromController() {
+    if (window.bleController && typeof bleController.getLatencyStats === 'function') {
+        const stats = bleController.getLatencyStats();
+        
+        const lastLatencyElement = document.getElementById('last-latency');
+        const avgLatencyElement = document.getElementById('avg-latency');
+        const minMaxLatencyElement = document.getElementById('min-max-latency');
+        const countElement = document.getElementById('transmission-count');
+        
+        if (lastLatencyElement) {
+            lastLatencyElement.textContent = stats.last ? `${stats.last} ms` : '--';
+        }
+        
+        if (avgLatencyElement) {
+            avgLatencyElement.textContent = stats.average ? `${Math.round(stats.average)} ms` : '--';
+        }
+        
+        if (minMaxLatencyElement) {
+            minMaxLatencyElement.textContent = 
+                `${stats.min} / ${stats.max} ms`;
+        }
+        
+        if (countElement) {
+            countElement.textContent = stats.count || 0;
+        }
+    }
+}

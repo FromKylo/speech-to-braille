@@ -351,3 +351,40 @@
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
+
+/* BLE Latency Statistics */
+.ble-latency-stats {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+    border: 1px solid #dee2e6;
+}
+
+.ble-latency-stats h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1rem;
+    color: #333;
+}
+
+.latency-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.latency-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.latency-table td:first-child {
+    font-weight: 500;
+    color: #555;
+}
+
+.latency-table td:last-child {
+    text-align: right;
+    font-family: monospace;
+    font-weight: 500;
+}
