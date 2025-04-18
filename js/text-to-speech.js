@@ -17,6 +17,12 @@ let isSpeaking = false;
 let resumeTimer = null; // Timer for Chrome resume fix
 let introCompleted = false; // Track if introduction has been completed
 
+// Track if user has interacted with the page
+let hasUserInteracted = false;
+document.addEventListener('click', () => {
+    hasUserInteracted = true;
+});
+
 // Chrome-specific fix: Keep the speech synthesis active
 function startChromeWorkaround() {
     // Clear any existing timer
@@ -30,8 +36,15 @@ function startChromeWorkaround() {
         if (window.speechSynthesis) {
             // Only resume if not speaking to avoid interruptions
             if (!isSpeaking && window.speechSynthesis.pending === false) {
-                console.log("Applying Chrome resume() fix");
-                window.speechSynthesis.resume();
+                try {
+                    window.speechSynthesis.resume();
+                    // Only log if debug mode is enabled to reduce console spam
+                    if (window.config && window.config.behavior && window.config.behavior.debugMode) {
+                        console.log("Applying Chrome resume() fix");
+                    }
+                } catch (e) {
+                    console.warn("Error applying Chrome resume fix:", e);
+                }
             }
         }
     }, 10000);
@@ -41,10 +54,24 @@ function startChromeWorkaround() {
 
 // Initialize speech synthesis on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Set up user interaction detection more broadly
+    ['click', 'touchstart', 'keypress'].forEach(eventType => {
+        document.addEventListener(eventType, () => {
+            if (!hasUserInteracted) {
+                console.log("User interaction detected - speech features should now work");
+                hasUserInteracted = true;
+            }
+        }, { once: false });
+    });
+
     // Wait a bit to avoid conflicts with speech-init.js
     setTimeout(() => {
         initSpeechSynthesis().then(() => {
             // Auto-start introduction phase after voice is ready
+            speakIntroduction();
+        }).catch(err => {
+            console.warn("Speech synthesis initialization failed:", err);
+            // Still proceed with introduction even if speech fails
             speakIntroduction();
         });
     }, 1000);
@@ -85,6 +112,109 @@ async function initSpeechSynthesis() {
     }
 }
 
+// Wrapper function to handle speech synthesis in a future-proof way
+function synthesizeSpeech(utterance) {
+    return new Promise((resolve, reject) => {
+        if (!window.speechSynthesis) {
+            reject(new Error("Speech synthesis not supported"));
+            return;
+        }
+        
+        // Handle utterance completion
+        utterance.onend = () => {
+            resolve();
+        };
+        
+        utterance.onerror = (event) => {
+            console.error("Speech synthesis error:", event);
+            
+            // Special handling for not-allowed error (requires user activation)
+            if (event.error === 'not-allowed') {
+                console.warn("Speech synthesis requires user activation. Using fallback approach.");
+                // Try fallback approach
+                useFallbackSpeech(utterance.text, resolve);
+            } else {
+                reject(new Error("Speech synthesis error: " + event.error));
+            }
+        };
+        
+        try {
+            // Check if we need user interaction first
+            const needsUserInteraction = !hasUserInteracted && 
+                (navigator.userAgent.indexOf("Chrome") > -1 || navigator.userAgent.indexOf("Edge") > -1);
+                
+            if (needsUserInteraction) {
+                console.warn("Speech synthesis may require user interaction. Using fallback approach.");
+                useFallbackSpeech(utterance.text, resolve);
+                return;
+            }
+            
+            // Using the potentially deprecated method, but wrapped for future replacement
+            window.speechSynthesis.speak(utterance);
+            
+            // Check if speech actually started within a timeout
+            setTimeout(() => {
+                if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+                    console.warn("Speech synthesis failed to start, trying alternative approach");
+                    // Cancel any pending speech
+                    window.speechSynthesis.cancel();
+                    
+                    // Use fallback approach
+                    useFallbackSpeech(utterance.text, resolve);
+                }
+            }, 500);
+        } catch (error) {
+            console.error("Failed to start speech synthesis:", error);
+            // Use fallback approach
+            useFallbackSpeech(utterance.text, resolve);
+        }
+    });
+}
+
+// Fallback function to use when speech synthesis fails
+function useFallbackSpeech(text, callback) {
+    console.log("Using fallback speech approach for:", text);
+    
+    // For demos where actual speech isn't critical, we can proceed without speech
+    // Log the text that would have been spoken
+    console.log("Would have spoken:", text);
+    
+    // Add visual indication that speech would occur here
+    const speechIndicator = document.getElementById('speech-text-display');
+    if (speechIndicator) {
+        speechIndicator.textContent = text;
+        setTimeout(() => {
+            speechIndicator.textContent = '';
+        }, 3000);
+    } else {
+        // Create a temporary element to show the text
+        const tempIndicator = document.createElement('div');
+        tempIndicator.id = 'temp-speech-indicator';
+        tempIndicator.style.position = 'fixed';
+        tempIndicator.style.bottom = '10px';
+        tempIndicator.style.left = '10px';
+        tempIndicator.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        tempIndicator.style.color = 'white';
+        tempIndicator.style.padding = '8px 12px';
+        tempIndicator.style.borderRadius = '4px';
+        tempIndicator.style.zIndex = '9999';
+        tempIndicator.style.maxWidth = '80%';
+        tempIndicator.textContent = `🔊 ${text}`;
+        document.body.appendChild(tempIndicator);
+        
+        setTimeout(() => {
+            if (tempIndicator.parentNode) {
+                tempIndicator.parentNode.removeChild(tempIndicator);
+            }
+        }, 3000);
+    }
+    
+    // Continue the flow by resolving the promise
+    setTimeout(() => {
+        if (callback) callback();
+    }, 500);
+}
+
 // Function to speak text with the selected voice
 function speakText(text, callback) {
     if (!window.speechSynthesis) {
@@ -114,27 +244,27 @@ function speakText(text, callback) {
     }
     isSpeaking = true;
     
-    // Set up callbacks
-    utterance.onend = function() {
-        isSpeaking = false;
-        if (speakingIndicator) {
-            speakingIndicator.classList.add('hidden');
-        }
-        if (callback && typeof callback === 'function') {
-            callback();
-        }
-    };
-    
-    utterance.onerror = function(event) {
-        console.error('Speech synthesis error:', event);
-        isSpeaking = false;
-        if (speakingIndicator) {
-            speakingIndicator.classList.add('hidden');
-        }
-    };
-    
-    // Speak the text
-    window.speechSynthesis.speak(utterance);
+    // Use our wrapper function instead of directly calling speak
+    synthesizeSpeech(utterance)
+        .then(() => {
+            isSpeaking = false;
+            if (speakingIndicator) {
+                speakingIndicator.classList.add('hidden');
+            }
+            if (callback && typeof callback === 'function') {
+                callback();
+            }
+        })
+        .catch(error => {
+            console.error('Speech synthesis failed:', error);
+            isSpeaking = false;
+            if (speakingIndicator) {
+                speakingIndicator.classList.add('hidden');
+            }
+            if (callback && typeof callback === 'function') {
+                callback();
+            }
+        });
 }
 
 // Stop any ongoing speech
@@ -169,6 +299,50 @@ function speakIntroduction() {
     
     // Mark as completed immediately to avoid getting stuck
     introCompleted = true;
+    
+    // Always add a visual cue initially to help users understand they need to interact
+    const interactionPrompt = document.createElement('div');
+    interactionPrompt.id = 'interaction-prompt';
+    interactionPrompt.style.padding = '10px';
+    interactionPrompt.style.margin = '10px 0';
+    interactionPrompt.style.backgroundColor = '#f8f9fa';
+    interactionPrompt.style.border = '1px solid #dee2e6';
+    interactionPrompt.style.borderRadius = '4px';
+    interactionPrompt.style.textAlign = 'center';
+    interactionPrompt.innerHTML = '<strong>Click anywhere on the page to enable audio features</strong><br>Chrome requires user interaction before playing audio';
+    
+    const container = document.querySelector('.intro-container') || 
+                       document.getElementById('introduction-phase') || 
+                       document.body;
+    
+    if (container) {
+        container.prepend(interactionPrompt);
+        setTimeout(() => {
+            if (interactionPrompt.parentNode && hasUserInteracted) {
+                interactionPrompt.style.opacity = '0';
+                interactionPrompt.style.transition = 'opacity 1s';
+                setTimeout(() => {
+                    if (interactionPrompt.parentNode) {
+                        interactionPrompt.parentNode.removeChild(interactionPrompt);
+                    }
+                }, 1000);
+            }
+        }, 5000);
+
+        // Keep checking if user has interacted, remove the prompt when they do
+        const checkInterval = setInterval(() => {
+            if (hasUserInteracted && interactionPrompt.parentNode) {
+                interactionPrompt.style.opacity = '0';
+                interactionPrompt.style.transition = 'opacity 1s';
+                setTimeout(() => {
+                    if (interactionPrompt.parentNode) {
+                        interactionPrompt.parentNode.removeChild(interactionPrompt);
+                    }
+                    clearInterval(checkInterval);
+                }, 1000);
+            }
+        }, 1000);
+    }
     
     // Try to speak the text, but with a fallback to ensure we proceed even if TTS fails
     try {
@@ -253,7 +427,13 @@ function speakMatchedWord(word) {
 function playRecordingAudio() {
     const recordingSound = document.getElementById('listening-mode-sound');
     if (recordingSound) {
-        recordingSound.play().catch(err => console.error('Error playing recording sound:', err));
+        recordingSound.play().catch(err => {
+            console.error('Error playing recording sound:', err);
+            // Don't let audio playback failures stop the app flow
+            // This is often due to the same user interaction requirement
+        });
+    } else {
+        console.warn('Recording sound element not found');
     }
 }
 
@@ -261,7 +441,12 @@ function playRecordingAudio() {
 function playOutputAudio() {
     const outputSound = document.getElementById('output-mode-sound');
     if (outputSound) {
-        outputSound.play().catch(err => console.error('Error playing output sound:', err));
+        outputSound.play().catch(err => {
+            console.error('Error playing output sound:', err);
+            // Don't let audio playback failures stop the app flow
+        });
+    } else {
+        console.warn('Output sound element not found');
     }
 }
 

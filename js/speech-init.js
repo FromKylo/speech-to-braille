@@ -8,13 +8,28 @@
         if ('speechSynthesis' in window) {
             console.log('Initializing speech synthesis for Chrome');
             
+            // Create a wrapper for the deprecated speak method
+            function safeSpeak(utterance) {
+                try {
+                    window.speechSynthesis.speak(utterance);
+                } catch (error) {
+                    console.warn('Speech synthesis initialization error:', error);
+                }
+            }
+            
             // Create a silent utterance to initialize the speech engine
             const silence = new SpeechSynthesisUtterance('');
             silence.volume = 0;
-            window.speechSynthesis.speak(silence);
+            
+            // Use the safe wrapper instead of direct call
+            safeSpeak(silence);
             
             // Cancel immediately - Chrome handles this well
-            window.speechSynthesis.cancel();
+            try {
+                window.speechSynthesis.cancel();
+            } catch (error) {
+                console.warn('Failed to cancel speech synthesis:', error);
+            }
         }
     }
     

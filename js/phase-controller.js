@@ -33,6 +33,14 @@
             };
         }
         
+        // Ensure all timing values are valid numbers
+        window.config.timings.introductionPhase = Math.max(1, parseInt(window.config.timings.introductionPhase) || 10);
+        window.config.timings.listeningPhase = Math.max(1, parseInt(window.config.timings.listeningPhase) || 3);
+        window.config.timings.outputPhase = Math.max(1, parseInt(window.config.timings.outputPhase) || 7);
+        
+        // Make config globally available for browser JavaScript (migrated from init.js)
+        window.speechToBrailleConfig = window.config;
+        
         // Log the actual values being used
         console.log('PHASE CONTROLLER: Using timing values:', 
             'Introduction:', window.config.timings.introductionPhase + 's',
@@ -103,7 +111,7 @@
         }
     }
     
-    // Update CSS variables based on config
+    // Update CSS variables based on config (enhanced with code from init.js)
     function updateTimingCSS() {
         const root = document.documentElement;
         root.style.setProperty('--intro-phase-duration', `${window.config.timings.introductionPhase}s`);
@@ -170,6 +178,13 @@
                     console.warn('Failed to update Arduino about phase change');
                 }
             });
+        }
+        
+        // Clear any existing timer to prevent multiple timers running
+        if (phaseTimer) {
+            clearInterval(phaseTimer);
+            phaseTimer = null;
+            console.log('Cleared existing phase timer');
         }
         
         // Hide all phases
@@ -247,11 +262,18 @@
     
     // Timer countdown function
     function startPhaseTimer(timerElement, nextPhase, duration) {
-        if (phaseTimer) clearInterval(phaseTimer);
+        // Make sure duration is a number and at least 1 second
+        duration = Math.max(1, parseInt(duration) || 5);
+        
+        if (phaseTimer) {
+            clearInterval(phaseTimer);
+            console.log('Cleared existing timer');
+        }
         
         if (!timerElement) {
             console.error('Timer element not found for phase: ' + nextPhase);
             // Set a fallback timeout even if the timer element isn't found
+            console.log(`Setting fallback timeout for ${duration} seconds`);
             phaseTimer = setTimeout(() => {
                 showPhase(nextPhase);
             }, duration * 1000);
@@ -281,6 +303,7 @@
             // If timer is done, move to next phase
             if (timeLeft <= 0) {
                 clearInterval(phaseTimer);
+                console.log(`Timer complete after ${duration}s, transitioning to ${nextPhase}`);
                 showPhase(nextPhase);
             }
         }, 1000);
@@ -315,11 +338,50 @@
         debugEl.id = 'phase-debug-helper';
         document.body.appendChild(debugEl);
         
+        // Track last phase change time
+        let lastPhaseChange = Date.now();
+        let phaseStartTimes = {};
+        
+        // Listen for phase changes
+        window.addEventListener('phasechange', function(e) {
+            const now = Date.now();
+            const phase = e.detail.phase;
+            const duration = (now - lastPhaseChange) / 1000;
+            lastPhaseChange = now;
+            phaseStartTimes[phase] = now;
+            
+            console.log(`[DEBUG] Phase changed to ${phase} after ${duration.toFixed(1)}s`);
+        });
+        
         // Log phase changes
         setInterval(() => {
             const phase = document.querySelector('.phase-container.phase-active');
             const phaseId = phase ? phase.id : 'unknown';
-            debugEl.innerHTML = `Current visible phase: ${phaseId}<br>hasMovedPastIntro: ${window.hasMovedPastIntro}`;
-        }, 2000);
+            const currentPhaseName = phaseId.replace('-phase', '');
+            
+            // Calculate elapsed time in current phase
+            let elapsedTime = 0;
+            if (phaseStartTimes[currentPhaseName]) {
+                elapsedTime = (Date.now() - phaseStartTimes[currentPhaseName]) / 1000;
+            }
+            
+            // Get expected duration for current phase
+            let expectedDuration = 5;
+            if (window.config && window.config.timings) {
+                if (currentPhaseName === 'introduction') {
+                    expectedDuration = window.config.timings.introductionPhase;
+                } else if (currentPhaseName === 'recording') {
+                    expectedDuration = window.config.timings.listeningPhase;
+                } else if (currentPhaseName === 'output') {
+                    expectedDuration = window.config.timings.outputPhase;
+                }
+            }
+            
+            // Format debug output
+            debugEl.innerHTML = `Current phase: <span style="color:#4285f4">${phaseId}</span><br>` +
+                                `Time elapsed: <span style="color:#fbbc05">${elapsedTime.toFixed(1)}s</span> / ${expectedDuration}s<br>` +
+                                `hasMovedPastIntro: ${window.hasMovedPastIntro}<br>` +
+                                `Timings: ${window.config.timings.introductionPhase}s/${window.config.timings.listeningPhase}s/${window.config.timings.outputPhase}s`;
+        }, 500);
     });
 })();
