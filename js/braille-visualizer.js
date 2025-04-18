@@ -17,8 +17,14 @@ const brailleVisualizer = (function() {
         defaultBrailleCell = document.getElementById('braille-cell');
         
         if (!brailleCellsContainer || !defaultBrailleCell) {
-            console.error('Braille cell DOM elements not found');
-            return false;
+            console.warn('Braille cell DOM elements not found, attempting to create them');
+            createDefaultBrailleCell();
+            
+            // Check if creation was successful
+            if (!brailleCellsContainer || !defaultBrailleCell) {
+                console.error('Failed to create braille cell elements');
+                return false;
+            }
         }
         
         // Clear all dots initially
@@ -78,6 +84,25 @@ const brailleVisualizer = (function() {
     
     // Update display for a single braille cell
     function updateSingleCellDisplay(dotsArray) {
+        // Check if defaultBrailleCell exists before trying to access it
+        if (!defaultBrailleCell) {
+            console.error('Cannot update braille display: defaultBrailleCell is null');
+            
+            // Try to reinitialize or create the element if missing
+            const existingCell = document.getElementById('braille-cell');
+            if (existingCell) {
+                defaultBrailleCell = existingCell;
+            } else {
+                // Create the braille cell if it doesn't exist
+                createDefaultBrailleCell();
+                
+                // If still null after creation attempt, exit
+                if (!defaultBrailleCell) {
+                    return;
+                }
+            }
+        }
+        
         // Activate dots based on the array (dots are 1-based numbers)
         const dots = defaultBrailleCell.querySelectorAll('.braille-dot');
         dots.forEach(dot => {
@@ -87,6 +112,54 @@ const brailleVisualizer = (function() {
                 console.log(`Activated dot ${dotNumber}`);
             }
         });
+    }
+    
+    // Helper function to create default braille cell if it doesn't exist
+    function createDefaultBrailleCell() {
+        console.log('Creating default braille cell element');
+        
+        // First check/create the container
+        if (!brailleCellsContainer) {
+            brailleCellsContainer = document.getElementById('braille-cells-container');
+            
+            if (!brailleCellsContainer) {
+                // Create the container if it doesn't exist
+                brailleCellsContainer = document.createElement('div');
+                brailleCellsContainer.id = 'braille-cells-container';
+                brailleCellsContainer.className = 'braille-cells-container';
+                
+                // Find a suitable parent element to append to
+                const brailleDisplay = document.querySelector('.braille-dot-display') || 
+                                      document.querySelector('.braille-container') ||
+                                      document.querySelector('#braille-result');
+                
+                if (brailleDisplay) {
+                    brailleDisplay.appendChild(brailleCellsContainer);
+                } else {
+                    console.error('Cannot find suitable parent for braille cells container');
+                    return;
+                }
+            }
+        }
+        
+        // Now create the cell
+        defaultBrailleCell = document.createElement('div');
+        defaultBrailleCell.id = 'braille-cell';
+        defaultBrailleCell.className = 'braille-cell';
+        
+        // Create the 6 dots
+        for (let dotNum = 1; dotNum <= 6; dotNum++) {
+            const dot = document.createElement('div');
+            dot.className = 'braille-dot';
+            dot.setAttribute('data-dot', dotNum);
+            dot.textContent = dotNum;
+            defaultBrailleCell.appendChild(dot);
+        }
+        
+        // Add the cell to the container
+        brailleCellsContainer.appendChild(defaultBrailleCell);
+        
+        console.log('Default braille cell created successfully');
     }
     
     // Update display for multiple braille cells (contractions)

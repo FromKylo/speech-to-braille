@@ -24,7 +24,7 @@ const int NUM_PINS = 6;
 
 // Heartbeat
 const int STATUS_LED_PIN = 15; // Green LED ito boss
-const int HEARTBEAT_INTERVAL = 500;
+const int HEARTBEAT_INTERVAL = 1200;
 unsigned long lastHeartbeatTime = 0;
 bool ledState = false;
 
@@ -94,9 +94,15 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
  */
 void activateDots(int dots[6]) {
   // For now, we'll just set the first cell with the pattern
+  Serial.print("[");
+  Serial.print(millis()/1000.0, 3);
+  Serial.print("s] Setting dots [");
   for (int i = 0; i < NUM_PINS; i++) {
     digitalWrite(braillePins[0][i], dots[i] ? HIGH : LOW);
+    Serial.print(dots[i] ? "1" : "0");
+    if (i < NUM_PINS - 1) Serial.print(",");
   }
+  Serial.println("]");
   
   // Update tracking variables
   outputActive = true;
@@ -109,6 +115,19 @@ void activateDots(int dots[6]) {
  * Process binary braille array format
  */
 void processBrailleArray(const uint8_t* data, size_t length) {
+  Serial.print("[");
+  Serial.print(millis()/1000.0, 3);
+  Serial.print("s] Received ");
+  Serial.print(length);
+  Serial.print(" bytes: ");
+  for (size_t i = 0; i < length; i++) {
+    Serial.print("0x");
+    if (data[i] < 16) Serial.print("0");
+    Serial.print(data[i], HEX);
+    if (i < length - 1) Serial.print(" ");
+  }
+  Serial.println();
+  
   // Check if this is likely the format with phase byte at the start
   if (length == 7) {
     // First byte is phase indicator, next 6 are dot states
@@ -124,8 +143,9 @@ void processBrailleArray(const uint8_t* data, size_t length) {
     currentPhase = phase;
     
     // Activate dots
+    Serial.print("Processing 7-byte format - Phase: ");
+    Serial.println(phase == PHASE_OUTPUT ? "OUTPUT" : "NOT_OUTPUT");
     activateDots(dots);
-    Serial.println("Processed 7-byte format (phase + 6 dots)");
   }
   // Original legacy format (just 6 dots)
   else if (length == 6) {
@@ -133,8 +153,8 @@ void processBrailleArray(const uint8_t* data, size_t length) {
     for (int i = 0; i < 6; i++) {
       dots[i] = data[i] > 0 ? 1 : 0;
     }
+    Serial.println("Processing 6-byte legacy format");
     activateDots(dots);
-    Serial.println("Processed 6-byte legacy format");
   }
   // Single byte packed format (bits represent dots)
   else if (length == 2) {
@@ -152,8 +172,14 @@ void processBrailleArray(const uint8_t* data, size_t length) {
     currentPhase = phase;
     
     // Activate dots
+    Serial.print("Processing 2-byte format - Phase: ");
+    Serial.print(phase == PHASE_OUTPUT ? "OUTPUT" : "NOT_OUTPUT");
+    Serial.print(", Packed bits: 0b");
+    for (int i = 5; i >= 0; i--) {
+      Serial.print((dotBits & (1 << i)) ? "1" : "0");
+    }
+    Serial.println();
     activateDots(dots);
-    Serial.println("Processed 2-byte format (phase + packed bits)");
   }
   else {
     Serial.print("Invalid data format length: ");
@@ -267,9 +293,14 @@ void loop() {
   
   // Auto-reset braille output if no new data received within timeout
   if (outputActive && (millis() - lastOutputTime >= OUTPUT_TIMEOUT)) {
-    Serial.println("Output timeout - lowering all dots");
-    lowerAllDots();
+    unsigned long idleTime = millis() - lastOutputTime;
+    Serial.print("[");
+    Serial.print(millis()/1000.0, 3);
+    Serial.print("s] Output timeout after ");
+    Serial.print(idleTime);
+    Serial.println("ms - lowering all dots");
     outputActive = false;
+    lowerAllDots();
   }
   
   // Brief delay in the loop

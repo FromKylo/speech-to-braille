@@ -154,6 +154,25 @@
                     <div id="arduino-status-dot" class="status-dot unknown blinking"></div>
                     <div class="status-label">Arduino: <span id="arduino-status-text">Unknown</span></div>
                 </div>
+                <!-- Android device detection -->
+                <div id="android-status" class="status-indicator" style="display:none; margin-top:10px; padding:8px; background:#f8f9fa; border-radius:4px;">
+                    <div class="status-label" style="color:#d93025; font-weight:bold;">
+                        <span id="android-icon" style="margin-right:5px;">📱</span>
+                        Android Device Detected
+                    </div>
+                    <div id="android-speech-instructions" style="font-size:0.9rem; margin-top:5px;">
+                        <p>Some Android phones require additional steps:</p>
+                        <ol style="margin-left:15px; margin-top:5px;">
+                            <li>Make sure Chrome is updated to the latest version</li>
+                            <li>Check that microphone permissions are granted</li>
+                            <li>Tap anywhere on the page to activate audio features</li>
+                            <li>Speak clearly and close to your device</li>
+                        </ol>
+                        <button id="android-speech-fix" class="action-button" style="background:#1a73e8; margin-top:8px;">
+                            Fix Speech Recognition
+                        </button>
+                    </div>
+                </div>
             </div>
             <div id="ble-message" class="small-text"></div>
             
@@ -161,6 +180,152 @@
                 <button id="connect-ble-btn" class="action-button">Connect to Arduino</button>
                 <button id="disconnect-ble-btn" class="action-button" style="display: none; background-color: #e53e3e;">Disconnect</button>
             </div>
+            
+            <!-- Android script -->
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Check if device is Android
+                    const isAndroid = /Android/i.test(navigator.userAgent);
+                    if (isAndroid) {
+                        // Show Android-specific UI
+                        const androidStatus = document.getElementById('android-status');
+                        if (androidStatus) androidStatus.style.display = 'block';
+                        
+                        // Run Android initialization automatically
+                        setTimeout(fixAndroidSpeechRecognition, 1500);
+                        
+                        // Add fix button functionality with enhanced troubleshooting
+                        const fixButton = document.getElementById('android-speech-fix');
+                        if (fixButton) {
+                            fixButton.addEventListener('click', function() {
+                                fixButton.textContent = 'Fixing Speech Recognition...';
+                                fixButton.disabled = true;
+                                fixAndroidSpeechRecognition(true);
+                            });
+                        }
+                        
+                        // Enhanced Android speech recognition fix function
+                        function fixAndroidSpeechRecognition(isButtonClick = false) {
+                            console.log('Applying Android speech recognition fixes...');
+                            
+                            // 1. Try multiple audio unlocking techniques
+                            const unlockAudio = async () => {
+                                // Method 1: AudioContext unlock
+                                try {
+                                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                                    if (AudioContext) {
+                                        const audioCtx = new AudioContext();
+                                        await audioCtx.resume();
+                                        console.log('AudioContext resumed successfully');
+                                        
+                                        // Create and play a short sound to fully unlock audio
+                                        const oscillator = audioCtx.createOscillator();
+                                        const gainNode = audioCtx.createGain();
+                                        gainNode.gain.value = 0.01; // Almost silent
+                                        oscillator.connect(gainNode);
+                                        gainNode.connect(audioCtx.destination);
+                                        oscillator.start(0);
+                                        oscillator.stop(0.1);
+                                    }
+                                } catch (e) {
+                                    console.warn('AudioContext unlock failed:', e);
+                                }
+                                
+                                // Method 2: Silent audio element
+                                try {
+                                    const silentSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+                                    silentSound.volume = 0.01;
+                                    await silentSound.play();
+                                    console.log('Silent audio played successfully');
+                                    silentSound.pause();
+                                } catch (e) {
+                                    console.warn('Silent audio unlock failed:', e);
+                                }
+                                
+                                // Method 3: Force touch event to trigger user interaction
+                                document.body.dispatchEvent(new Event('touchstart', {bubbles: true}));
+                                document.body.dispatchEvent(new Event('touchend', {bubbles: true}));
+                            };
+                            
+                            // 2. Reset speech recognition completely
+                            const resetSpeechRecognition = async () => {
+                                try {
+                                    // Try to force microphone access request
+                                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                                    console.log('Microphone access granted');
+                                    
+                                    // Stop any active tracks immediately
+                                    stream.getTracks().forEach(track => track.stop());
+                                    
+                                    // Deeper reset - cancel any existing speech recognition
+                                    if (window.speechSynthesis) {
+                                        window.speechSynthesis.cancel();
+                                    }
+                                    
+                                    // Completely recreate speech recognition objects
+                                    if (window.speechRecognition) {
+                                        if (speechRecognition.recognition) {
+                                            try {
+                                                speechRecognition.stopRecognition();
+                                                speechRecognition.recognition.onend = null;
+                                                speechRecognition.recognition.onerror = null;
+                                                speechRecognition.recognition.onresult = null;
+                                                speechRecognition.recognition = null;
+                                            } catch (e) {
+                                                console.warn('Error cleaning up old recognition:', e);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Recreate speech recognition with delay
+                                    setTimeout(() => {
+                                        // Try restarting completely
+                                        if (window.app && typeof app.stopSpeechRecognition === 'function') {
+                                            app.stopSpeechRecognition();
+                                            
+                                            // Reinitialize web speech
+                                            if (window.speechRecognition && typeof speechRecognition.initWebSpeechRecognition === 'function') {
+                                                console.log('Reinitializing Web Speech API...');
+                                                speechRecognition.initWebSpeechRecognition();
+                                            }
+                                            
+                                            // Start recognition with delay
+                                            setTimeout(() => {
+                                                if (typeof app.startSpeechRecognition === 'function') {
+                                                    console.log('Restarting speech recognition...');
+                                                    app.startSpeechRecognition();
+                                                    
+                                                    if (isButtonClick && fixButton) {
+                                                        fixButton.textContent = 'Speech Recognition Fixed!';
+                                                        fixButton.style.backgroundColor = '#34a853';
+                                                        fixButton.disabled = false;
+                                                    }
+                                                }
+                                            }, 800);
+                                        }
+                                    }, 500);
+                                    
+                                    // Return success
+                                    return true;
+                                } catch (err) {
+                                    console.error('Error fixing Android speech:', err);
+                                    if (isButtonClick && fixButton) {
+                                        fixButton.textContent = 'Permission Denied - Try Again';
+                                        fixButton.style.backgroundColor = '#d93025';
+                                        fixButton.disabled = false;
+                                    }
+                                    return false;
+                                }
+                            };
+                            
+                            // Run the fixes in sequence
+                            unlockAudio().then(() => {
+                                setTimeout(resetSpeechRecognition, 300);
+                            });
+                        }
+                    }
+                });
+            </script>
         </div>
 
         <!-- Existing BLE Status -->
@@ -249,6 +414,81 @@
                         <!-- Speaking indicator - always visible -->
                         <div id="speaking-indicator" class="speaking-indicator">
                             <span class="speak-icon">🔊</span> Reading word aloud...
+                        </div>
+                        <!-- Auto TTS Script -->
+                        <script>
+                            // Automated TTS - Observe matched word changes and speak automatically
+                            document.addEventListener('DOMContentLoaded', function() {
+                                // Create an observer to watch for changes to the matched word
+                                const wordObserver = new MutationObserver(function(mutations) {
+                                    mutations.forEach(function(mutation) {
+                                        if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                                            const word = document.getElementById('matched-word').textContent;
+                                            if (word && word !== 'Loading...' && word !== 'None') {
+                                                console.log('Auto-speaking matched word:', word);
+                                                // Use setTimeout to ensure the UI has updated first
+                                                setTimeout(() => {
+                                                    if (window.textToSpeech && window.textToSpeech.speakMatchedWord) {
+                                                        window.textToSpeech.speakMatchedWord(word);
+                                                    }
+                                                }, 100);
+                                            }
+                                        }
+                                    });
+                                });
+                                
+                                // Start observing the matched word element
+                                const matchedWordElement = document.getElementById('matched-word');
+                                if (matchedWordElement) {
+                                    wordObserver.observe(matchedWordElement, { 
+                                        childList: true, 
+                                        characterData: true,
+                                        subtree: true
+                                    });
+                                }
+                                
+                                // Also catch braille match events directly
+                                document.addEventListener('brailleMatchFound', function(event) {
+                                    if (event.detail && event.detail.word) {
+                                        setTimeout(() => {
+                                            if (window.textToSpeech && window.textToSpeech.speakMatchedWord) {
+                                                window.textToSpeech.speakMatchedWord(event.detail.word);
+                                            }
+                                        }, 100);
+                                    }
+                                });
+                            });
+                        </script>
+                        <!-- TTS Status (hidden but working) -->
+                        <div id="tts-debug" class="small-text" style="margin-top:10px; font-size:0.7rem; color:#666; opacity: 0.5;">
+                            <span id="tts-status">TTS Ready</span>
+                            <script>
+                                // Immediate TTS status check
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const ttsDebug = document.getElementById('tts-status');
+                                    if (ttsDebug) {
+                                        if (window.speechSynthesis) {
+                                            ttsDebug.textContent = 'Speech synthesis available';
+                                            // Force unlock audio by attempting to speak
+                                            setTimeout(() => {
+                                                try {
+                                                    // Create and play a silent sound to unlock audio
+                                                    const silentSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+                                                    silentSound.play().then(() => {
+                                                        window.textToSpeech.speak('Audio initialized', () => {
+                                                            ttsDebug.textContent = 'TTS enabled and working automatically';
+                                                        });
+                                                    }).catch(e => console.warn('Silent sound failed:', e));
+                                                } catch(e) {
+                                                    console.warn('TTS initialization error:', e.message);
+                                                }
+                                            }, 1000);
+                                        } else {
+                                            ttsDebug.textContent = 'Speech synthesis not available in this browser';
+                                        }
+                                    }
+                                });
+                            </script>
                         </div>
                     </div>
                     <!-- No match info -->
