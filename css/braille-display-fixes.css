@@ -1,0 +1,51 @@
+/* Additional CSS fixes to ensure braille display is visible */
+
+/* Ensure braille containers are visible */
+.braille-container, 
+.braille-array-container, 
+.braille-dot-display {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Make active dots more visible */
+.braille-dot.active {
+    background-color: #4285f4 !important;
+    color: white !important;
+    box-shadow: 0 0 10px rgba(66, 133, 244, 0.8) !important;
+    transform: scale(1.1) !important;
+    border: 2px solid #2b579a !important;
+}
+
+/* Fix cell container layout */
+.braille-cells-container {
+    display: flex !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    margin: 1rem auto !important;
+    min-height: 100px !important;
+}
+
+/* Fix cell wrapper styles */
+.braille-cell-wrapper {
+    margin: 10px !important;
+    text-align: center !important;
+}
+
+/* Make braille symbol more prominent */
+.braille-symbol {
+    font-size: 6rem !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    padding: 15px !important;
+}
+
+/* Ensure matched word is visible */
+#matched-word {
+    font-size: 2.5rem !important;
+    color: #4285f4 !important;
+    margin: 15px auto !important;
+    text-align: center !important;
+    display: block !important;
+}

@@ -58,6 +58,11 @@ const brailleVisualizer = (function() {
                 // Single cell
                 updateSingleCellDisplay(brailleArray);
             }
+            
+            // Debug what dots should be activated
+            console.log('Dots activated:', Array.isArray(brailleArray[0]) ? 
+                         brailleArray.map(cell => cell.join(',')).join(' | ') : 
+                         brailleArray.join(','));
         } catch (error) {
             console.error('Error updating braille display:', error);
         }
@@ -66,6 +71,8 @@ const brailleVisualizer = (function() {
         const displayContainer = document.querySelector('.braille-dot-display');
         if (displayContainer) {
             displayContainer.style.display = 'block';
+            displayContainer.style.visibility = 'visible';
+            displayContainer.style.opacity = '1';
         }
     }
     
@@ -77,6 +84,7 @@ const brailleVisualizer = (function() {
             const dotNumber = parseInt(dot.getAttribute('data-dot'));
             if (dotsArray.includes(dotNumber)) {
                 dot.classList.add('active');
+                console.log(`Activated dot ${dotNumber}`);
             }
         });
     }
@@ -95,6 +103,7 @@ const brailleVisualizer = (function() {
             // Create the cell itself
             const cell = document.createElement('div');
             cell.className = 'braille-cell';
+            cell.id = `braille-cell-${index + 1}`;
             
             // Create dots
             for (let dotNum = 1; dotNum <= 6; dotNum++) {
@@ -106,6 +115,7 @@ const brailleVisualizer = (function() {
                 // If this dot is in the array, activate it
                 if (dotsArray.includes(dotNum)) {
                     dot.classList.add('active');
+                    console.log(`Cell ${index + 1}: Activated dot ${dotNum}`);
                 }
                 
                 cell.appendChild(dot);
@@ -131,6 +141,7 @@ const brailleVisualizer = (function() {
         
         updateDisplay: function(brailleArray) {
             updateDisplay(brailleArray);
+            return true; // Return success
         },
         
         clearDots: function() {
@@ -141,6 +152,7 @@ const brailleVisualizer = (function() {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded - initializing braille visualizer');
     brailleVisualizer.init();
 });
 

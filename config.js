@@ -8,9 +8,9 @@
 window.config = {
     // Timing settings for application phases (in seconds)
     timings: {
-        introductionPhase: 10,
-        listeningPhase: 3,
-        outputPhase: 7
+        introductionPhase: 12,
+        listeningPhase: 4,
+        outputPhase: 8
     },
     
     // Behavioral settings

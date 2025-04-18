@@ -114,7 +114,7 @@ function tryUnlockAudio() {
             const outputSound = document.getElementById('output-mode-sound');
             
             if (recordingSound) recordingSound.load();
-            if (outputSound) outputSound.load();
+            if (outputSound) recordingSound.load();
             
         }).catch(e => console.warn("Silent audio unlock failed:", e));
     } catch (e) {
@@ -641,6 +641,209 @@ function createInitialInteractionPrompt() {
         }, 1000);
     }
 }
+
+// Create a speech queue system and improve error handling
+
+// Speech queue to prevent interruptions
+const speechQueue = [];
+
+// Flag to track braille match status
+function resetBrailleMatchStatus() {
+    brailleMatchFound = false;
+}
+
+function wasBrailleMatchFound() {
+    return brailleMatchFound;
+}
+
+// Handle braille match found event
+document.addEventListener('brailleMatchFound', function(e) {
+    console.log('Braille match found event received');
+    brailleMatchFound = true;
+    
+    // Optional: Automatically speak the matched word
+    if (e.detail && e.detail.word && window.config && 
+        window.config.behavior && window.config.behavior.autoPronounceOnMatch) {
+        speakMatchedWord(e.detail.word);
+    }
+});
+
+// Handle no match event
+document.addEventListener('brailleNoMatchFound', function() {
+    console.log('No braille match found event received');
+    brailleMatchFound = false;
+});
+
+// Enhanced speech synthesis with retry mechanism and proper queueing
+function synthesizeSpeech(utterance) {
+    return new Promise((resolve, reject) => {
+        // Set up event handlers
+        utterance.onend = function() {
+            console.log('Speech synthesis completed successfully');
+            resolve();
+        };
+        
+        utterance.onerror = function(event) {
+            console.log('Speech synthesis error:', event);
+            // If it's just an interrupted error, we can resolve anyway
+            if (event.error === 'interrupted') {
+                console.warn('Speech was interrupted, considering it complete');
+                resolve();
+            } else {
+                reject(new Error(`Speech synthesis error: ${event.error}`));
+            }
+        };
+        
+        try {
+            window.speechSynthesis.speak(utterance);
+        } catch (error) {
+            console.error('Failed to call speak():', error);
+            reject(error);
+        }
+    });
+}
+
+// Process the speech queue
+function processSpeechQueue() {
+    if (speechQueue.length === 0 || isSpeaking) {
+        return;
+    }
+    
+    isSpeaking = true;
+    const nextSpeech = speechQueue.shift();
+    
+    // Try to speak the text
+    const utterance = new SpeechSynthesisUtterance(nextSpeech.text);
+    
+    // Apply voice settings from default or passed configuration
+    utterance.lang = nextSpeech.settings.lang || 'en-US';
+    utterance.pitch = nextSpeech.settings.pitch || 1;
+    utterance.rate = nextSpeech.settings.rate || 1;
+    utterance.volume = nextSpeech.settings.volume || 1;
+    
+    // Set the selected voice if available
+    if (nextSpeech.settings.voice) {
+        utterance.voice = nextSpeech.settings.voice;
+    }
+    
+    // Show the speaking indicator
+    const speakingIndicator = document.getElementById('speaking-indicator');
+    if (speakingIndicator) {
+        speakingIndicator.classList.remove('hidden');
+    }
+    
+    // Process the speech
+    synthesizeSpeech(utterance)
+        .then(() => {
+            if (speakingIndicator) {
+                speakingIndicator.classList.add('hidden');
+            }
+            isSpeaking = false;
+            
+            // Run callback if provided
+            if (nextSpeech.callback && typeof nextSpeech.callback === 'function') {
+                setTimeout(nextSpeech.callback, 100);
+            }
+            
+            // Process next item in queue
+            setTimeout(processSpeechQueue, 300);
+        })
+        .catch(error => {
+            console.error('Error in speech synthesis:', error);
+            if (speakingIndicator) {
+                speakingIndicator.classList.add('hidden');
+            }
+            isSpeaking = false;
+            
+            // Use fallback for this speech
+            useFallbackSpeech(nextSpeech.text, nextSpeech.callback);
+            
+            // Continue with queue after a delay
+            setTimeout(processSpeechQueue, 500);
+        });
+}
+
+// Speak text by adding to queue
+function speakText(text, callback, settings = {}) {
+    if (!text) return;
+    
+    console.log('Adding to speech queue:', text);
+    
+    // Add to queue with settings
+    speechQueue.push({
+        text: text,
+        callback: callback,
+        settings: settings || {}
+    });
+    
+    // Process queue if not already speaking
+    processSpeechQueue();
+}
+
+// Specially handle matched word speech with retry
+function speakMatchedWord(word) {
+    if (!word) return;
+    
+    // Priority - clear queue and speak this immediately
+    speechQueue.length = 0;
+    
+    // Stop any current speech
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
+    
+    console.log('Speaking matched word with priority:', word);
+    
+    // Wait a moment to ensure system is ready
+    setTimeout(() => {
+        speakText(word, () => {
+            console.log(`Successfully spoke matched word: ${word}`);
+        }, {
+            rate: 0.9,  // Slightly slower for clarity
+            pitch: 1.0,
+            volume: 1.0
+        });
+    }, 200);
+}
+
+// Fallback when speech synthesis fails
+function useFallbackSpeech(text, callback) {
+    console.log('Using fallback speech approach for:', text);
+    console.log('Would have spoken:', text);
+    
+    // Show visual indication that we're speaking
+    const indicator = document.createElement('div');
+    indicator.textContent = `🔊 "${text}"`;
+    indicator.style.position = 'fixed';
+    indicator.style.bottom = '20px';
+    indicator.style.left = '20px';
+    indicator.style.backgroundColor = 'rgba(0,0,0,0.7)';
+    indicator.style.color = 'white';
+    indicator.style.padding = '10px';
+    indicator.style.borderRadius = '5px';
+    indicator.style.zIndex = '9999';
+    indicator.style.transition = 'opacity 0.5s';
+    
+    document.body.appendChild(indicator);
+    
+    setTimeout(() => {
+        indicator.style.opacity = '0';
+        setTimeout(() => {
+            indicator.remove();
+            if (callback && typeof callback === 'function') {
+                callback();
+            }
+        }, 500);
+    }, 1500);
+}
+
+// Export functions to the window
+window.textToSpeech = {
+    speak: speakText,
+    speakMatchedWord: speakMatchedWord,
+    resetBrailleMatchStatus: resetBrailleMatchStatus,
+    wasBrailleMatchFound: wasBrailleMatchFound
+};
 
 window.textToSpeech = {
     resetBrailleMatchStatus,

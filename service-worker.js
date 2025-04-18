@@ -137,7 +137,18 @@ self.addEventListener('fetch', event => {
               const responseToCache = response.clone();
               
               caches.open(CACHE_NAME).then(cache => {
-                cache.put(event.request, responseToCache);
+                // Add this fix in the part where the cache is updated
+                // When putting responses in cache, check status code first
+                if (response && response.ok && response.status === 200) {
+                  try {
+                    console.log('Caching new resource:', event.request.url);
+                    cache.put(event.request, responseToCache);
+                  } catch (cacheError) {
+                    console.warn('Failed to cache resource:', event.request.url, cacheError);
+                  }
+                } else if (response) {
+                  console.log('Not caching partial response for:', event.request.url, `(status: ${response.status})`);
+                }
               });
               
               return response;

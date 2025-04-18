@@ -337,20 +337,16 @@ function processSpeechForBraille(text) {
         return null;
     }
     
+    if (!text || typeof text !== 'string' || !text.trim()) {
+        console.warn('Empty or invalid text provided to braille processor');
+        return null;
+    }
+    
     const result = brailleTranslator.processText(text);
     
     if (result) {
         // We found a match!
         console.log('Found braille match for:', result.word);
-        
-        // Update UI with matched result
-        uiController.showBrailleMatch(result);
-        
-        // Dispatch event that a match was found
-        const matchEvent = new CustomEvent('brailleMatchFound', { 
-            detail: { word: result.word } 
-        });
-        document.dispatchEvent(matchEvent);
         
         // Debug the raw array content to verify what we're receiving
         console.log('Raw braille array for ' + result.word + ':', result.array);
@@ -373,16 +369,41 @@ function processSpeechForBraille(text) {
             console.log('Using fallback array formatting:', formattedArray);
         }
         
-        // Update the UI with the formatted array
+        // Update UI with matched result and array
         uiController.updateBrailleArray(formattedArray);
+        uiController.showBrailleMatch(result);
         
-        // Update the visual braille dot display
-        if (window.brailleVisualizer) {
-            console.log('Updating braille visualizer with array:', result.array);
-            brailleVisualizer.updateDisplay(result.array);
-        } else {
-            console.warn('Braille visualizer not available');
-        }
+        // Dispatch event that a match was found
+        const matchEvent = new CustomEvent('brailleMatchFound', { 
+            detail: { word: result.word } 
+        });
+        document.dispatchEvent(matchEvent);
+        
+        // Update the visual braille dot display with retry mechanism
+        let visualizerRetries = 0;
+        const updateVisualizer = () => {
+            if (window.brailleVisualizer) {
+                console.log('Updating braille visualizer with array:', result.array);
+                try {
+                    window.brailleVisualizer.updateDisplay(result.array);
+                } catch (error) {
+                    console.error('Error updating visualizer:', error);
+                    if (visualizerRetries < 3) {
+                        visualizerRetries++;
+                        setTimeout(updateVisualizer, 200);
+                    }
+                }
+            } else {
+                console.warn('Braille visualizer not available');
+                if (visualizerRetries < 3) {
+                    visualizerRetries++;
+                    setTimeout(updateVisualizer, 200);
+                }
+            }
+        };
+        
+        // Start visualizer update with short delay
+        setTimeout(updateVisualizer, 100);
         
         // Send braille data to connected ESP32 via BLE
         if (window.bleController && bleController.isConnected()) {
@@ -400,12 +421,16 @@ function processSpeechForBraille(text) {
                 });
         }
         
-        // Add additional speech handling with retry mechanism
+        // Add speech handling with retry mechanism
         if (window.textToSpeech) {
             console.log('Using speech feedback for matched word:', result.word);
             try {
                 setTimeout(() => {
-                    window.textToSpeech.speakMatchedWord(result.word);
+                    if (window.textToSpeech.speakMatchedWord) {
+                        window.textToSpeech.speakMatchedWord(result.word);
+                    } else {
+                        window.textToSpeech.speak(result.word);
+                    }
                 }, 300);
             } catch (error) {
                 console.error('Text-to-speech error:', error);

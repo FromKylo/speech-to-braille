@@ -493,6 +493,15 @@ const uiController = {
     
     // Display Braille matching
     showBrailleMatch: function(result) {
+        // Get required DOM elements
+        const noMatchInfo = document.getElementById('no-match-info');
+        const brailleResult = document.getElementById('braille-result');
+        const matchedWordElement = document.getElementById('matched-word');
+        const brailleLanguageElement = document.getElementById('braille-language');
+        const brailleSymbolElement = document.getElementById('braille-symbol');
+        const brailleArrayElement = document.getElementById('braille-array');
+        
+        // Check if elements exist
         if (!noMatchInfo || !brailleResult || !matchedWordElement || 
             !brailleLanguageElement || !brailleSymbolElement) {
             console.error('Braille UI elements not found:', {
@@ -500,23 +509,44 @@ const uiController = {
                 brailleResult: !!brailleResult,
                 matchedWordElement: !!matchedWordElement,
                 brailleLanguageElement: !!brailleLanguageElement,
-                brailleSymbolElement: !!brailleSymbolElement
+                brailleSymbolElement: !!brailleSymbolElement,
+                brailleArrayElement: !!brailleArrayElement
             });
             return;
         }
         
         console.log('Displaying braille match in UI:', result);
         
-        // Hide no match info, show result container
+        // Hide no match info, ensure result container is visible
         noMatchInfo.classList.add('hidden');
         brailleResult.classList.remove('hidden');
+        brailleResult.style.display = 'block';
         
         // Update UI with matched word and braille symbol
-        matchedWordElement.textContent = result.word;
+        matchedWordElement.textContent = result.word || 'Unknown';
         brailleSymbolElement.textContent = result.braille || '⠿';
         
         // Display the language directly without formatting
         brailleLanguageElement.textContent = result.language || 'UEB';
+        
+        // Ensure all braille-related DOM elements are visible
+        const brailleContainer = document.querySelector('.braille-container');
+        if (brailleContainer) {
+            brailleContainer.style.display = 'block';
+        }
+        
+        // Ensure braille visualizer is updated
+        setTimeout(() => {
+            if (window.brailleVisualizer && result.array) {
+                console.log('UI Controller: Updating braille visualizer with array:', result.array);
+                window.brailleVisualizer.updateDisplay(result.array);
+            } else {
+                console.warn('UI Controller: Cannot update braille visualizer', {
+                    visualizer: !!window.brailleVisualizer,
+                    array: !!result.array
+                });
+            }
+        }, 100);
         
         // Auto-speak the word (adding delay to ensure TTS is ready)
         setTimeout(() => {
@@ -535,6 +565,8 @@ const uiController = {
     },
     
     updateBrailleArray: function(formattedArray) {
+        const brailleArrayElement = document.getElementById('braille-array');
+        
         if (!brailleArrayElement) {
             console.error('Braille array element not found');
             return;
@@ -543,10 +575,18 @@ const uiController = {
         console.log('Updating braille array display with:', formattedArray);
         brailleArrayElement.textContent = formattedArray;
         
-        // Make sure it's visible
+        // Make sure the container is visible
         const container = brailleArrayElement.closest('.braille-array-container');
         if (container) {
             container.style.display = 'block';
+            container.style.visibility = 'visible';
+        }
+        
+        // Make the braille dot display visible too
+        const dotDisplay = document.querySelector('.braille-dot-display');
+        if (dotDisplay) {
+            dotDisplay.style.display = 'block';
+            dotDisplay.style.visibility = 'visible';
         }
     },
 
