@@ -97,20 +97,30 @@ flowchart TD
     PhaseController -- "calls" --> playOutputAudio
     UIController["UI Controller"] -- "updates" --> speakingIndicator["Speaking Indicators"]
     
+    %% Phase timing control
+    speakIntroduction -- "enforces minimum duration" --> introTimeout["Introduction\nTimeout (10s)"]
+    introTimeout -- "guarantees full duration" --> finishIntroduction
+    
+    %% Speech coordination
+    speakText -- "prevents overlapping speech" --> stopSpeaking
+    speakMatchedWord -- "retry mechanism" --> speakText
+    
     %% Styling
     classDef mainFunc fill:#f9f,stroke:#333,stroke-width:2px;
     classDef eventFunc fill:#bbf,stroke:#33f,stroke-width:1px;
     classDef external fill:#fbb,stroke:#f33,stroke-width:1px;
+    classDef timing fill:#bfb,stroke:#393,stroke-width:1px;
     
     class speakIntroduction,speakText,speakMatchedWord mainFunc;
     class playRecordingAudio,playOutputAudio eventFunc;
     class App,PhaseController,UIController,WebSpeechAPI external;
+    class introTimeout,stopSpeaking timing;
 ```
 
 ## Integration with Other Modules
 
 The Text-to-Speech module integrates with several other components:
-
+    
 1. **Phase Controller**: Receives phase transition events and provides audio feedback
 2. **App Module**: Used to process speech for braille matching and announcement
 3. **UI Controller**: Updates UI elements based on speech states
@@ -119,7 +129,6 @@ The Text-to-Speech module integrates with several other components:
 ## Public API
 
 The module exposes the following public interface through `window.textToSpeech`:
-
 ```javascript
 window.textToSpeech = {
     speak: speakText,
@@ -138,7 +147,6 @@ window.textToSpeech = {
 ## Configuration Options
 
 The module respects several configuration options from the global config:
-
 - `config.timings.introductionPhase`: Duration of the introduction phase
 - `config.behavior.debugMode`: Enables additional logging
 - `config.behavior.loopListeningIfNoMatch`: Used in conjunction with braille match detection
@@ -152,3 +160,39 @@ Common issues:
 2. **Speech synthesis not working**: The module includes fallbacks for when speech synthesis fails, including visual indicators.
 
 3. **Chrome speech timeout**: A known issue in Chrome where speech synthesis stops after a period of inactivity - fixed with the Chrome workaround.
+
+## Technical Notes
+
+### Phase Timing Control
+
+The Text-to-Speech module interacts closely with the Phase Controller to manage application flow:
+
+1. **Introduction Phase Timing**:
+   - The introduction phase has a fixed duration (default 10 seconds)
+   - Early speech synthesis completion does not automatically end the phase
+   - The module enforces minimum phase duration through `window.hasMovedPastIntro` flag
+   - Only after the full duration will `finishIntroduction()` transition to the recording phase
+
+2. **Speech Coordination**:
+   - A speech lock (`isSpeaking` flag) prevents overlapping utterances
+   - When a match is found in the recording phase, it's properly carried to the output phase
+   - The output phase prioritizes speaking the matched braille word
+
+### Common Pitfalls
+
+1. **Introduction Too Short**: If the introduction phase appears to end too quickly, check:
+   - The `speakIntroduction()` function should have a minimum wait of 10 seconds
+   - The `finishIntroduction()` function should enforce `window.hasMovedPastIntro`
+   - The timeout should only trigger if not already transitioned
+
+2. **Output Phase Speech Issues**: If speech doesn't work during output phase:
+   - Ensure speech synthesis lock (`isSpeaking`) properly manages the queue
+   - Add proper delay between speech attempts (minimum 300ms)
+   - Verify that match status flag (`brailleMatchFound`) is carried between phases
+
+### Debugging
+
+The module includes several debugging tools:
+- Adding `console.time/timeEnd` around critical sections can identify timing issues
+- Chrome Dev Tools can monitor the speech queue with `window.speechSynthesis.speaking`
+- `config.behavior.debugMode`: Enables additional logging

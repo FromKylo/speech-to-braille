@@ -281,52 +281,59 @@ function useFallbackSpeech(text, callback) {
 function speakText(text, callback) {
     if (!window.speechSynthesis) {
         console.warn("Speech synthesis not available");
-        if (callback) callback();
+        if (callback) setTimeout(callback, 500);
         return;
     }
     
-    // Stop any current speech
+    // Stop any current speech to prevent conflicts
     stopSpeaking();
     
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = defaultVoiceSettings.lang;
-    utterance.pitch = defaultVoiceSettings.pitch;
-    utterance.rate = defaultVoiceSettings.rate;
-    utterance.volume = defaultVoiceSettings.volume;
-    
-    // Set the default voice if available
-    if (cachedVoice) {
-        utterance.voice = cachedVoice;
-    }
-    
-    // Set up speaking indicator
-    const speakingIndicator = document.getElementById('speaking-indicator');
-    if (speakingIndicator) {
-        speakingIndicator.classList.remove('hidden');
-    }
-    isSpeaking = true;
-    
-    // Use our wrapper function instead of directly calling speak
-    synthesizeSpeech(utterance)
-        .then(() => {
-            isSpeaking = false;
-            if (speakingIndicator) {
-                speakingIndicator.classList.add('hidden');
-            }
-            if (callback && typeof callback === 'function') {
-                callback();
-            }
-        })
-        .catch(error => {
-            console.error('Speech synthesis failed:', error);
-            isSpeaking = false;
-            if (speakingIndicator) {
-                speakingIndicator.classList.add('hidden');
-            }
-            if (callback && typeof callback === 'function') {
-                callback();
-            }
-        });
+    // Add small delay to ensure previous speech is fully stopped
+    setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = defaultVoiceSettings.lang;
+        utterance.pitch = defaultVoiceSettings.pitch;
+        utterance.rate = defaultVoiceSettings.rate;
+        utterance.volume = defaultVoiceSettings.volume;
+        
+        // Set the default voice if available
+        if (cachedVoice) {
+            utterance.voice = cachedVoice;
+        }
+        
+        // Set up speaking indicator
+        const speakingIndicator = document.getElementById('speaking-indicator');
+        if (speakingIndicator) {
+            speakingIndicator.classList.remove('hidden');
+        }
+        isSpeaking = true;
+        
+        // Use our wrapper function instead of directly calling speak
+        synthesizeSpeech(utterance)
+            .then(() => {
+                isSpeaking = false;
+                if (speakingIndicator) {
+                    speakingIndicator.classList.add('hidden');
+                }
+                if (callback && typeof callback === 'function') {
+                    setTimeout(callback, 300); // Add delay before callback
+                }
+            })
+            .catch(error => {
+                console.error('Speech synthesis failed:', error);
+                isSpeaking = false;
+                if (speakingIndicator) {
+                    speakingIndicator.classList.add('hidden');
+                }
+                
+                // Use fallback text display
+                useFallbackSpeech(text, () => {
+                    if (callback && typeof callback === 'function') {
+                        setTimeout(callback, 300);
+                    }
+                });
+            });
+    }, 100); // Small delay before starting new speech
 }
 
 // Stop any ongoing speech
@@ -358,6 +365,9 @@ function speakIntroduction() {
     const introText = "Let's learn braille!";
     console.log("Starting introduction phase");
     
+    // Store the start time to enforce minimum duration
+    const startTime = Date.now();
+    
     // Update UI to show introduction phase
     const introElement = document.getElementById('intro-phrase');
     if (introElement) {
@@ -370,8 +380,8 @@ function speakIntroduction() {
         speakingIndicator.classList.remove('hidden');
     }
     
-    // Mark as completed immediately to avoid getting stuck
-    introCompleted = true;
+    // Mark as NOT completed yet - will be set to true only after the full timeout
+    introCompleted = false;
     
     // Always add a visual cue initially to help users understand they need to interact
     createInitialInteractionPrompt();
@@ -386,30 +396,30 @@ function speakIntroduction() {
         Promise.race([
             new Promise(resolve => {
                 speakText(introText, () => {
-                    console.log('Introduction completed via TTS callback');
-                    finishIntroduction(speakingIndicator);
+                    console.log('Speech synthesis completed but waiting for introduction timeout');
+                    // Don't immediately call finishIntroduction - wait for the timeout
                     resolve();
                 });
             }),
             timeoutPromise
         ]).catch(error => {
-            console.warn('TTS timed out, proceeding anyway:', error);
-            finishIntroduction(speakingIndicator);
+            console.warn('TTS timed out, but still waiting for introduction timeout:', error);
         });
     } catch (error) {
-        console.error('Error during speech intro, proceeding anyway:', error);
-        finishIntroduction(speakingIndicator);
+        console.error('Error during speech intro, still waiting for timeout:', error);
     }
     
-    // Always ensure we proceed after a maximum delay
+    // Always ensure we proceed after the full introduction duration
     const introTimeout = window.config && window.config.timings ? 
         window.config.timings.introductionPhase * 1000 : 10000;
     
     console.log(`Setting introduction timeout for ${introTimeout/1000}s`);
     
+    // This is the only place that should call finishIntroduction
     setTimeout(() => {
         if (!window.hasMovedPastIntro) {
-            console.log('Forcing transition from introduction after timeout');
+            console.log(`Full introduction duration (${introTimeout/1000}s) completed`);
+            introCompleted = true;
             finishIntroduction(speakingIndicator);
         }
     }, introTimeout);
@@ -451,9 +461,35 @@ function finishIntroduction(speakingIndicator) {
 // Automatically speak matched word - call this function when a match is found
 function speakMatchedWord(word) {
     if (!word) return;
-    // Only speak the word without prefix to make it clearer
-    brailleMatchFound = true; // Set the flag when a word is spoken
-    speakText(word);
+    
+    // Set the flag when a word is spoken
+    brailleMatchFound = true;
+    
+    // Create a countdown to ensure the word gets spoken
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    const trySpeak = () => {
+        attempts++;
+        console.log(`Attempt ${attempts} to speak matched word: ${word}`);
+        
+        if (isSpeaking) {
+            // If something else is speaking, stop it and try again shortly
+            stopSpeaking();
+            if (attempts < maxAttempts) {
+                setTimeout(trySpeak, 300);
+            }
+            return;
+        }
+        
+        // Only speak the word without prefix to make it clearer
+        speakText(word, () => {
+            console.log(`Successfully completed speech for word: ${word}`);
+        });
+    };
+    
+    // Start the first attempt with a slight delay
+    setTimeout(trySpeak, 200);
 }
 
 // Play recording phase audio cue
@@ -582,7 +618,7 @@ function createInitialInteractionPrompt() {
             </div>
         </div>
     `;
-    
+       
     const container = document.querySelector('.intro-container') || 
                        document.getElementById('introduction-phase') || 
                        document.body;
@@ -606,30 +642,18 @@ function createInitialInteractionPrompt() {
     }
 }
 
-// Speak welcome message and start listening cycle - deprecated in favor of speakIntroduction
-function speakWelcome() {
-    if (introCompleted) {
-        console.log('Introduction already completed, skipping welcome');
-        return;
-    }
-    
-    // Use the new introduction function instead
-    speakIntroduction();
-}
-
-// Export functions for use in other modules
-window.speakText = speakText;
-window.stopSpeaking = stopSpeaking;
-window.speakMatchedWord = speakMatchedWord;
 window.textToSpeech = {
-    speak: speakText,
-    stop: stopSpeaking,
-    speakMatchedWord,
-    speakIntroduction,
-    speakWelcome,
-    playRecordingAudio,
-    playOutputAudio,
-    wasBrailleMatchFound,
     resetBrailleMatchStatus,
-    introCompleted: () => introCompleted
+    introCompleted: () => introCompleted,
+    wasBrailleMatchFound,
+    playOutputAudio,
+    playRecordingAudio,
+    speakIntroduction,
+    speakMatchedWord,
+    stop: stopSpeaking,
+    speak: speakText
 };
+
+window.speakMatchedWord = speakMatchedWord;
+window.stopSpeaking = stopSpeaking;
+window.speakText = speakText;

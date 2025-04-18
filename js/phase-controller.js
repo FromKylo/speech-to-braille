@@ -352,6 +352,21 @@
                 // Process the speech for braille matching
                 const result = app.processSpeechForBraille(text);
                 
+                // Give time for the match processing to complete
+                setTimeout(() => {
+                    // If we're in output phase and a match was found, speak it
+                    if (currentPhase === 'output' && window.textToSpeech && 
+                        textToSpeech.wasBrailleMatchFound && textToSpeech.wasBrailleMatchFound()) {
+                        
+                        // Find the matched word from the UI
+                        const matchedWordElement = document.getElementById('matched-word');
+                        if (matchedWordElement && matchedWordElement.textContent) {
+                            console.log('Speaking matched word in output phase:', matchedWordElement.textContent);
+                            window.textToSpeech.speakMatchedWord(matchedWordElement.textContent);
+                        }
+                    }
+                }, 500);
+                
                 // Return true if match was found
                 return result !== null && result !== undefined;
             }
