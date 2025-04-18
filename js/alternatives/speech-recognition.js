@@ -12,12 +12,14 @@ class SpeechRecognitionManager {
         this._pendingRestart = false;
         this._initializationAttempted = false; // Track if initialization was attempted
         this._permissionGranted = null; // Track microphone permission: null=unknown, true=granted, false=denied
+        this._permissionRequested = false; // Track if we've requested permissions already
         this.eventListeners = {
             'start': [],
             'end': [],
             'result': [],
             'partialresult': [],
-            'error': []
+            'error': [],
+            'permissionchange': [] // New event for permission status changes
         };
         
         // Initialize Web Speech API recognition
@@ -26,6 +28,12 @@ class SpeechRecognitionManager {
         // UI Elements - Initialize after DOM is loaded
         window.addEventListener('DOMContentLoaded', () => {
             this.initUIElements();
+            
+            // Try to request microphone access proactively, but after a short delay
+            // to avoid interrupting page load
+            setTimeout(() => {
+                this.requestMicrophonePermission(true); // true = silent mode (no UI if denied)
+            }, 1500);
         });
     }
     
@@ -262,14 +270,232 @@ class SpeechRecognitionManager {
             // Stop the tracks immediately as we only needed to check permission
             stream.getTracks().forEach(track => track.stop());
             
+            // Update UI to reflect permission granted
+            this.updatePermissionUI(true);
+            
+            // Trigger permission change event
+            this.triggerEvent('permissionchange', { granted: true });
+            
             return true;
         } catch (err) {
             console.error('Microphone permission error:', err);
             this._permissionGranted = false;
+            
+            // Update UI to reflect permission denied
+            this.updatePermissionUI(false);
+            
+            // Trigger events about the error
             this.triggerEvent('error', 'Microphone permission denied: ' + err.message);
-            this.showError('Microphone access denied. Please allow microphone access in your browser settings and reload the page.');
+            this.triggerEvent('permissionchange', { granted: false, error: err });
+            
+            // Show error, but with information on how to retry
+            this.showPermissionDeniedUI(err.message);
+            
             return false;
         }
+    }
+
+    /**
+     * New method: Request microphone permission with better UI handling
+     * @param {boolean} silent If true, won't show UI prompts if permission is denied
+     * @returns {Promise<boolean>} Whether permission was granted
+     */
+    async requestMicrophonePermission(silent = false) {
+        // If we already know permission is granted, just return true
+        if (this._permissionGranted === true) {
+            return true;
+        }
+        
+        // Mark that we've requested permissions at least once
+        this._permissionRequested = true;
+        
+        try {
+            console.log('Requesting microphone permission...');
+            // First check if permissions API is available (to check permission state)
+            if (navigator.permissions && navigator.permissions.query) {
+                const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+                
+                // If permission is already denied and we're in silent mode, don't show the prompt
+                if (permissionStatus.state === 'denied' && silent) {
+                    console.log('Microphone permission previously denied and in silent mode');
+                    this._permissionGranted = false;
+                    this.updatePermissionUI(false);
+                    return false;
+                }
+                
+                // Listen for permission changes
+                permissionStatus.addEventListener('change', () => {
+                    console.log('Permission state changed:', permissionStatus.state);
+                    if (permissionStatus.state === 'granted') {
+                        this._permissionGranted = true;
+                        this.updatePermissionUI(true);
+                        this.triggerEvent('permissionchange', { granted: true });
+                    } else {
+                        this._permissionGranted = false;
+                        this.updatePermissionUI(false);
+                        this.triggerEvent('permissionchange', { granted: false });
+                    }
+                });
+            }
+            
+            // Actually request the microphone
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Permission granted
+            this._permissionGranted = true;
+            console.log('Microphone permission granted');
+            
+            // Stop the tracks immediately as we only needed to check permission
+            stream.getTracks().forEach(track => track.stop());
+            
+            // Update UI to reflect permission granted
+            this.updatePermissionUI(true);
+            this.triggerEvent('permissionchange', { granted: true });
+            
+            return true;
+        } catch (err) {
+            console.error('Microphone permission error:', err);
+            this._permissionGranted = false;
+            this.updatePermissionUI(false);
+            
+            // Only show UI if not in silent mode
+            if (!silent) {
+                this.showPermissionDeniedUI(err.message);
+                this.triggerEvent('error', 'Microphone permission denied: ' + err.message);
+            }
+            
+            this.triggerEvent('permissionchange', { granted: false, error: err });
+            return false;
+        }
+    }
+
+    /**
+     * Update UI elements based on permission state
+     */
+    updatePermissionUI(granted) {
+        const micStatus = document.getElementById('mic-status');
+        if (micStatus) {
+            if (granted) {
+                micStatus.textContent = 'Mic: Permission Granted';
+                micStatus.className = 'mic-status inactive';
+            } else {
+                micStatus.textContent = 'Mic: Permission Denied';
+                micStatus.className = 'mic-status error';
+            }
+        }
+        
+        // Remove any existing permission denied UI elements
+        const existingPrompt = document.getElementById('permission-denied-prompt');
+        if (existingPrompt) {
+            existingPrompt.remove();
+        }
+
+        // If permission is granted, remove any existing retry button
+        if (granted) {
+            const retryButton = document.getElementById('retry-mic-permission');
+            if (retryButton) {
+                retryButton.remove();
+            }
+        }
+    }
+
+    /**
+     * Show UI for permission denied with retry option
+     */
+    showPermissionDeniedUI(errorMessage) {
+        // Remove any existing permission denied UI first
+        const existingPrompt = document.getElementById('permission-denied-prompt');
+        if (existingPrompt) {
+            existingPrompt.remove();
+        }
+        
+        // Create permission denied prompt
+        const prompt = document.createElement('div');
+        prompt.id = 'permission-denied-prompt';
+        prompt.className = 'status-indicator-large error';
+        prompt.innerHTML = `
+            <div>
+                <strong>Microphone access denied</strong>
+                <p>This application requires microphone access to perform speech recognition.</p>
+                <p>Please allow microphone access in your browser settings or click the button below to try again.</p>
+            </div>
+        `;
+        
+        // Create retry button
+        const retryButton = document.createElement('button');
+        retryButton.id = 'retry-mic-permission';
+        retryButton.className = 'request-mic-access';
+        retryButton.textContent = 'Request Microphone Access';
+        retryButton.addEventListener('click', () => {
+            this.requestMicrophonePermission();
+        });
+        
+        // Find a good place to show the error
+        const container = document.querySelector('.speech-output-container') || 
+                        document.getElementById('speech-output') ||
+                        document.getElementById('recording-phase') ||
+                        document.body;
+                        
+        if (container) {
+            // Add the prompt and button
+            container.prepend(prompt);
+            prompt.appendChild(retryButton);
+            
+            // Add browser-specific instructions
+            this.addBrowserSpecificInstructions(prompt);
+        }
+    }
+    
+    /**
+     * Add browser-specific instructions for enabling microphone permissions
+     */
+    addBrowserSpecificInstructions(container) {
+        // Detect browser
+        const isChrome = navigator.userAgent.indexOf("Chrome") > -1;
+        const isFirefox = navigator.userAgent.indexOf("Firefox") > -1;
+        const isSafari = navigator.userAgent.indexOf("Safari") > -1 && !isChrome;
+        const isEdge = navigator.userAgent.indexOf("Edg") > -1;
+        
+        // Create instructions element
+        const instructions = document.createElement('div');
+        instructions.className = 'browser-compatibility-note';
+        instructions.innerHTML = '<strong>How to enable microphone in your browser:</strong>';
+        
+        const instructionsList = document.createElement('ul');
+        instructionsList.className = 'speech-troubleshoot-steps';
+        
+        if (isChrome || isEdge) {
+            instructionsList.innerHTML = `
+                <li>Click the <strong>lock icon</strong> or <strong>information icon</strong> in the address bar</li>
+                <li>Click on <strong>"Site settings"</strong></li>
+                <li>Change <strong>"Microphone"</strong> permission to <strong>"Allow"</strong></li>
+                <li>Reload the page</li>
+            `;
+        } else if (isFirefox) {
+            instructionsList.innerHTML = `
+                <li>Click the <strong>lock icon</strong> in the address bar</li>
+                <li>Click on the <strong>arrow</strong> next to "Microphone"</li>
+                <li>Select <strong>"Allow"</strong></li>
+                <li>Reload the page</li>
+            `;
+        } else if (isSafari) {
+            instructionsList.innerHTML = `
+                <li>Go to <strong>Safari Preferences</strong></li>
+                <li>Navigate to <strong>Websites > Microphone</strong></li>
+                <li>Find this website and set permission to <strong>"Allow"</strong></li>
+                <li>Reload the page</li>
+            `;
+        } else {
+            instructionsList.innerHTML = `
+                <li>Look for site permissions in your browser settings</li>
+                <li>Find microphone permissions for this site</li>
+                <li>Change the permission to <strong>"Allow"</strong></li>
+                <li>Reload the page</li>
+            `;
+        }
+        
+        instructions.appendChild(instructionsList);
+        container.appendChild(instructions);
     }
     
     /**
@@ -290,8 +516,8 @@ class SpeechRecognitionManager {
         }
         
         // Check microphone permission first if not already granted
-        if (this._permissionGranted === null || this._permissionGranted === false) {
-            const permissionGranted = await this.checkMicrophonePermission();
+        if (this._permissionGranted !== true) {
+            const permissionGranted = await this.requestMicrophonePermission();
             if (!permissionGranted) {
                 console.error('Cannot start recognition without microphone permission');
                 return;

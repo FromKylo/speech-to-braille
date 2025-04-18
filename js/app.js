@@ -19,6 +19,9 @@ let interimProcessingTimeout = null;
 function initApp() {
     console.log('Initializing application...');
     
+    // Check microphone status after page loads
+    setTimeout(checkMicrophoneStatus, 1500);
+    
     // No need to call speakWelcome here - we'll auto-start speakIntroduction from text-to-speech.js
     
     // Force-enable the start button initially to ensure it's clickable
@@ -276,12 +279,13 @@ async function startSpeechRecognition() {
             speechRecognition.initWebSpeechRecognition();
         }
         
-        // Explicitly check microphone permissions
-        uiController.updateSpeechLoadingProgress(40, 'Checking microphone permission...');
-        const permissionGranted = await speechRecognition.checkMicrophonePermission();
+        // Explicitly check microphone permissions - use the new requestMicrophonePermission
+        // method instead of the old checkMicrophonePermission
+        uiController.updateSpeechLoadingProgress(40, 'Requesting microphone permission...');
+        const permissionGranted = await speechRecognition.requestMicrophonePermission();
         
         if (!permissionGranted) {
-            throw new Error('Microphone permission denied. Please allow microphone access in your browser settings.');
+            throw new Error('Microphone permission required. Please allow microphone access and try again.');
         }
         
         // Set the selected method if supported
@@ -337,6 +341,21 @@ async function startSpeechRecognition() {
                 errorMessage.style.transition = 'opacity 1s';
                 setTimeout(() => errorMessage.remove(), 1000);
             }, 5000);
+        }
+        
+        // If the error is related to microphone permissions, show the retry button
+        if (error.message.includes('microphone') || error.message.includes('permission')) {
+            // Add a retry button to request permissions
+            const retryButton = document.createElement('button');
+            retryButton.className = 'request-mic-access';
+            retryButton.textContent = 'Grant Microphone Access';
+            retryButton.addEventListener('click', () => {
+                speechRecognition.requestMicrophonePermission();
+            });
+            
+            if (speechOutput) {
+                speechOutput.appendChild(retryButton);
+            }
         }
         
         // Re-enable the start button in case of error
@@ -730,6 +749,15 @@ function forceReload() {
     window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
 }
 
+// Add a new function to proactively check microphone permission status
+function checkMicrophoneStatus() {
+    if (typeof speechRecognition !== 'undefined' && 
+        typeof speechRecognition.requestMicrophonePermission === 'function') {
+        // Check but don't show UI if denied (silent mode)
+        speechRecognition.requestMicrophonePermission(true);
+    }
+}
+
 // Initialize app when loaded
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
@@ -764,44 +792,40 @@ function startListeningPhase() {
   if (window.phaseControl) {
     window.phaseControl.showPhase('recording');
   }
-}   window.phaseControl.showPhase('output');
-  }
+}
+
 function startOutputPhase() {
   console.log('Deferring to phase controller for output phase');
-  if (window.phaseControl) {ion or event handlers to speak introduction automatically
-}{
-ally
-// Modify your section transition function or event handlers to speak introduction automaticallyf (window.speakIntroduction) {
-function showIntroductionSection() {    window.speakIntroduction();
+  if (window.phaseControl) {
+    window.phaseControl.showPhase('output');
+  }
+}
+
+// Modify your section transition function or event handlers to speak introduction automatically
+function showIntroductionSection() {
     // Speak introduction automatically
     if (window.speakIntroduction) {
         window.speakIntroduction();
-    }f (window.phaseControl) {
-           window.phaseControl.showPhase('introduction');
-    // Defer to phase controller    }
+    }
+    // Defer to phase controller
     if (window.phaseControl) {
         window.phaseControl.showPhase('introduction');
-    }ically speak matched words
-}andleWordMatch(matchedWord) {
-// Your existing code to handle matched word
+    }
+}
+
 // Modify your word matching function to automatically speak matched words
 function handleWordMatch(matchedWord) {
     // Your existing code to handle matched word
-    // ...d('matched-word');
-    f (matchedWordElement) {
-    // Update the UI    matchedWordElement.textContent = matchedWord;
+    // ...
     const matchedWordElement = document.getElementById('matched-word');
     if (matchedWordElement) {
         matchedWordElement.textContent = matchedWord;
-    }f (window.speakMatchedWord) {
-           window.speakMatchedWord(matchedWord);
-    // Automatically speak the matched word    }
-
-
-
-
-
-}    }        window.speakMatchedWord(matchedWord);    if (window.speakMatchedWord) {}
+    }
+    // Automatically speak the matched word
+    if (window.speakMatchedWord) {
+        window.speakMatchedWord(matchedWord);
+    }
+}
 
 // Add this to the app module
 

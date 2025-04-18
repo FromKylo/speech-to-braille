@@ -298,7 +298,32 @@
                 <details>
                     <summary>Speech Recognition Diagnostics</summary>
                     <div class="details-content" id="speech-diagnostics">
-                        <p>Checking speech recognition capability...</p>
+                        <div class="speech-status-container">
+                            <div class="speech-status-title">Speech Recognition Status</div>
+                            
+                            <div id="speech-status-indicator" class="status-indicator-large warning">
+                                Checking speech recognition status...
+                            </div>
+                            
+                            <h4>Troubleshooting Steps:</h4>
+                            <ul class="speech-troubleshoot-steps">
+                                <li>Check if your browser <strong>supports Web Speech API</strong> (Chrome works best)</li>
+                                <li>Ensure you've <strong>granted microphone permissions</strong></li>
+                                <li>Try <strong>refreshing the page</strong> and testing again</li>
+                                <li>Check if your <strong>microphone is properly connected</strong></li>
+                                <li>If using a mobile device, try using the <strong>Chrome browser</strong></li>
+                            </ul>
+                            
+                            <button id="test-mic-btn" class="mic-test-btn">Test Microphone</button>
+                            
+                            <div class="mic-level-meter">
+                                <div id="mic-level-bar" class="mic-level-bar"></div>
+                            </div>
+                            
+                            <div class="browser-compatibility-note">
+                                <strong>Note:</strong> Speech recognition works best in Chrome, Edge, and Safari browsers. Firefox has limited support.
+                            </div>
+                        </div>
                     </div>
                 </details>
                 
