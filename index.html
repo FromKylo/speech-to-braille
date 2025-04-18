@@ -1,3 +1,6 @@
+<!-- Created by kiloJoules^3 -->
+<!-- IPASA NIYO PO KAMI PLEASE 🙏 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +12,7 @@
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
     
-    <!-- Load configuration first - single source of truth -->
+    <!-- Load configuration first -->
     <script src="config.js"></script>
     
     <!-- Speech initializer loaded after config -->
@@ -96,48 +99,48 @@
         }
     </style>
     <link rel="stylesheet" href="css/braille-display-fixes.css">
-</head>
-<body>
-    <!-- TITLE PORTION -->
-    <header>
+</head> .toggle-switch-label {
+<body>      display: flex;
+    <!-- TITLE PORTION -->enter;
+    <header>gap: 10px;
         <h1>Speech to Braille Refreshable Module</h1>
-    </header>
-    
+    </header>ser-select: none;
+            font-weight: 500;
     <main>
         <!-- Connection status -->
         <div id="connection-status" class="status">
             Checking connection...
-        </div>
-        
+        </div>splay: inline-block;
+            width: 46px;
         <!-- Connection Status Section -->
         <div class="card connection-section">
             <div class="status-header">
                 <h4>Device Connection Status</h4>
-            </div>
-            
+            </div>y: 0;
+            width: 0;
             <div class="connection-status">
                 <div class="status-indicator">
                     <div id="web-status-dot" class="status-dot offline"></div>
                     <div class="status-label">Web App: <span id="web-status-text">Not Connected</span></div>
-                </div>
-                
+                </div>absolute;
+                or: pointer;
                 <div class="status-indicator">
                     <div id="arduino-status-dot" class="status-dot unknown blinking"></div>
                     <div class="status-label">Arduino: <span id="arduino-status-text">Unknown</span></div>
                 </div>
-            </div>
-            
+            </div>ound-color: #ccc;
+            transition: .4s;
             <div id="ble-message" class="small-text"></div>
             
             <div class="ble-controls">
                 <button id="connect-ble-btn" class="action-button">Connect to Arduino</button>
                 <button id="disconnect-ble-btn" class="action-button" style="display: none; background-color: #e53e3e;">Disconnect</button>
-            </div>
-        </div>
-
+            </div>t: "";
+        </div>ight: 18px;
+            width: 18px;
         <!-- Existing BLE Status -->
         <div id="ble-status" class="status offline" style="display: none;">Not Connected</div>
-        
+            background-color: white;
         <!-- APP PORTION - Where all the phases will appear -->
         <div id="app-container">
             
@@ -157,7 +160,7 @@
                         <span class="speak-icon">🔊</span> Playing introduction...
                     </div>
                 </div>
-            </div>
+            </div>TION -->
             
             <!-- PHASE 2: RECORDING (configurable seconds) -->
             <div id="recording-phase" class="phase-container">
@@ -169,78 +172,78 @@
                     </div>
                     
                     <p>Speak into your microphone and I'll listen for words to convert to braille.</p>
-                    
+                    card connection-section">
                     <!-- Current sentence display -->
                     <div class="speech-output-container">
                         <h3>Current Sentence:</h3>
                         <div id="speech-output" class="speech-output-box">
                             <p id="interim-text"></p>
                             <p id="final-text"></p>
-                        </div>
-                    </div>
-                    
+                        </div>eb-status-dot" class="status-dot offline"></div>
+                    </div>lass="status-label">Web App: <span id="web-status-text">Not Connected</span></div>
+                    v>
                     <!-- Status indicators -->
-                    <div id="model-status">
+                    <div id="model-status">r">
                         Recognition Model: <span class="model-badge web-speech" id="model-badge">Web Speech API</span>
-                        <span id="mic-status" class="mic-status">Mic: Unknown</span>
+                        <span id="mic-status" class="mic-status">Mic: Unknown</span>">Unknown</span></div>
                     </div>
                     
                     <!-- BLE Connection Status for Arduino ESP32 -->
                     <div id="ble-connection" class="connection-section">
                         <div class="status-header">
                             <h4>Braille BLE Device:</h4>
-                            <span id="ble-status" class="status offline">Not Connected</span>
-                        </div>
+                            <span id="ble-status" class="status offline">Not Connected</span>>
+                        </div>sconnect-ble-btn" class="action-button" style="display: none; background-color: #e53e3e;">Disconnect</button>
                         <div class="ble-controls">
                             <button id="connect-ble-btn" class="action-button">Connect to Braille Device</button>
                             <button id="disconnect-ble-btn" class="action-button" style="display: none;">Disconnect</button>
-                        </div>
-                        <div id="ble-message" class="small-text"></div>
+                        </div>us -->
+                        <div id="ble-message" class="small-text"></div>e;">Not Connected</div>
                     </div>
-                </div>
-            </div>
+                </div>ON - Where all the phases will appear -->
+            </div>pp-container">
             
             <!-- PHASE 3: OUTPUT (configurable seconds) -->
-            <div id="output-phase" class="phase-container">
-                <div class="card">
-                    <h2>Braille Translation</h2>
-                    <div class="output-header">
+            <div id="output-phase" class="phase-container">iner phase-active">
+                <div class="card">entered-content">
+                    <h2>Braille Translation</h2>ille</h2>
+                    <div class="output-header">"large-text">Let's learn braille!</p>
                         <div id="output-indicator" class="blink-output">◉ Output (7s)</div>
                         <div class="countdown-timer" id="output-timer">7</div>
+                    </div>>Loading application components...</p>
                     </div>
-                    
                     <div id="braille-status" class="status hidden">
-                        Loading Braille database...
-                    </div>
-                    
-                    <!-- Braille match result -->
+                        Loading Braille database...="intro-timer">10</div>
+                    </div>idden audio status indicator -->
+                    <div id="intro-speaking-status" class="speaking-indicator hidden">
+                    <!-- Braille match result -->🔊</span> Playing introduction...
                     <div id="braille-result" class="braille-result">
                         <div class="braille-word-container centered-content">
                             <h3>Matched Word:</h3>
                             <div id="matched-word" class="large-text">Loading...</div>
-                        </div>
-                        
+                        </div>RDING (configurable seconds) -->
+                        ording-phase" class="phase-container">
                         <div class="braille-container">
                             <h3>Braille Symbol:</h3>
                             <div id="braille-symbol" class="braille-symbol large-text">⠿</div>
-                        </div>
-                        
+                        </div>d="recording-indicator" class="blink-recording">● Recording (3s)</div>
+                        <div class="countdown-timer" id="recording-timer">3</div>
                         <div class="braille-details">
                             <div class="braille-language">
-                                <h4>Language:</h4>
+                                <h4>Language:</h4>and I'll listen for words to convert to braille.</p>
                                 <span id="braille-language" class="small-text">N/A</span>
-                            </div>
-                            
+                            </div>entence display -->
+                            ss="speech-output-container">
                             <div class="braille-array-container">
-                                <h4>Braille Array:</h4>
+                                <h4>Braille Array:</h4>speech-output-box">
                                 <pre id="braille-array" class="braille-array small-text">[1,2,3,4,5,6]</pre>
-                            </div>
+                            </div>"final-text"></p>
                         </div>
-                        
-                        <!-- Visual Braille Dot Display -->
-                        <div class="braille-dot-display">
+                        v>    <!-- Add Text-to-Speech toggle -->
+                        <!-- Visual Braille Dot Display --> center;">
+                        <div class="braille-dot-display">e-switch-label">
                             <h4>Braille Dot Pattern:</h4>
-                            <div class="braille-cells-container" id="braille-cells-container">
+                            <div class="braille-cells-container" id="braille-cells-container">e">Web Speech API</span>
                                 <!-- Default single cell display - will be dynamically updated -->
                                 <div class="braille-cell-wrapper">
                                     <div class="braille-cell" id="braille-cell">
@@ -248,85 +251,85 @@
                                         <div class="braille-dot" data-dot="4">4</div>
                                         <div class="braille-dot" data-dot="2">2</div>
                                         <div class="braille-dot" data-dot="5">5</div>
-                                        <div class="braille-dot" data-dot="3">3</div>
+                                        <div class="braille-dot" data-dot="3">3</div>d</span>
                                         <div class="braille-dot" data-dot="6">6</div>
-                                    </div>
-                                    <div class="braille-cell-label">Current Cell</div>
-                                </div>
-                            </div>
-                        </div>
-                        
+                                    </div>ntrols">e-dot-display">
+                                    <div class="braille-cell-label">Current Cell</div> to Braille Device</button>
+                                </div>="disconnect-ble-btn" class="action-button" style="display: none;">Disconnect</button>="braille-cells-container" id="braille-cells-container">
+                            </div>efault single cell display - will be dynamically updated -->
+                        </div>d="ble-message" class="small-text"></div>  <div class="braille-cell-wrapper">
+                        v>            <div class="braille-cell" id="braille-cell">
                         <!-- Speaking indicator shows when word is being read aloud -->
                         <div id="speaking-indicator" class="speaking-indicator hidden">
                             <span class="speak-icon">🔊</span> Reading word aloud...
-                        </div>
-                    </div>
-                    
-                    <!-- No match info -->
+                        </div>UT (configurable seconds) -->          <div class="braille-dot" data-dot="5">5</div>
+                    </div>t-phase" class="phase-container">              <div class="braille-dot" data-dot="3">3</div>
+                     class="card">                    <div class="braille-dot" data-dot="6">6</div>
+                    <!-- No match info -->n</h2>
                     <div id="no-match-info" class="braille-no-match hidden">
-                        <p>No matching words found in your sentence.</p>
-                        <p>Try speaking a different phrase.</p>
-                    </div>
+                        <p>No matching words found in your sentence.</p>◉ Output (7s)</div>
+                        <p>Try speaking a different phrase.</p>-timer">7</div>
+                    </div>div>
                 </div>
-            </div>
-        </div>
-        
+            </div>  <div id="braille-status" class="status hidden">      <!-- Speaking indicator shows when word is being read aloud -->
+        </div>          Loading Braille database...          <div id="speaking-indicator" class="speaking-indicator hidden">
+                    </div>                    <span class="speak-icon">🔊</span> Reading word aloud...
         <!-- TROUBLESHOOTING PORTION -->
         <div id="troubleshooting-section" class="hidden-initially">
-            <div class="card">
-                <h2>Troubleshooting</h2>
-                
-                <details>
+            <div class="card">raille-result" class="braille-result">
+                <h2>Troubleshooting</h2>lle-word-container centered-content">->
+                            <h3>Matched Word:</h3>    <div id="no-match-info" class="braille-no-match hidden">
+                <details>   <div id="matched-word" class="large-text">Loading...</div>p>No matching words found in your sentence.</p>
                     <summary>Application Status</summary>
                     <div class="details-content">
                         <p>Current Phase: <span id="current-phase-indicator">Introduction</span></p>
                         <p>Recognition Active: <span id="recognition-active-status">No</span></p>
-                        <p>Last updated: <span id="last-updated">Loading...</span></p>
-                    </div>
-                </details>
-                
-                <details>
+                        <p>Last updated: <span id="last-updated">Loading...</span></p>>⠿</div>
+                    </div>div>
+                </details> PORTION -->
+                        <div class="braille-details">"troubleshooting-section" class="hidden-initially">
+                <details>   <div class="braille-language">ard">
                     <summary>Cached Resources</summary>
-                    <div class="details-content">
+                    <div class="details-content">-language" class="small-text">N/A</span>
                         <button id="refresh-button">Refresh Cache Info</button>
                         <div id="dynamic-content">
-                            <p>Loading cache information...</p>
-                        </div>
-                    </div>
-                </details>
-                
+                            <p>Loading cache information...</p>">
+                        </div>  <h4>Braille Array:</h4>rent Phase: <span id="current-phase-indicator">Introduction</span></p>
+                    </div>      <pre id="braille-array" class="braille-array small-text">[1,2,3,4,5,6]</pre>>Recognition Active: <span id="recognition-active-status">No</span></p>
+                </details>  </div>>Last updated: <span id="last-updated">Loading...</span></p>
+                        </div>    </div>
                 <details>
                     <summary>Speech Recognition Diagnostics</summary>
                     <div class="details-content" id="speech-diagnostics">
                         <div class="speech-status-container">
-                            <div class="speech-status-title">Speech Recognition Status</div>
-                            
+                            <div class="speech-status-title">Speech Recognition Status</div>">
+                                <!-- Default single cell display - will be dynamically updated -->ton id="refresh-button">Refresh Cache Info</button>
                             <div id="speech-status-indicator" class="status-indicator-large warning">
-                                Microphone always active and listening...
-                            </div>
-                            
-                            <h4>Troubleshooting Steps:</h4>
-                            <ul class="speech-troubleshoot-steps">
+                                Microphone always active and listening...-cell">
+                            </div>      <div class="braille-dot" data-dot="1">1</div>
+                                        <div class="braille-dot" data-dot="4">4</div>
+                            <h4>Troubleshooting Steps:</h4>-dot" data-dot="2">2</div>
+                            <ul class="speech-troubleshoot-steps">ata-dot="5">5</div>
                                 <li>Check if your browser <strong>supports Web Speech API</strong> (Chrome works best)</li>
                                 <li>Ensure you've <strong>granted microphone permissions</strong></li>
                                 <li>Microphone is <strong>always active</strong> in this application</li>
                                 <li>Check if your <strong>microphone is properly connected</strong></li>
                                 <li>If using a mobile device, try using the <strong>Chrome browser</strong></li>
-                            </ul>
-                            
+                            </ul>>
+                            v><div id="speech-status-indicator" class="status-indicator-large warning">
                             <button id="test-mic-btn" class="mic-test-btn">Test Microphone</button>
-                            
-                            <div class="mic-level-meter">
+                             Speaking indicator shows when word is being read aloud --></div>
+                            <div class="mic-level-meter">s="speaking-indicator hidden">
                                 <div id="mic-level-bar" class="mic-level-bar"></div>
-                            </div>
-                            
+                            </div>"speech-troubleshoot-steps">
+                              <li>Check if your browser <strong>supports Web Speech API</strong> (Chrome works best)</li>
                             <div class="browser-compatibility-note">
                                 <strong>Note:</strong> Microphone is kept always active to improve speech recognition reliability.
-                            </div>
-                        </div>
-                    </div>
-                </details>
-
+                            </div>tch-info" class="braille-no-match hidden">i>Check if your <strong>microphone is properly connected</strong></li>
+                        </div>matching words found in your sentence.</p>  <li>If using a mobile device, try using the <strong>Chrome browser</strong></li>
+                    </div>>Try speaking a different phrase.</p>  </ul>
+                </details>  
+                </div>                            <button id="test-mic-btn" class="mic-test-btn">Test Microphone</button>
                 <details>
                     <summary>Timing Debug</summary>
                     <div class="details-content">
@@ -335,87 +338,161 @@
                         <p>Output phase: <span id="output-time">7</span>s</p>
                         <p>Current phase: <span id="current-phase-time">0</span>s</p>
                         <button id="refresh-timings-btn" class="action-button">Refresh Timings</button>
-                        
-                        <div class="timing-controls">
-                            <p>
+                        ></div>
+                        <div class="timing-controls">ary>
+                            <p>"details-content">
                                 <label for="listening-timer-toggle">Show Listening Phase Timer:</label>
-                                <input type="checkbox" id="listening-timer-toggle" 
-                                    onchange="toggleListeningTimer(this.checked)">
-                            </p>
-                        </div>
-                    </div>
-                </details>
-            </div>
-        </div>
-        
-        <!-- Loading indicators -->
-        <div id="loading-container" class="loading-container">
-            <div class="progress-bar">
+                                <input type="checkbox" id="listening-timer-toggle" >No</span></p>
+                                    onchange="toggleListeningTimer(this.checked)"></p>
+                            </p>s-content">
+                        </div>ction phase: <span id="intro-time">10</span>s</p>
+                    </div> phase: <span id="listen-time">3</span>s</p>
+                </details>Output phase: <span id="output-time">7</span>s</p>
+            </div>  <summary>Cached Resources</summary>      <p>Current phase: <span id="current-phase-time">0</span>s</p>
+        </div>      <div class="details-content">          <button id="refresh-timings-btn" class="action-button">Refresh Timings</button>
+                        <button id="refresh-button">Refresh Cache Info</button>                
+        <!-- Loading indicators -->namic-content">"timing-controls">
+        <div id="loading-container" class="loading-container">>
+            <div class="progress-bar">stening-timer-toggle">Show Listening Phase Timer:</label>
                 <div id="progress-bar" class="progress progress-striped"></div>
-            </div>
+            </div>details>                  onchange="toggleListeningTimer(this.checked)">
             <div id="progress-status" class="progress-status">Loading components...</div>
-        </div>
-        
+        </div>  <details>          </div>
+                    <summary>Speech Recognition Diagnostics</summary>            </div>
         <div id="speech-loading-container" class="loading-container speech-loading-container">
-            <div class="progress-bar">
-                <div id="speech-progress-bar" class="progress progress-striped"></div>
-            </div>
+            <div class="progress-bar">eech-status-container">
+                <div id="speech-progress-bar" class="progress progress-striped"></div></div>
+            </div>          
             <div id="speech-loading-status" class="progress-status">Initializing speech recognition...</div>
-        </div>
-        
+        </div>                  Microphone always active and listening...d="loading-container" class="loading-container">
+                            </div>    <div class="progress-bar">
         <!-- Hidden compatibility elements for JavaScript -->
-        <div style="display: none;">
-            <button id="start-speech-btn">Start Speaking</button>
-            <button id="stop-speech-btn">Stop</button>
-            <select id="speech-method">
-                <option value="webspeech">Web Speech API</option>
-                <option value="local">Local Model</option>
-            </select>
+        <div style="display: none;">bleshooting Steps:</h4>
+            <button id="start-speech-btn">Start Speaking</button>>ding components...</div>
+            <button id="stop-speech-btn">Stop</button>ser <strong>supports Web Speech API</strong> (Chrome works best)</li>
+            <select id="speech-method">ure you've <strong>granted microphone permissions</strong></li>
+                <option value="webspeech">Web Speech API</option>active</strong> in this application</li>er speech-loading-container">
+                <option value="local">Local Model</option>microphone is properly connected</strong></li>
+            </select>           <li>If using a mobile device, try using the <strong>Chrome browser</strong></li>id="speech-progress-bar" class="progress progress-striped"></div>
             <div id="cycle-mode-status"></div>
-            <div id="cycle-mode-indicator"></div>
-        </div>
-    </main>
-    
-    <footer>
-        <p>Speech to Braille PWA &copy; 2025</p>
-    </footer>
-
-    <!-- Audio resources for phase transitions -->
+            <div id="cycle-mode-indicator"></div>itializing speech recognition...</div>
+        </div>              <button id="test-mic-btn" class="mic-test-btn">Test Microphone</button>
+    </main>                 
+                            <div class="mic-level-meter">    <!-- Hidden compatibility elements for JavaScript -->
+    <footer>                    <div id="mic-level-bar" class="mic-level-bar"></div> style="display: none;">
+        <p>Speech to Braille PWA &copy; 2025</p>on>
+    </footer>               button id="stop-speech-btn">Stop</button>
+                            <div class="browser-compatibility-note">            <select id="speech-method">
+    <!-- Audio resources for phase transitions -->ong> Microphone is kept always active to improve speech recognition reliability.ch API</option>
     <audio id="listening-mode-sound" preload="auto">
         <source src="sounds/listening-mode.mp3" type="audio/mpeg">
-    </audio>
+    </audio>        </div><div id="cycle-mode-status"></div>
     <audio id="output-mode-sound" preload="auto">
         <source src="sounds/output-mode.mp3" type="audio/mpeg">
-    </audio>
-
+    </audio>    <details>
+                    <summary>Timing Debug</summary>    
     <!-- Scripts are loaded in a specific order for dependencies -->
-    <!-- Only load config.js once from the root directory -->
+    <!-- Only load config.js once from the root directory -->o-time">10</span>s</p>
     <!-- <script src="js/config.js"></script> --> <!-- Removing duplicate reference -->
-    <script src="js/alternatives/speech-recognition.js"></script>
-    <script src="js/speechRecognition.js"></script>
-    <script src="js/braille-translator.js"></script>
+    <script src="js/alternatives/speech-recognition.js"></script></span>s</p>
+    <script src="js/speechRecognition.js"></script>"current-phase-time">0</span>s</p>
+    <script src="js/braille-translator.js"></script>btn" class="action-button">Refresh Timings</button>
     <script src="js/text-to-speech.js"></script>
     <script src="utils/braille-array-formatter.js"></script>
-    
-    <!-- BLE integration -->
-    <script src="js/ble-controller.js"></script>
-    <script src="js/ble-ui.js"></script>
+                            <p><audio id="output-mode-sound" preload="auto">
+    <!-- BLE integration -->    <label for="listening-timer-toggle">Show Listening Phase Timer:</label>output-mode.mp3" type="audio/mpeg">
+    <script src="js/ble-controller.js"></script>ckbox" id="listening-timer-toggle" 
+    <script src="js/ble-ui.js"></script>ange="toggleListeningTimer(this.checked)">
     <script src="js/braille-visualizer.js"></script>
-    
-    <!-- Main application modules -->
+                        </div><!-- Only load config.js once from the root directory -->
+    <!-- Main application modules -->> <!-- Removing duplicate reference -->
     <script src="js/ui-controller.js"></script>
     <script src="js/app.js"></script>
     <script src="js/cache-manager.js"></script>
     <script src="js/sound-effects.js"></script>
-    
-    <!-- UI Enhancements -->
+        <!-- Loading indicators --><script src="utils/braille-array-formatter.js"></script>
+    <!-- UI Enhancements -->tainer" class="loading-container">
     <script src="js/ui-enhancements.js"></script>
-    
+                <div id="progress-bar" class="progress progress-striped"></div><script src="js/ble-controller.js"></script>
     <!-- Diagnostic tools -->
-    <script src="js/speech-diagnostics.js"></script>
-    
+    <script src="js/speech-diagnostics.js"></script>s-status">Loading components...</div>
+        </div>
     <!-- Add Figma UI script before closing body tag -->
-    <script src="js/figma-ui.js"></script>
+    <script src="js/figma-ui.js"></script> class="loading-container speech-loading-container">ript>
+    <script src="js/test-speech.js"></script>
+    <script src="js/ui.js"></script>ress-bar" class="progress progress-striped"></div>"></script>
+            </div><script src="js/sound-effects.js"></script>
+    <!-- Phase controller (Must be loaded last) -->progress-status">Initializing speech recognition...</div>
+    <script src="js/phase-controller.js"></script>
+    <script src="js/always-listen-patch.js"></script>
+        <!-- Hidden compatibility elements for JavaScript -->
+    <!-- Add braille database debugging tool -->
+    <script src="js/braille-debug.js"></script> Speaking</button>ript>
+         <button id="stop-speech-btn">Stop</button>
+    <!-- Add TTS toggle functionality -->     <select id="speech-method">- Add Figma UI script before closing body tag -->
+
+
+
+</html></body>    <script src="js/tts-toggle.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</html></body>    <script src="js/braille-debug.js"></script>    <!-- Add braille database debugging tool -->        <script src="js/always-listen-patch.js"></script>    <script src="js/phase-controller.js"></script>    <!-- Phase controller (Must be loaded last) -->        <script src="js/ui.js"></script>    <script src="js/test-speech.js"></script>    <script src="js/figma-ui.js"></script>    <!-- Add Figma UI script before closing body tag -->        <script src="js/speech-diagnostics.js"></script>    <!-- Diagnostic tools -->        <script src="js/ui-enhancements.js"></script>    <!-- UI Enhancements -->        <script src="js/sound-effects.js"></script>    <script src="js/cache-manager.js"></script>    <script src="js/app.js"></script>    <script src="js/ui-controller.js"></script>    <!-- Main application modules -->        <script src="js/braille-visualizer.js"></script>    <script src="js/ble-ui.js"></script>    <script src="js/ble-controller.js"></script>    <!-- BLE integration -->        <script src="utils/braille-array-formatter.js"></script>    <script src="js/text-to-speech.js"></script>    <script src="js/braille-translator.js"></script>    <script src="js/speechRecognition.js"></script>    <script src="js/alternatives/speech-recognition.js"></script>    <!-- <script src="js/config.js"></script> --> <!-- Removing duplicate reference -->    <!-- Only load config.js once from the root directory -->    <!-- Scripts are loaded in a specific order for dependencies -->    </audio>        <source src="sounds/output-mode.mp3" type="audio/mpeg">    <audio id="output-mode-sound" preload="auto">    </audio>        <source src="sounds/listening-mode.mp3" type="audio/mpeg">    <audio id="listening-mode-sound" preload="auto">    <!-- Audio resources for phase transitions -->    </footer>        <p>Speech to Braille PWA &copy; 2025</p>    <footer>        </main>        </div>            <div id="cycle-mode-indicator"></div>            <div id="cycle-mode-status"></div>            </select>                <option value="local">Local Model</option>                <option value="webspeech">Web Speech API</option>    <script src="js/figma-ui.js"></script>
     <script src="js/test-speech.js"></script>
     <script src="js/ui.js"></script>
     
