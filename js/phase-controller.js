@@ -342,6 +342,8 @@
         const finalTextElement = document.getElementById('final-text');
         if (finalTextElement && finalTextElement.textContent.trim()) {
             const text = finalTextElement.textContent.trim();
+            console.log('Processing final text for braille matches:', text);
+            
             // If braille translator is available, process the text
             if (window.app && app.processSpeechForBraille) {
                 // Reset match status before processing
@@ -358,14 +360,28 @@
                     if (currentPhase === 'output' && window.textToSpeech && 
                         textToSpeech.wasBrailleMatchFound && textToSpeech.wasBrailleMatchFound()) {
                         
-                        // Find the matched word from the UI
+                        // Find the matched word from the UI with fallback options
                         const matchedWordElement = document.getElementById('matched-word');
                         if (matchedWordElement && matchedWordElement.textContent) {
                             console.log('Speaking matched word in output phase:', matchedWordElement.textContent);
-                            window.textToSpeech.speakMatchedWord(matchedWordElement.textContent);
+                            
+                            // Use enhanced speaking method with retry
+                            if (window.textToSpeech.speakMatchedWord) {
+                                window.textToSpeech.speakMatchedWord(matchedWordElement.textContent);
+                            } else if (window.textToSpeech.speak) {
+                                window.textToSpeech.speak(matchedWordElement.textContent);
+                            }
+                        } else {
+                            console.warn('Matched word element not found or empty');
                         }
                     }
                 }, 500);
+                
+                // Also ensure braille visualizer is updated
+                if (result && window.brailleVisualizer) {
+                    console.log('Updating visualizer from phase controller with:', result.array);
+                    window.brailleVisualizer.updateDisplay(result.array);
+                }
                 
                 // Return true if match was found
                 return result !== null && result !== undefined;

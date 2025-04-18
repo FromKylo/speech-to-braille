@@ -494,21 +494,35 @@ const uiController = {
     // Display Braille matching
     showBrailleMatch: function(result) {
         if (!noMatchInfo || !brailleResult || !matchedWordElement || 
-            !brailleLanguageElement || !brailleSymbolElement) return;
-            
+            !brailleLanguageElement || !brailleSymbolElement) {
+            console.error('Braille UI elements not found:', {
+                noMatchInfo: !!noMatchInfo,
+                brailleResult: !!brailleResult,
+                matchedWordElement: !!matchedWordElement,
+                brailleLanguageElement: !!brailleLanguageElement,
+                brailleSymbolElement: !!brailleSymbolElement
+            });
+            return;
+        }
+        
+        console.log('Displaying braille match in UI:', result);
+        
+        // Hide no match info, show result container
         noMatchInfo.classList.add('hidden');
         brailleResult.classList.remove('hidden');
         
         // Update UI with matched word and braille symbol
         matchedWordElement.textContent = result.word;
-        brailleSymbolElement.textContent = result.braille;
+        brailleSymbolElement.textContent = result.braille || '⠿';
         
         // Display the language directly without formatting
-        brailleLanguageElement.textContent = result.language;
+        brailleLanguageElement.textContent = result.language || 'UEB';
         
         // Auto-speak the word (adding delay to ensure TTS is ready)
         setTimeout(() => {
-            if (window.textToSpeech) {
+            if (window.textToSpeech && typeof window.textToSpeech.speakMatchedWord === 'function') {
+                window.textToSpeech.speakMatchedWord(result.word);
+            } else if (window.textToSpeech && typeof window.textToSpeech.speak === 'function') {
                 window.textToSpeech.speak(result.word);
             }
         }, 500);
@@ -521,7 +535,19 @@ const uiController = {
     },
     
     updateBrailleArray: function(formattedArray) {
-        if (brailleArrayElement) brailleArrayElement.textContent = formattedArray;
+        if (!brailleArrayElement) {
+            console.error('Braille array element not found');
+            return;
+        }
+        
+        console.log('Updating braille array display with:', formattedArray);
+        brailleArrayElement.textContent = formattedArray;
+        
+        // Make sure it's visible
+        const container = brailleArrayElement.closest('.braille-array-container');
+        if (container) {
+            container.style.display = 'block';
+        }
     },
 
     // Show speech loading bar

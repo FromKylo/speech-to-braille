@@ -38,17 +38,34 @@ const brailleVisualizer = (function() {
     
     // Update the visual display based on braille array data
     function updateDisplay(brailleArray) {
+        console.log('Braille visualizer updating display with:', brailleArray);
+        
+        // Safety check for valid input
+        if (!brailleArray || !Array.isArray(brailleArray)) {
+            console.warn('Invalid braille array provided to visualizer:', brailleArray);
+            return;
+        }
+        
+        // Clear existing dots first
         clearDots();
         
-        if (!brailleArray) return;
+        try {
+            // Handle nested arrays for multi-cell braille (contractions)
+            if (Array.isArray(brailleArray) && Array.isArray(brailleArray[0])) {
+                // Multiple cells
+                updateMultiCellDisplay(brailleArray);
+            } else if (Array.isArray(brailleArray)) {
+                // Single cell
+                updateSingleCellDisplay(brailleArray);
+            }
+        } catch (error) {
+            console.error('Error updating braille display:', error);
+        }
         
-        // Handle nested arrays for multi-cell braille (contractions)
-        if (Array.isArray(brailleArray) && Array.isArray(brailleArray[0])) {
-            // Multiple cells
-            updateMultiCellDisplay(brailleArray);
-        } else if (Array.isArray(brailleArray)) {
-            // Single cell
-            updateSingleCellDisplay(brailleArray);
+        // Make sure the braille display container is visible
+        const displayContainer = document.querySelector('.braille-dot-display');
+        if (displayContainer) {
+            displayContainer.style.display = 'block';
         }
     }
     

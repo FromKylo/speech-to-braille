@@ -24,16 +24,12 @@ function formatBrailleArrayForDisplay(arrayData) {
   // Handle single-character braille cells (e.g., {1,2,3})
   if (arrayData.startsWith('{') && !arrayData.startsWith('{{')) {
     const numbers = arrayData.replace(/[{}]/g, '').split(',');
-    return numbers.join('-');
+    return '{' + numbers.join(',') + '}';
   }
   
   // Handle multi-character braille contractions (e.g., {{1,2},{3,4}})
   if (arrayData.startsWith('{{')) {
-    const cellGroups = arrayData.slice(1, -1).split('},{');
-    const formattedGroups = cellGroups.map(group => {
-      return group.replace(/[{}]/g, '').split(',').join('-');
-    });
-    return formattedGroups.join(' ');
+    return arrayData; // Return as is for display
   }
   
   return arrayData;
@@ -102,18 +98,12 @@ function convertArrayToVisualDots(arrayData) {
     // 1 4
     // 2 5
     // 3 6
-    
-    // Create a template with all dots filled
-    let visualTemplate = [
-      "⠿⠿", // Row 1: dots 1,4
-      "⠿⠿", // Row 2: dots 2,5
-      "⠿⠿"  // Row 3: dots 3,6
-    ];
-    
-    // In a real implementation, you would modify this template
-    // based on which dots are present in the array
-    
-    return visualTemplate.join("\n");
+    let result = '';
+    for (let i = 1; i <= 6; i++) {
+      result += dots.includes(i) ? '●' : '○';
+      if (i === 3) result += '\n';
+    }
+    return result;
   }
   
   // Handle nested arrays (contractions) vs single cell
@@ -124,9 +114,7 @@ function convertArrayToVisualDots(arrayData) {
   }
 }
 
-// Export the utility functions
-module.exports = {
-  formatBrailleArrayForDisplay,
-  parseBrailleArray,
-  convertArrayToVisualDots
-};
+// Make these functions available in the browser
+window.formatBrailleArrayForDisplay = formatBrailleArrayForDisplay;
+window.parseBrailleArray = parseBrailleArray;
+window.convertArrayToVisualDots = convertArrayToVisualDots;

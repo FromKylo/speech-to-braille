@@ -341,6 +341,9 @@ function processSpeechForBraille(text) {
     
     if (result) {
         // We found a match!
+        console.log('Found braille match for:', result.word);
+        
+        // Update UI with matched result
         uiController.showBrailleMatch(result);
         
         // Dispatch event that a match was found
@@ -355,9 +358,9 @@ function processSpeechForBraille(text) {
         // Format and display the braille array
         let formattedArray;
         
-        if (typeof formatBrailleArrayForDisplay === 'function') {
+        if (typeof window.formatBrailleArrayForDisplay === 'function') {
             // Check if the utility function from imported module is available
-            formattedArray = formatBrailleArrayForDisplay(result.array);
+            formattedArray = window.formatBrailleArrayForDisplay(result.array);
             console.log('Using utility formatBrailleArrayForDisplay function:', formattedArray);
         } else {
             // Fallback to our own implementation
@@ -375,7 +378,10 @@ function processSpeechForBraille(text) {
         
         // Update the visual braille dot display
         if (window.brailleVisualizer) {
+            console.log('Updating braille visualizer with array:', result.array);
             brailleVisualizer.updateDisplay(result.array);
+        } else {
+            console.warn('Braille visualizer not available');
         }
         
         // Send braille data to connected ESP32 via BLE
@@ -394,12 +400,13 @@ function processSpeechForBraille(text) {
                 });
         }
         
-        // We're now using uiController.showBrailleMatch to handle speech
-        // but let's add a fallback just in case
-        if (!document.getElementById('speak-word-btn') && window.textToSpeech) {
-            console.log('Using fallback speech method for:', result.word);
+        // Add additional speech handling with retry mechanism
+        if (window.textToSpeech) {
+            console.log('Using speech feedback for matched word:', result.word);
             try {
-                setTimeout(() => window.textToSpeech.speak(result.word), 300);
+                setTimeout(() => {
+                    window.textToSpeech.speakMatchedWord(result.word);
+                }, 300);
             } catch (error) {
                 console.error('Text-to-speech error:', error);
             }
@@ -422,17 +429,7 @@ function processSpeechForBraille(text) {
         // Send empty array to ESP32 to reset all dots when no match is found
         if (window.bleController && bleController.isConnected()) {
             console.log('No match found - sending empty array to reset ESP32 dots');
-            bleController.sendBrailleData([])
-                .then(success => {
-                    if (success) {
-                        console.log('Reset command sent successfully to ESP32');
-                    } else {
-                        console.warn('Failed to send reset command to ESP32');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error sending reset command to ESP32:', error);
-                });
+            bleController.sendBrailleData([]);
         }
         
         return null; // Return null to indicate no match
