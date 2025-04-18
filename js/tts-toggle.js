@@ -66,3 +66,59 @@
         }
     };
 })();
+
+/**
+ * Text-to-Speech Toggle functionality
+ * ALWAYS ON as per requirements
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Force TTS always on
+    if (window.textToSpeech) {
+        console.log('Setting Text-to-Speech to always on mode');
+        
+        // Override any toggle functions to ensure always on
+        window.textToSpeech.enable = function() {
+            console.log('TTS is permanently enabled');
+            
+            // Make all speaking indicators visible
+            const speakingIndicators = document.querySelectorAll('.speaking-indicator');
+            speakingIndicators.forEach(indicator => {
+                indicator.classList.remove('hidden');
+            });
+            
+            return true;
+        };
+        
+        window.textToSpeech.disable = function() {
+            console.log('TTS cannot be disabled - always on mode');
+            return false;
+        };
+        
+        window.textToSpeech.isEnabled = function() {
+            return true;
+        };
+        
+        // Add visible indicator that TTS is always on
+        const speakingIndicators = document.querySelectorAll('.speaking-indicator');
+        speakingIndicators.forEach(indicator => {
+            indicator.classList.remove('hidden');
+        });
+        
+        // Force enable TTS
+        if (typeof window.textToSpeech.enable === 'function') {
+            window.textToSpeech.enable();
+        }
+        
+        // Update any UI toggles to checked state
+        const ttsToggles = document.querySelectorAll('[data-function="toggle-tts"]');
+        if (ttsToggles) {
+            ttsToggles.forEach(toggle => {
+                if (toggle.type === 'checkbox') {
+                    toggle.checked = true;
+                    toggle.disabled = true; // Prevent user from changing
+                }
+            });
+        }
+    }
+});

@@ -203,15 +203,55 @@ void activateDots(int dots[6]) {
  * Process legacy binary braille array format
  */
 void processBrailleArray(const uint8_t* data, size_t length) {
-  // Legacy format support - simple array of 6 bits
-  if (length == 6) {
+  // Check if this is likely the new format with phase byte at the start
+  if (length == 7) {
+    // First byte is phase indicator, next 6 are dot states
+    uint8_t phase = data[0];
+    int dots[6];
+    
+    // Extract the 6 dot values following the phase byte
+    for (int i = 0; i < 6; i++) {
+      dots[i] = data[i+1] > 0 ? 1 : 0;
+    }
+    
+    // Update phase if provided
+    currentPhase = phase;
+    
+    // Activate dots
+    activateDots(dots);
+    Serial.println("Processed 7-byte format (phase + 6 dots)");
+  }
+  // Original legacy format (just 6 dots)
+  else if (length == 6) {
     int dots[6];
     for (int i = 0; i < 6; i++) {
       dots[i] = data[i] > 0 ? 1 : 0;
     }
     activateDots(dots);
-  } else {
-    Serial.println("Invalid legacy data format length");
+    Serial.println("Processed 6-byte legacy format");
+  }
+  // Single byte packed format (bits represent dots)
+  else if (length == 2) {
+    // First byte is phase, second byte has dot states in bits
+    uint8_t phase = data[0];
+    uint8_t dotBits = data[1];
+    int dots[6];
+    
+    // Extract individual bits for each dot
+    for (int i = 0; i < 6; i++) {
+      dots[i] = (dotBits & (1 << i)) ? 1 : 0;
+    }
+    
+    // Update phase if provided
+    currentPhase = phase;
+    
+    // Activate dots
+    activateDots(dots);
+    Serial.println("Processed 2-byte format (phase + packed bits)");
+  }
+  else {
+    Serial.print("Invalid legacy data format length: ");
+    Serial.println(length);
   }
 }
 

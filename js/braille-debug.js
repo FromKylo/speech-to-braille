@@ -1,6 +1,6 @@
 /**
  * Braille Database Debugging Tool
- * This script adds tools to debug database lookup issues
+ * Fixed version to properly handle database lookup issues
  */
 
 (function() {
@@ -24,9 +24,16 @@
         `;
         
         // Find a place to add our debug UI
-        const troubleshootingSection = document.querySelector('#troubleshooting-section .details-content');
+        const troubleshootingSection = document.querySelector('#troubleshooting-section .card');
         if (troubleshootingSection) {
-            troubleshootingSection.appendChild(container);
+            // Create a dedicated details section
+            const details = document.createElement('details');
+            details.innerHTML = '<summary>Braille Database Debug</summary>';
+            const content = document.createElement('div');
+            content.className = 'details-content';
+            content.appendChild(container);
+            details.appendChild(content);
+            troubleshootingSection.appendChild(details);
             
             // Add event listener for the search button
             const searchButton = document.getElementById('braille-debug-search');
@@ -43,6 +50,8 @@
                     }
                 });
             }
+        } else {
+            console.error('Troubleshooting section not found');
         }
     }
     
@@ -66,14 +75,23 @@
             return;
         }
         
-        // Check if database is loaded
-        if (!brailleTranslator.isDatabaseLoaded()) {
+        // Check if database is loaded and if the search function exists
+        if (!brailleTranslator.isDatabaseLoaded || !brailleTranslator.isDatabaseLoaded()) {
             resultDiv.innerHTML = '<p style="color:#dc3545">Braille database not loaded yet</p>';
             return;
         }
         
-        // Search for the word
-        const match = brailleTranslator.searchWord(word);
+        // Search for the word using the proper methods
+        let match = null;
+        
+        // Try different methods to find a match
+        if (typeof brailleTranslator.searchWord === 'function') {
+            match = brailleTranslator.searchWord(word);
+        } else if (typeof brailleTranslator.processText === 'function') {
+            match = brailleTranslator.processText(word);
+        } else if (typeof brailleTranslator.processSentence === 'function') {
+            match = brailleTranslator.processSentence(word);
+        }
         
         if (match) {
             resultDiv.innerHTML = `
@@ -114,11 +132,13 @@
     
     // Add database statistics
     function showDatabaseStats() {
-        if (!window.brailleTranslator || !brailleTranslator.isDatabaseLoaded()) {
+        if (!window.brailleTranslator) {
             return;
         }
         
-        const dbSize = brailleTranslator.getDatabaseSize();
+        const dbSize = brailleTranslator.getDatabaseSize ? 
+            brailleTranslator.getDatabaseSize() : 'Unknown';
+            
         const container = document.createElement('div');
         container.innerHTML = `
             <div style="margin-top:10px;">
@@ -135,10 +155,11 @@
     
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
+        console.log("Initializing fixed Braille Debug Tool");
         // Wait a bit for other scripts to initialize
         setTimeout(() => {
             createDebugUI();
             showDatabaseStats();
-        }, 2000);
+        }, 2500);
     });
 })();

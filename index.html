@@ -29,19 +29,14 @@
     <link rel="stylesheet" href="css/ui-enhancements.css">
     <link rel="stylesheet" href="css/speech-highlights.css">
     <style>
-        /* Critical inline styles for phase transitions */
+        /* Critical inline styles for phase transitions - NO ANIMATIONS */
         .phase-container {
             display: none;
-            transition: opacity 0.5s ease-in-out;
         }
         .phase-active {
             display: block;
-            animation: phaseEnter 0.7s ease-in-out;
         }
-        @keyframes phaseEnter {
-            0% { transform: translateY(20px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
+        
         .countdown-timer {
             position: absolute;
             top: 10px;
@@ -49,7 +44,8 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: conic-gradient(#4285f4 0%, transparent 0%);
+            background: #f2f2f2;
+            border: 2px solid #ddd;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -63,7 +59,6 @@
             border-radius: 25px;
             font-weight: bold;
             text-align: center;
-            animation: blink 1.5s infinite;
             margin: 15px auto;
             display: inline-block;
         }
@@ -74,7 +69,6 @@
             border-radius: 25px;
             font-weight: bold;
             text-align: center;
-            animation: blink 1.5s infinite;
             margin: 15px auto;
             display: inline-block;
         }
@@ -96,6 +90,41 @@
             text-align: center;
             max-width: 600px;
             margin: 0 auto;
+        }
+        
+        /* Always show speaking indicators */
+        .speaking-indicator {
+            display: flex !important;
+            align-items: center;
+            color: #4285f4;
+            font-weight: 500;
+            margin: 10px 0;
+        }
+        
+        .speak-icon {
+            margin-right: 8px;
+        }
+        
+        /* Hide final text */
+        #final-text {
+            display: none;
+        }
+        
+        /* Make interim text more prominent */
+        #interim-text {
+            font-size: 1.2rem;
+            color: #333;
+            min-height: 30px;
+        }
+        
+        /* Hide the braille dot display */
+        .braille-dot-display {
+            display: none !important;
+        }
+        
+        /* Remove status-dot blinking */
+        .status-dot.blinking {
+            animation: none;
         }
     </style>
     <link rel="stylesheet" href="css/braille-display-fixes.css">
