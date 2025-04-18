@@ -270,26 +270,21 @@ class SpeechRecognitionManager {
             // Stop the tracks immediately as we only needed to check permission
             stream.getTracks().forEach(track => track.stop());
             
-            // Update UI to reflect permission granted
-            this.updatePermissionUI(true);
-            
-            // Trigger permission change event
-            this.triggerEvent('permissionchange', { granted: true });
+            // Dispatch success event
+            document.dispatchEvent(new CustomEvent('speechRecognitionMicPermissionGranted'));
             
             return true;
         } catch (err) {
             console.error('Microphone permission error:', err);
             this._permissionGranted = false;
             
-            // Update UI to reflect permission denied
-            this.updatePermissionUI(false);
+            // Dispatch error event
+            document.dispatchEvent(new CustomEvent('speechRecognitionError', {
+                detail: 'Microphone permission denied: ' + err.message
+            }));
             
-            // Trigger events about the error
             this.triggerEvent('error', 'Microphone permission denied: ' + err.message);
-            this.triggerEvent('permissionchange', { granted: false, error: err });
-            
-            // Show error, but with information on how to retry
-            this.showPermissionDeniedUI(err.message);
+            this.showError('Microphone access denied. Please allow microphone access in your browser settings and reload the page.');
             
             return false;
         }
@@ -504,6 +499,9 @@ class SpeechRecognitionManager {
     async startRecognition() {
         console.log(`Attempting to start ${this.selectedMethod} recognition`);
         
+        // Emit event that recognition is starting
+        document.dispatchEvent(new CustomEvent('speechRecognitionStarting'));
+        
         if (this.isRecording) {
             console.log('Already recording, ignoring start request');
             return;
@@ -517,9 +515,15 @@ class SpeechRecognitionManager {
         
         // Check microphone permission first if not already granted
         if (this._permissionGranted !== true) {
-            const permissionGranted = await this.requestMicrophonePermission();
+            const permissionGranted = await this.checkMicrophonePermission();
             if (!permissionGranted) {
                 console.error('Cannot start recognition without microphone permission');
+                
+                // Dispatch error event
+                document.dispatchEvent(new CustomEvent('speechRecognitionError', {
+                    detail: 'Microphone permission required'
+                }));
+                
                 return;
             }
         }
@@ -662,6 +666,11 @@ class SpeechRecognitionManager {
         if (finalTranscript) {
             this.processFinalTranscript(finalTranscript);
         }
+        
+        // Dispatch event when we have results
+        document.dispatchEvent(new CustomEvent('speechRecognitionResults', {
+            detail: { interim: interimTranscript, final: finalTranscript }
+        }));
     }
     
     /**
@@ -746,4 +755,19 @@ window.addEventListener('DOMContentLoaded', () => {
         startButton.disabled = false;
         console.log('Start button enabled from speech-recognition.js');
     }
+    
+    // Dispatch an event when speech recognition starts
+    speechRecognition.on('start', () => {
+        document.dispatchEvent(new CustomEvent('speechRecognitionStarted'));
+    });
+    
+    speechRecognition.on('end', () => {
+        document.dispatchEvent(new CustomEvent('speechRecognitionEnded'));
+    });
+    
+    speechRecognition.on('error', (error) => {
+        document.dispatchEvent(new CustomEvent('speechRecognitionError', {
+            detail: error
+        }));
+    });
 });

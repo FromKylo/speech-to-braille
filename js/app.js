@@ -251,6 +251,12 @@ async function startSpeechRecognition() {
         console.log('Already recording, ignoring start request');
         return;
     }
+
+    const speechStatusIndicator = document.getElementById('speech-status-indicator');
+    if (speechStatusIndicator) {
+        speechStatusIndicator.className = 'status-indicator-large warning';
+        speechStatusIndicator.textContent = 'Initializing speech recognition...';
+    }
     
     // Clear both interim and final text when starting new session
     uiController.clearInterimText();
@@ -279,13 +285,19 @@ async function startSpeechRecognition() {
             speechRecognition.initWebSpeechRecognition();
         }
         
-        // Explicitly check microphone permissions - use the new requestMicrophonePermission
-        // method instead of the old checkMicrophonePermission
+        // Explicitly check microphone permissions with better user feedback
         uiController.updateSpeechLoadingProgress(40, 'Requesting microphone permission...');
-        const permissionGranted = await speechRecognition.requestMicrophonePermission();
+        
+        const permissionGranted = await speechRecognition.checkMicrophonePermission();
         
         if (!permissionGranted) {
             throw new Error('Microphone permission required. Please allow microphone access and try again.');
+        }
+        
+        // Update the status indicator
+        if (speechStatusIndicator) {
+            speechStatusIndicator.className = 'status-indicator-large warning';
+            speechStatusIndicator.textContent = 'Starting speech recognition engine...';
         }
         
         // Set the selected method if supported
@@ -319,9 +331,16 @@ async function startSpeechRecognition() {
         setTimeout(() => {
             uiController.hideSpeechLoadingBar();
         }, 1000);
+        
     } catch (error) {
         console.error('Failed to start recognition:', error);
         uiController.hideSpeechLoadingBar();
+        
+        // Update the status indicator
+        if (speechStatusIndicator) {
+            speechStatusIndicator.className = 'status-indicator-large error';
+            speechStatusIndicator.textContent = `Speech recognition error: ${error.message}`;
+        }
         
         // Show a more user-friendly error message
         const errorMessage = document.createElement('div');
@@ -350,7 +369,7 @@ async function startSpeechRecognition() {
             retryButton.className = 'request-mic-access';
             retryButton.textContent = 'Grant Microphone Access';
             retryButton.addEventListener('click', () => {
-                speechRecognition.requestMicrophonePermission();
+                speechRecognition.checkMicrophonePermission();
             });
             
             if (speechOutput) {
@@ -374,7 +393,7 @@ function stopSpeechRecognition() {
 
 // Function to process speech results for Braille matching
 function processSpeechForBraille(text) {
-    if (!brailleTranslator.isDatabaseLoaded()) {
+    if (!brailleTranslator || !brailleTranslator.isDatabaseLoaded()) {
         console.warn('Braille database not loaded yet');
         return null;
     }
@@ -384,19 +403,41 @@ function processSpeechForBraille(text) {
         return null;
     }
     
-    const result = brailleTranslator.processText(text);
+    console.log(`Processing speech for braille matching: "${text}"`);
+    
+    // Clean the text before processing (remove punctuation, etc.)
+    const cleanedText = text.trim().replace(/[^\w\s']|_/g, "").toLowerCase();
+    console.log(`Cleaned text for processing: "${cleanedText}"`);
+    
+    // Try to process the full text first
+    let result = brailleTranslator.processText(cleanedText);
+    
+    // If no match found with the full text, try individual words
+    if (!result && cleanedText.includes(' ')) {
+        console.log('No match found for full text, trying individual words');
+        const words = cleanedText.split(/\s+/);
+        
+        // Try each word individually, starting with the longest ones
+        // as they're more likely to be meaningful content words
+        const sortedWords = [...words].sort((a, b) => b.length - a.length);
+        
+        for (const word of sortedWords) {
+            // Skip very short words as they're often articles, prepositions, etc.
+            if (word.length < 2) continue;
+            
+            console.log(`Trying individual word: "${word}"`);
+            result = brailleTranslator.processText(word);
+            
+            if (result) {
+                console.log(`Found match for word: "${word}"`, result);
+                break;
+            }
+        }
+    }
     
     if (result) {
         // We found a match!
         console.log('Found braille match for:', result.word);
-        
-        // Suspend microphone immediately to prevent feedback
-        if (window.phaseControl && typeof phaseControl.suspendMicrophone === 'function') {
-            phaseControl.suspendMicrophone();
-        }
-        
-        // Debug the raw array content to verify what we're receiving
-        console.log('Raw braille array for ' + result.word + ':', result.array);
         
         // Format and display the braille array
         let formattedArray;
@@ -487,6 +528,7 @@ function processSpeechForBraille(text) {
         return result; // Return the result object to indicate a match
     } else {
         // No match found
+        console.log('No braille match found for text:', text);
         uiController.showNoMatch();
         
         // Dispatch event that no match was found
@@ -854,3 +896,31 @@ window.app = {
     startListeningCycle,
     getCurrentCycleMode: () => cycleMode
 };
+
+// Add these event listeners to update the speech status indicator
+document.addEventListener('DOMContentLoaded', function() {
+    // Listen for speech recognition events
+    document.addEventListener('speechRecognitionStarted', function() {
+        const statusIndicator = document.getElementById('speech-status-indicator');
+        if (statusIndicator) {
+            statusIndicator.className = 'status-indicator-large success';
+            statusIndicator.textContent = 'Speech recognition is active and listening.';
+        }
+    });
+    
+    document.addEventListener('speechRecognitionError', function(event) {
+        const statusIndicator = document.getElementById('speech-status-indicator');
+        if (statusIndicator) {
+            statusIndicator.className = 'status-indicator-large error';
+            statusIndicator.textContent = `Speech recognition error: ${event.detail || 'Unknown error'}`;
+        }
+    });
+    
+    document.addEventListener('speechRecognitionResults', function() {
+        const statusIndicator = document.getElementById('speech-status-indicator');
+        if (statusIndicator && statusIndicator.className.includes('error')) {
+            statusIndicator.className = 'status-indicator-large success';
+            statusIndicator.textContent = 'Speech recognition is working correctly.';
+        }
+    });
+});

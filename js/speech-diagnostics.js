@@ -1,9 +1,16 @@
 /**
  * Speech recognition diagnostics helper
  * Provides tools to debug speech recognition issues
+ * Modified to keep microphone always open and listening
  */
 
 (function() {
+    let micStream = null;
+    let audioContext = null;
+    let analyzer = null;
+    let dataArray = null;
+    let levelMeterInterval = null;
+
     // Create diagnostic UI
     function createDiagnosticUI() {
         const container = document.createElement('div');
@@ -77,49 +84,54 @@
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             diagMic.innerHTML = 'Microphone: <span style="color:green;">Access Granted ✓</span>';
             
-            // Stop tracks after checking
-            stream.getTracks().forEach(track => track.stop());
+            // Update the status indicator
+            const statusIndicator = document.getElementById('speech-status-indicator');
+            if (statusIndicator) {
+                statusIndicator.className = 'status-indicator-large success';
+                statusIndicator.textContent = 'Microphone access granted and always listening. Speech recognition should work.';
+            }
+            
+            // Keep the stream open to ensure microphone is always active
+            // Only stop it if the page is unloaded
+            window.addEventListener('beforeunload', () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            });
         } catch (err) {
             diagMic.innerHTML = `Microphone: <span style="color:red;">Access Denied ✗ (${err.name})</span>`;
             console.error('Microphone access error:', err);
+            
+            // Update the status indicator
+            const statusIndicator = document.getElementById('speech-status-indicator');
+            if (statusIndicator) {
+                statusIndicator.className = 'status-indicator-large error';
+                statusIndicator.textContent = `Microphone access denied: ${err.message}. Speech recognition will not work.`;
+            }
         }
     }
     
-    // Force restart recognition
+    // Force restart recognition - modified to ensure microphone stays open
     function forceRestartRecognition() {
-        if (window.speechRecognition) {
-            try {
-                // First try to stop if already running
-                if (speechRecognition.isRecording || speechRecognition._recognitionActive) {
-                    try {
-                        if (speechRecognition.recognition) {
-                            speechRecognition.recognition.stop();
-                        }
-                    } catch (e) {
-                        console.log('Error stopping recognition:', e);
-                    }
-                }
-                
-                // Wait a moment then restart
-                setTimeout(() => {
-                    try {
-                        speechRecognition.isRecording = false;
-                        speechRecognition._recognitionActive = false;
-                        speechRecognition.startRecognition();
-                        
-                        // Update state display
-                        updateRecognitionState();
-                    } catch (e) {
-                        console.error('Failed to restart recognition:', e);
-                        alert('Failed to restart: ' + e.message);
-                    }
-                }, 500);
-            } catch (e) {
-                console.error('Error during force restart:', e);
-                alert('Error during force restart: ' + e.message);
-            }
+        if (window.speechRecognition && speechRecognition.isRecording) {
+            console.log('Force restarting speech recognition while keeping mic open');
+            
+            // Store the current state
+            const wasRecording = speechRecognition.isRecording;
+            
+            // Stop the recognition
+            speechRecognition.stopRecognition();
+            
+            // Wait a moment and restart
+            setTimeout(() => {
+                speechRecognition.startRecognition();
+                console.log('Speech recognition restarted with mic open');
+            }, 500);
         } else {
-            alert('Speech recognition not initialized');
+            console.log('Starting speech recognition');
+            if (window.speechRecognition) {
+                speechRecognition.startRecognition();
+            }
         }
     }
     
@@ -150,20 +162,132 @@
         stateElement.innerHTML = `Recognition State: <span style="color:${color}">${stateText}</span>`;
     }
     
-    // Initialize diagnostic tools when enabled
-    function initDiagnostics() {
-        // Check if diagnostics are enabled via URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('diagnostics') === 'true') {
-            console.log('Speech diagnostics enabled');
-            createDiagnosticUI();
-            
-            // Set up interval to update recognition state
-            setInterval(updateRecognitionState, 1000);
+    // Start microphone level meter - keeps microphone always open
+    function startMicLevelMeter() {
+        // Stop any existing monitoring but keep microphone open
+        if (levelMeterInterval) {
+            clearInterval(levelMeterInterval);
+            levelMeterInterval = null;
+        }
+        
+        // Get the mic level elements
+        const levelMeter = document.getElementById('mic-level-bar');
+        if (!levelMeter) return;
+        
+        try {
+            // Request microphone access if we don't already have it
+            if (!micStream) {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        micStream = stream;
+                        
+                        // Create audio context and analyzer
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const source = audioContext.createMediaStreamSource(stream);
+                        analyzer = audioContext.createAnalyser();
+                        analyzer.fftSize = 256;
+                        source.connect(analyzer);
+                        
+                        // Prepare data array for analyzer
+                        const bufferLength = analyzer.frequencyBinCount;
+                        dataArray = new Uint8Array(bufferLength);
+                        
+                        // Start the level meter
+                        startLevelMeterUpdates(levelMeter);
+                    })
+                    .catch(err => {
+                        console.error('Microphone level meter error:', err);
+                        levelMeter.style.width = '0%';
+                    });
+            } else {
+                // We already have mic access, just start the meter
+                startLevelMeterUpdates(levelMeter);
+            }
+        } catch (err) {
+            console.error('Error starting microphone level meter:', err);
         }
     }
     
-    // Initialize after page loads
+    // Helper function to start level meter updates
+    function startLevelMeterUpdates(levelMeter) {
+        levelMeterInterval = setInterval(() => {
+            // Get audio data
+            analyzer.getByteFrequencyData(dataArray);
+            
+            // Calculate average level
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            
+            // Scale the level (0-100%)
+            const scaledLevel = Math.min(100, Math.max(0, average * 2));
+            
+            // Update the meter
+            levelMeter.style.width = scaledLevel + '%';
+            
+            // Update the status indicator if level is good
+            const statusIndicator = document.getElementById('speech-status-indicator');
+            if (statusIndicator && scaledLevel > 10) {
+                statusIndicator.className = 'status-indicator-large success';
+                statusIndicator.textContent = 'Microphone is active and always listening. Speech recognition should function correctly.';
+            }
+        }, 100);
+    }
+    
+    // Initialize diagnostic tools when enabled
+    function initDiagnostics() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('diagnostics') === 'true' || true) { // Always enable diagnostics
+            console.log('Speech diagnostics enabled with always-on microphone');
+            
+            // Set up interval to update recognition state
+            setInterval(updateRecognitionState, 1000);
+            
+            // Add event listener to the test microphone button
+            const testMicBtn = document.getElementById('test-mic-btn');
+            if (testMicBtn) {
+                testMicBtn.addEventListener('click', () => {
+                    startMicLevelMeter();
+                    
+                    // Keep mic meter running indefinitely
+                    // Don't stop it with setTimeout anymore
+                    
+                    // Update button text
+                    testMicBtn.textContent = 'Microphone Active';
+                    setTimeout(() => {
+                        testMicBtn.textContent = 'Test Microphone';
+                    }, 3000);
+                });
+            }
+            
+            // Check microphone status initially and keep it open
+            checkMicrophoneAccess();
+            
+            // Listen for speech recognition events to update status
+            document.addEventListener('speechRecognitionStarted', () => {
+                const statusIndicator = document.getElementById('speech-status-indicator');
+                if (statusIndicator) {
+                    statusIndicator.className = 'status-indicator-large success';
+                    statusIndicator.textContent = 'Speech recognition is active and always listening.';
+                }
+            });
+            
+            document.addEventListener('speechRecognitionError', (event) => {
+                const statusIndicator = document.getElementById('speech-status-indicator');
+                if (statusIndicator) {
+                    statusIndicator.className = 'status-indicator-large error';
+                    statusIndicator.textContent = `Speech recognition error: ${event.detail || 'Unknown error'}`;
+                }
+            });
+            
+            // Start microphone level meter automatically to keep mic open
+            startMicLevelMeter();
+        }
+    }
+    
+    // Initialize when DOM is ready
     window.addEventListener('DOMContentLoaded', initDiagnostics);
     
     // Expose diagnostic functions to window for console use
@@ -171,6 +295,7 @@
         checkMicrophoneAccess,
         checkWebSpeechSupport,
         forceRestartRecognition,
+        startMicLevelMeter,
         showDiagnosticUI: createDiagnosticUI
     };
 })();

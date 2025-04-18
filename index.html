@@ -302,14 +302,14 @@
                             <div class="speech-status-title">Speech Recognition Status</div>
                             
                             <div id="speech-status-indicator" class="status-indicator-large warning">
-                                Checking speech recognition status...
+                                Microphone always active and listening...
                             </div>
                             
                             <h4>Troubleshooting Steps:</h4>
                             <ul class="speech-troubleshoot-steps">
                                 <li>Check if your browser <strong>supports Web Speech API</strong> (Chrome works best)</li>
                                 <li>Ensure you've <strong>granted microphone permissions</strong></li>
-                                <li>Try <strong>refreshing the page</strong> and testing again</li>
+                                <li>Microphone is <strong>always active</strong> in this application</li>
                                 <li>Check if your <strong>microphone is properly connected</strong></li>
                                 <li>If using a mobile device, try using the <strong>Chrome browser</strong></li>
                             </ul>
@@ -321,12 +321,12 @@
                             </div>
                             
                             <div class="browser-compatibility-note">
-                                <strong>Note:</strong> Speech recognition works best in Chrome, Edge, and Safari browsers. Firefox has limited support.
+                                <strong>Note:</strong> Microphone is kept always active to improve speech recognition reliability.
                             </div>
                         </div>
                     </div>
                 </details>
-                
+
                 <details>
                     <summary>Timing Debug</summary>
                     <div class="details-content">
@@ -410,7 +410,6 @@
     
     <!-- UI Enhancements -->
     <script src="js/ui-enhancements.js"></script>
-    <script src="js/theme-switcher.js"></script>
     
     <!-- Diagnostic tools -->
     <script src="js/speech-diagnostics.js"></script>
@@ -422,5 +421,9 @@
     
     <!-- Phase controller (Must be loaded last) -->
     <script src="js/phase-controller.js"></script>
+    <script src="js/always-listen-patch.js"></script>
+    
+    <!-- Add braille database debugging tool -->
+    <script src="js/braille-debug.js"></script>
 </body>
 </html>

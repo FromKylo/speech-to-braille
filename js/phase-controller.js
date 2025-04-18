@@ -1,6 +1,7 @@
 /**
  * Phase Controller
  * Manages application phase transitions and timing
+ * Modified to improve output phase detection
  */
 
 (function() {
@@ -253,11 +254,22 @@
                 let matchFound = false;
                 
                 // Process text and check if a match was found
+                console.log('Processing final text for braille match in output phase');
                 matchFound = processFinalText();
+                console.log('Initial match found result:', matchFound);
                 
                 // Also check our secondary flag in case result is not reliable
                 if (window.textToSpeech && textToSpeech.wasBrailleMatchFound) {
-                    matchFound = matchFound || textToSpeech.wasBrailleMatchFound();
+                    const textToSpeechMatchFound = textToSpeech.wasBrailleMatchFound();
+                    console.log('Text-to-speech match found flag:', textToSpeechMatchFound);
+                    matchFound = matchFound || textToSpeechMatchFound;
+                }
+                
+                // Debug the content of the final text
+                const finalTextElement = document.getElementById('final-text');
+                if (finalTextElement) {
+                    console.log('Final text content for matching:', 
+                        finalTextElement.textContent);
                 }
                 
                 // If no match found and looping is enabled in config, stay in recording phase
@@ -281,8 +293,9 @@
                 console.log(`Starting output phase timer for ${window.config.timings.outputPhase}s`);
                 startPhaseTimer(outputTimer, 'recording', window.config.timings.outputPhase);
                 
-                // Always suspend microphone in output phase to prevent feedback
-                suspendMicrophone();
+                // Keep microphone active in output phase as requested
+                // This replaces the suspendMicrophone call
+                console.log('Keeping microphone active during output phase');
                 
                 // Play output sound
                 if (window.textToSpeech && textToSpeech.playOutputAudio) {
@@ -291,14 +304,8 @@
                     window.soundEffects.playOutputModeSound();
                 }
                 
-                // Pause speech recognition
-                if (window.app && app.stopSpeechRecognition) {
-                    app.stopSpeechRecognition();
-                    updateRecognitionStatus(false);
-                }
-                
-                // Process the current text for braille output
-                processFinalText();
+                // Don't pause speech recognition, just keep listening
+                console.log('Keeping speech recognition active during output phase');
             }
             
             currentPhase = phase;
@@ -380,40 +387,73 @@
                     textToSpeech.resetBrailleMatchStatus();
                 }
                 
-                // Process the speech for braille matching
-                const result = app.processSpeechForBraille(text);
-                
-                // Give time for the match processing to complete
-                setTimeout(() => {
-                    // If we're in output phase and a match was found, speak it
-                    if (currentPhase === 'output' && window.textToSpeech && 
-                        textToSpeech.wasBrailleMatchFound && textToSpeech.wasBrailleMatchFound()) {
-                        
-                        // Find the matched word from the UI with fallback options
-                        const matchedWordElement = document.getElementById('matched-word');
-                        if (matchedWordElement && matchedWordElement.textContent) {
-                            console.log('Speaking matched word in output phase:', matchedWordElement.textContent);
+                // Process the speech for braille matching - use direct function call
+                // Instead of just checking the return value, use it to update UI directly
+                try {
+                    console.log('Calling processSpeechForBraille with text:', text);
+                    const result = app.processSpeechForBraille(text);
+                    
+                    // Log detailed result for debugging
+                    console.log('Braille match result:', result);
+                    
+                    // Give time for the match processing to complete
+                    setTimeout(() => {
+                        // Check if we got a result
+                        if (!result) {
+                            console.warn('No braille match found for:', text);
+                            // Try processing individual words as fallback
+                            const words = text.trim().split(/\s+/);
+                            console.log('Trying individual words:', words);
                             
-                            // Use enhanced speaking method with retry
-                            if (window.textToSpeech.speakMatchedWord) {
-                                window.textToSpeech.speakMatchedWord(matchedWordElement.textContent);
-                            } else if (window.textToSpeech.speak) {
-                                window.textToSpeech.speak(matchedWordElement.textContent);
+                            // Try each word individually
+                            for (const word of words) {
+                                if (word.length < 2) continue; // Skip very short words
+                                console.log('Trying individual word:', word);
+                                const wordResult = app.processSpeechForBraille(word);
+                                if (wordResult) {
+                                    console.log('Found match for individual word:', word);
+                                    break; // Stop after finding first match
+                                }
                             }
-                        } else {
-                            console.warn('Matched word element not found or empty');
                         }
+                        
+                        // If we're in output phase and a match was found, speak it
+                        if (currentPhase === 'output' && window.textToSpeech) {
+                            if (textToSpeech.wasBrailleMatchFound && 
+                                textToSpeech.wasBrailleMatchFound()) {
+                                
+                                // Find the matched word from the UI with fallback options
+                                const matchedWordElement = document.getElementById('matched-word');
+                                if (matchedWordElement && matchedWordElement.textContent &&
+                                    matchedWordElement.textContent !== 'Loading...' &&
+                                    matchedWordElement.textContent !== 'None') {
+                                    
+                                    console.log('Speaking matched word in output phase:', 
+                                        matchedWordElement.textContent);
+                                    
+                                    // Use enhanced speaking method with retry
+                                    if (window.textToSpeech.speakMatchedWord) {
+                                        window.textToSpeech.speakMatchedWord(matchedWordElement.textContent);
+                                    } else if (window.textToSpeech.speak) {
+                                        window.textToSpeech.speak(matchedWordElement.textContent);
+                                    }
+                                }
+                            }
+                        }
+                    }, 500);
+                    
+                    // Also ensure braille visualizer is updated
+                    if (result && window.brailleVisualizer) {
+                        console.log('Updating visualizer from phase controller with:', result.array);
+                        window.brailleVisualizer.updateDisplay(result.array);
                     }
-                }, 500);
-                
-                // Also ensure braille visualizer is updated
-                if (result && window.brailleVisualizer) {
-                    console.log('Updating visualizer from phase controller with:', result.array);
-                    window.brailleVisualizer.updateDisplay(result.array);
+                    
+                    // Return true if match was found
+                    return result !== null && result !== undefined;
+                } catch (err) {
+                    console.error('Error processing speech for braille:', err);
+                    return false;
                 }
-                
-                // Return true if match was found
-                return result !== null && result !== undefined;
             }
         }
         return false;
