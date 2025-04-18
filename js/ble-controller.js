@@ -127,14 +127,14 @@ const bleController = (function() {
         // Notify Arduino of phase change if connected
         if (isConnected && brailleCharacteristic) {
             try {
-                // Create a byte array with just the phase indicator
-                const phaseValue = (phase === 'output') ? PHASE_OUTPUT : PHASE_NOT_OUTPUT;
-                const phaseData = new Uint8Array([phaseValue]);
+                // Use 6-byte format for consistency (all dots lowered)
+                const dots = [0, 0, 0, 0, 0, 0];
+                const byteArray = new Uint8Array(dots);
                 
-                console.log('Sending phase update to Arduino:', phaseValue);
-                await brailleCharacteristic.writeValue(phaseData);
+                console.log('Sending phase update to Arduino using 6-byte format');
+                await brailleCharacteristic.writeValue(byteArray);
                 
-                // If not in output phase, clear braille display
+                // If not in output phase, ensure braille display is cleared
                 if (phase !== 'output') {
                     console.log('Not in output phase - ensuring dots are lowered');
                 }
@@ -208,15 +208,28 @@ const bleController = (function() {
     let minLatency = Number.MAX_VALUE;
 
     /**
-     * Send braille data to the ESP32 with timing measurements
+     * Send braille data to the ESP32 using only the 6-byte format
      * @param {Array} brailleArray - Array of dot indices that should be raised
      * @returns {Promise<boolean>} - Whether the transmission was successful
      */
     function sendBrailleData(brailleArray) {
         // Convert braille array to 6-byte array format
-        const byteArray = prepareLegacyBrailleData(brailleArray);
+        const byteArray = BrailleData(brailleArray);
         
-        // Send via BLE
+        // Send via BLE directly if sendDataToBLE is not implemented
+        if (typeof sendDataToBLE !== 'function') {
+            if (isConnected && brailleCharacteristic) {
+                return brailleCharacteristic.writeValue(byteArray)
+                    .then(() => true)
+                    .catch(error => {
+                        console.error('Error sending braille data to BLE:', error);
+                        return false;
+                    });
+            }
+            return Promise.resolve(false);
+        }
+        
+        // Use sendDataToBLE if it exists
         return sendDataToBLE(byteArray);
     }
 

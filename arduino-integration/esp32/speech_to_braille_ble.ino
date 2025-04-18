@@ -3,15 +3,6 @@
  * 
  * This sketch receives braille array data from the Speech-to-Braille web app
  * via Bluetooth Low Energy (BLE) and controls braille pins accordingly.
- * 
- * Hardware:
- * - Arduino Nano ESP32
- * - Solenoids or servos for braille dots (6 pins)
- * - LED for connection indicator (pin 13)
- * 
- * Connections:
- * - Braille dots 1-6 connected to pins D2-D7
- * - Status LED connected to pin D13
  */
 
 #include <BLEDevice.h>
@@ -23,7 +14,6 @@
 #define BRAILLE_SERVICE_UUID        "19b10000-e8f2-537e-4f6c-d104768a1214"
 #define BRAILLE_CHARACTERISTIC_UUID "19b10001-e8f2-537e-4f6c-d104768a1214"
 
-// Define the GPIO pins for each braille cell (using the same structure as Version1.ino)
 const int braillePins[3][6] = {
   {13, 12, 11, 10, 9, 8}, // Braille Cell 1
   {7, 6, 5, 4, 3, 2},    // Braille Cell 2
@@ -34,7 +24,7 @@ const int NUM_PINS = 6;
 
 // Heartbeat
 const int STATUS_LED_PIN = 15; // Green LED ito boss
-const int HEARTBEAT_INTERVAL = 500; // 1 second interval for blink when not connected
+const int HEARTBEAT_INTERVAL = 500;
 unsigned long lastHeartbeatTime = 0;
 bool ledState = false;
 
@@ -44,7 +34,7 @@ const uint8_t PHASE_OUTPUT = 1;
 uint8_t currentPhase = PHASE_NOT_OUTPUT;
 
 // Auto-reset timeout for braille output
-const unsigned long OUTPUT_TIMEOUT = 3000; // 3 seconds without new data to auto-reset
+const unsigned long OUTPUT_TIMEOUT = 7000; 
 unsigned long lastOutputTime = 0;
 bool outputActive = false;
 
@@ -93,7 +83,7 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
     if (value.length() > 0) {
       Serial.println("Received data from BLE client");
       
-      // Process the incoming binary data directly
+      // Process the incoming binary data directly - prioritizing 6-byte format
       processBrailleArray((uint8_t*)value.data(), value.length());
     }
   }
