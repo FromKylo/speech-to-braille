@@ -19,6 +19,10 @@ let introCompleted = false; // Track if introduction has been completed
 
 // Track if user has interacted with the page
 let hasUserInteracted = false;
+
+// Track if a braille match was found in the current cycle
+let brailleMatchFound = false;
+
 document.addEventListener('click', () => {
     hasUserInteracted = true;
 });
@@ -54,12 +58,29 @@ function startChromeWorkaround() {
 
 // Initialize speech synthesis on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Register for custom events to track braille matches
+    document.addEventListener('brailleMatchFound', () => {
+        console.log("Braille match found event received");
+        brailleMatchFound = true;
+    });
+    
+    document.addEventListener('brailleNoMatchFound', () => {
+        console.log("No braille match found event received");
+        brailleMatchFound = false;
+    });
+
     // Set up user interaction detection more broadly
     ['click', 'touchstart', 'keypress'].forEach(eventType => {
         document.addEventListener(eventType, () => {
             if (!hasUserInteracted) {
                 console.log("User interaction detected - speech features should now work");
                 hasUserInteracted = true;
+                
+                // Update any UI indicators that show user needs to interact
+                updateInteractionPrompts();
+                
+                // Try to play a silent sound to fully unlock audio
+                tryUnlockAudio();
             }
         }, { once: false });
     });
@@ -76,6 +97,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, 1000);
 });
+
+// Try to unlock audio by playing a silent sound
+function tryUnlockAudio() {
+    try {
+        // Create a short, silent audio element
+        const silentAudio = document.createElement('audio');
+        silentAudio.setAttribute('src', 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+        silentAudio.setAttribute('playsinline', 'true');
+        silentAudio.volume = 0.01;
+        silentAudio.play().then(() => {
+            console.log("Audio unlocked successfully");
+            
+            // Now try to preload the actual sound effects
+            const recordingSound = document.getElementById('listening-mode-sound');
+            const outputSound = document.getElementById('output-mode-sound');
+            
+            if (recordingSound) recordingSound.load();
+            if (outputSound) outputSound.load();
+            
+        }).catch(e => console.warn("Silent audio unlock failed:", e));
+    } catch (e) {
+        console.warn("Error attempting to unlock audio:", e);
+    }
+}
+
+// Update all interaction prompts in the UI
+function updateInteractionPrompts() {
+    // Find all interaction prompts
+    const interactionPrompts = document.querySelectorAll('.interaction-prompt, #interaction-prompt');
+    interactionPrompts.forEach(prompt => {
+        if (prompt) {
+            prompt.style.opacity = '0';
+            prompt.style.transition = 'opacity 1s';
+            setTimeout(() => {
+                if (prompt.parentNode) {
+                    prompt.parentNode.removeChild(prompt);
+                }
+            }, 1000);
+        }
+    });
+}
 
 // Initialize and set up the default voice
 async function initSpeechSynthesis() {
@@ -280,6 +342,17 @@ function stopSpeaking() {
     }
 }
 
+// Get the status of braille matching
+function wasBrailleMatchFound() {
+    return brailleMatchFound;
+}
+
+// Reset the braille match found flag (called at start of recording phase)
+function resetBrailleMatchStatus() {
+    brailleMatchFound = false;
+    return brailleMatchFound;
+}
+
 // Speak the introduction text automatically
 function speakIntroduction() {
     const introText = "Let's learn braille!";
@@ -301,48 +374,7 @@ function speakIntroduction() {
     introCompleted = true;
     
     // Always add a visual cue initially to help users understand they need to interact
-    const interactionPrompt = document.createElement('div');
-    interactionPrompt.id = 'interaction-prompt';
-    interactionPrompt.style.padding = '10px';
-    interactionPrompt.style.margin = '10px 0';
-    interactionPrompt.style.backgroundColor = '#f8f9fa';
-    interactionPrompt.style.border = '1px solid #dee2e6';
-    interactionPrompt.style.borderRadius = '4px';
-    interactionPrompt.style.textAlign = 'center';
-    interactionPrompt.innerHTML = '<strong>Click anywhere on the page to enable audio features</strong><br>Chrome requires user interaction before playing audio';
-    
-    const container = document.querySelector('.intro-container') || 
-                       document.getElementById('introduction-phase') || 
-                       document.body;
-    
-    if (container) {
-        container.prepend(interactionPrompt);
-        setTimeout(() => {
-            if (interactionPrompt.parentNode && hasUserInteracted) {
-                interactionPrompt.style.opacity = '0';
-                interactionPrompt.style.transition = 'opacity 1s';
-                setTimeout(() => {
-                    if (interactionPrompt.parentNode) {
-                        interactionPrompt.parentNode.removeChild(interactionPrompt);
-                    }
-                }, 1000);
-            }
-        }, 5000);
-
-        // Keep checking if user has interacted, remove the prompt when they do
-        const checkInterval = setInterval(() => {
-            if (hasUserInteracted && interactionPrompt.parentNode) {
-                interactionPrompt.style.opacity = '0';
-                interactionPrompt.style.transition = 'opacity 1s';
-                setTimeout(() => {
-                    if (interactionPrompt.parentNode) {
-                        interactionPrompt.parentNode.removeChild(interactionPrompt);
-                    }
-                    clearInterval(checkInterval);
-                }, 1000);
-            }
-        }, 1000);
-    }
+    createInitialInteractionPrompt();
     
     // Try to speak the text, but with a fallback to ensure we proceed even if TTS fails
     try {
@@ -420,20 +452,34 @@ function finishIntroduction(speakingIndicator) {
 function speakMatchedWord(word) {
     if (!word) return;
     // Only speak the word without prefix to make it clearer
+    brailleMatchFound = true; // Set the flag when a word is spoken
     speakText(word);
 }
 
 // Play recording phase audio cue
 function playRecordingAudio() {
+    // Reset the match found flag at the start of recording phase
+    resetBrailleMatchStatus();
+    
     const recordingSound = document.getElementById('listening-mode-sound');
     if (recordingSound) {
         recordingSound.play().catch(err => {
             console.error('Error playing recording sound:', err);
-            // Don't let audio playback failures stop the app flow
-            // This is often due to the same user interaction requirement
+            // If sound fails due to no user interaction, try to create a prominent interaction prompt
+            if (err.name === 'NotAllowedError' && !hasUserInteracted) {
+                createPersistentInteractionPrompt();
+            }
         });
     } else {
         console.warn('Recording sound element not found');
+        // Try to use the sound effects module as fallback
+        if (window.soundEffects && typeof window.soundEffects.playListeningModeSound === 'function') {
+            try {
+                window.soundEffects.playListeningModeSound();
+            } catch (e) {
+                console.warn('Fallback sound effect also failed:', e);
+            }
+        }
     }
 }
 
@@ -443,10 +489,120 @@ function playOutputAudio() {
     if (outputSound) {
         outputSound.play().catch(err => {
             console.error('Error playing output sound:', err);
-            // Don't let audio playback failures stop the app flow
+            // If sound fails due to no user interaction, try to create a prominent interaction prompt
+            if (err.name === 'NotAllowedError' && !hasUserInteracted) {
+                createPersistentInteractionPrompt();
+            }
         });
     } else {
         console.warn('Output sound element not found');
+        // Try to use the sound effects module as fallback
+        if (window.soundEffects && typeof window.soundEffects.playOutputModeSound === 'function') {
+            try {
+                window.soundEffects.playOutputModeSound();
+            } catch (e) {
+                console.warn('Fallback sound effect also failed:', e);
+            }
+        }
+    }
+}
+
+// Create a persistent interaction prompt that stays visible until user interacts
+function createPersistentInteractionPrompt() {
+    // Only create if not already exists and user hasn't interacted
+    if (hasUserInteracted || document.getElementById('persistent-interaction-prompt')) {
+        return;
+    }
+    
+    const prompt = document.createElement('div');
+    prompt.id = 'persistent-interaction-prompt';
+    prompt.className = 'interaction-prompt';
+    prompt.style.position = 'fixed';
+    prompt.style.top = '50%';
+    prompt.style.left = '50%';
+    prompt.style.transform = 'translate(-50%, -50%)';
+    prompt.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    prompt.style.color = 'white';
+    prompt.style.padding = '20px';
+    prompt.style.borderRadius = '8px';
+    prompt.style.zIndex = '99999';
+    prompt.style.maxWidth = '80%';
+    prompt.style.textAlign = 'center';
+    prompt.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+    prompt.style.animation = 'pulse-attention 2s infinite';
+    
+    // Add CSS animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse-attention {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    prompt.innerHTML = `
+        <h3 style="margin-top:0;color:#ff9800;">User Interaction Required</h3>
+        <p>Chrome requires user interaction before playing audio.</p>
+        <p><strong>Click anywhere on the page</strong> to enable all audio features.</p>
+        <button style="background:#4285f4;color:white;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;font-weight:bold;margin-top:10px;">
+            Enable Audio
+        </button>
+    `;
+    
+    document.body.appendChild(prompt);
+    
+    // Add click handler to the prompt itself
+    prompt.addEventListener('click', function() {
+        hasUserInteracted = true;
+        updateInteractionPrompts();
+        tryUnlockAudio();
+    });
+}
+
+// Create the initial interaction prompt that appears during the introduction
+function createInitialInteractionPrompt() {
+    const interactionPrompt = document.createElement('div');
+    interactionPrompt.id = 'interaction-prompt';
+    interactionPrompt.className = 'interaction-prompt';
+    interactionPrompt.style.padding = '15px';
+    interactionPrompt.style.margin = '15px 0';
+    interactionPrompt.style.backgroundColor = '#ffecb3';
+    interactionPrompt.style.border = '2px solid #ffc107';
+    interactionPrompt.style.borderRadius = '4px';
+    interactionPrompt.style.textAlign = 'center';
+    interactionPrompt.style.color = '#333';
+    interactionPrompt.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
+            <span style="font-size:24px;">🔊</span>
+            <div>
+                <strong>Click anywhere on the page to enable audio features</strong><br>
+                Chrome requires user interaction before playing audio
+            </div>
+        </div>
+    `;
+    
+    const container = document.querySelector('.intro-container') || 
+                       document.getElementById('introduction-phase') || 
+                       document.body;
+    
+    if (container) {
+        container.prepend(interactionPrompt);
+        
+        // Only hide after user interaction
+        const checkInterval = setInterval(() => {
+            if (hasUserInteracted && interactionPrompt.parentNode) {
+                interactionPrompt.style.opacity = '0';
+                interactionPrompt.style.transition = 'opacity 1s';
+                setTimeout(() => {
+                    if (interactionPrompt.parentNode) {
+                        interactionPrompt.parentNode.removeChild(interactionPrompt);
+                    }
+                    clearInterval(checkInterval);
+                }, 1000);
+            }
+        }, 1000);
     }
 }
 
@@ -473,5 +629,7 @@ window.textToSpeech = {
     speakWelcome,
     playRecordingAudio,
     playOutputAudio,
+    wasBrailleMatchFound,
+    resetBrailleMatchStatus,
     introCompleted: () => introCompleted
 };

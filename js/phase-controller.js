@@ -228,6 +228,34 @@
                 }, 300);
                 
             } else if (phase === 'output') {
+                // Check if we found a braille match
+                let matchFound = false;
+                
+                // Process text and check if a match was found
+                matchFound = processFinalText();
+                
+                // Also check our secondary flag in case result is not reliable
+                if (window.textToSpeech && textToSpeech.wasBrailleMatchFound) {
+                    matchFound = matchFound || textToSpeech.wasBrailleMatchFound();
+                }
+                
+                // If no match found and looping is enabled in config, stay in recording phase
+                if (!matchFound && window.config && window.config.behavior && 
+                    window.config.behavior.loopListeningIfNoMatch === true) {
+                    console.log('No braille match found, looping back to recording phase');
+                    
+                    // Dispatch event to notify other components
+                    const loopEvent = new CustomEvent('recordingPhaseLooping', { 
+                        detail: { reason: 'noMatch' } 
+                    });
+                    window.dispatchEvent(loopEvent);
+                    
+                    // Restart recording phase
+                    showPhase('recording');
+                    return;
+                }
+                
+                // If match was found or looping is disabled, continue with output phase
                 outputPhase.classList.add('phase-active');
                 console.log(`Starting output phase timer for ${window.config.timings.outputPhase}s`);
                 startPhaseTimer(outputTimer, 'recording', window.config.timings.outputPhase);
@@ -316,9 +344,19 @@
             const text = finalTextElement.textContent.trim();
             // If braille translator is available, process the text
             if (window.app && app.processSpeechForBraille) {
-                app.processSpeechForBraille(text);
+                // Reset match status before processing
+                if (window.textToSpeech && textToSpeech.resetBrailleMatchStatus) {
+                    textToSpeech.resetBrailleMatchStatus();
+                }
+                
+                // Process the speech for braille matching
+                const result = app.processSpeechForBraille(text);
+                
+                // Return true if match was found
+                return result !== null && result !== undefined;
             }
         }
+        return false;
     }
 })();
 

@@ -334,7 +334,7 @@ function stopSpeechRecognition() {
 function processSpeechForBraille(text) {
     if (!brailleTranslator.isDatabaseLoaded()) {
         console.warn('Braille database not loaded yet');
-        return;
+        return null;
     }
     
     const result = brailleTranslator.processText(text);
@@ -342,6 +342,12 @@ function processSpeechForBraille(text) {
     if (result) {
         // We found a match!
         uiController.showBrailleMatch(result);
+        
+        // Dispatch event that a match was found
+        const matchEvent = new CustomEvent('brailleMatchFound', { 
+            detail: { word: result.word } 
+        });
+        document.dispatchEvent(matchEvent);
         
         // Debug the raw array content to verify what we're receiving
         console.log('Raw braille array for ' + result.word + ':', result.array);
@@ -398,9 +404,15 @@ function processSpeechForBraille(text) {
                 console.error('Text-to-speech error:', error);
             }
         }
+        
+        return result; // Return the result object to indicate a match
     } else {
         // No match found
         uiController.showNoMatch();
+        
+        // Dispatch event that no match was found
+        const noMatchEvent = new CustomEvent('brailleNoMatchFound');
+        document.dispatchEvent(noMatchEvent);
         
         // Clear the braille visualizer when no match is found
         if (window.brailleVisualizer) {
@@ -422,6 +434,8 @@ function processSpeechForBraille(text) {
                     console.error('Error sending reset command to ESP32:', error);
                 });
         }
+        
+        return null; // Return null to indicate no match
     }
 }
 
