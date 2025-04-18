@@ -10,6 +10,8 @@ const brailleTranslator = (function() {
     // Store the Braille database after loading
     let brailleDatabase = [];
     let databaseLoaded = false;
+    let loadAttempts = 0;
+    const MAX_LOAD_ATTEMPTS = 3;
     
     // Event listeners
     const eventListeners = {
@@ -36,7 +38,9 @@ const brailleTranslator = (function() {
                 '/ueb-philb-braille-database.csv',
                 './ueb-philb-braille-database.csv',
                 '../ueb-philb-braille-database.csv',
-                window.location.origin + '/ueb-philb-braille-database.csv'
+                '/workspaces/speech-to-braille/ueb-philb-braille-database.csv',
+                window.location.origin + '/ueb-philb-braille-database.csv',
+                window.location.origin + '/speech-to-braille/ueb-philb-braille-database.csv'
             ];
             
             let response = null;
@@ -47,12 +51,24 @@ const brailleTranslator = (function() {
             for (const path of possiblePaths) {
                 try {
                     console.log(`Attempting to load Braille database from: ${path}`);
-                    response = await fetch(path, { cache: 'no-store' });
+                    response = await fetch(path, { 
+                        cache: 'no-store',
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    });
+                    
                     if (response.ok) {
                         csvText = await response.text();
-                        loadedFrom = path;
-                        console.log(`Successfully loaded Braille database from: ${path}`);
-                        break;
+                        if (csvText && csvText.length > 100) { // Basic validation check
+                            loadedFrom = path;
+                            console.log(`Successfully loaded Braille database from: ${path}`);
+                            console.log(`CSV text length: ${csvText.length} bytes`);
+                            break;
+                        } else {
+                            console.warn(`Received empty or invalid CSV from ${path}`);
+                        }
                     }
                 } catch (pathError) {
                     console.warn(`Could not load from ${path}:`, pathError);
@@ -60,13 +76,25 @@ const brailleTranslator = (function() {
             }
             
             if (!csvText) {
-                throw new Error(`Failed to load Braille database from any path`);
+                loadAttempts++;
+                if (loadAttempts < MAX_LOAD_ATTEMPTS) {
+                    console.warn(`Failed to load database, attempt ${loadAttempts}/${MAX_LOAD_ATTEMPTS}. Retrying...`);
+                    return await new Promise(resolve => {
+                        setTimeout(async () => {
+                            const result = await loadDatabase();
+                            resolve(result);
+                        }, 1000); // Wait 1 second before retry
+                    });
+                }
+                throw new Error(`Failed to load Braille database from any path after ${MAX_LOAD_ATTEMPTS} attempts`);
             }
             
             const rows = csvText.split('\n');
             
             // Skip the first row (header) and parse the rest
             const parsedDatabase = [];
+            
+            console.log(`CSV file has ${rows.length} rows`);
             
             for (let i = 1; i < rows.length; i++) {
                 // Skip empty rows
@@ -90,8 +118,13 @@ const brailleTranslator = (function() {
                 }
             }
             
+            if (parsedDatabase.length === 0) {
+                throw new Error('Database loaded but contains no entries');
+            }
+            
             brailleDatabase = parsedDatabase;
             databaseLoaded = true;
+            loadAttempts = 0; // Reset attempts counter on success
             
             // Trigger databaseloaded event
             triggerEvent('databaseloaded', { 
@@ -310,3 +343,6 @@ const brailleTranslator = (function() {
 
 // Initialize the module when the script loads
 console.log('Braille Translator module loaded.');
+
+// Ensure global availability
+window.brailleTranslator = brailleTranslator;

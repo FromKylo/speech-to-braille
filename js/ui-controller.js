@@ -353,8 +353,20 @@ const uiController = {
         if (typeof brailleTranslator === 'undefined') {
             console.error('Braille translator module is not loaded');
             if (brailleStatus) {
-                brailleStatus.textContent = 'Braille translator not available';
+                brailleStatus.textContent = 'Braille translator not available - script not loaded';
                 brailleStatus.className = 'status offline';
+                
+                // Add a refresh page button
+                const refreshButton = document.createElement('button');
+                refreshButton.textContent = 'Refresh Page';
+                refreshButton.className = 'action-button';
+                refreshButton.style.marginTop = '10px';
+                refreshButton.addEventListener('click', () => {
+                    window.location.reload();
+                });
+                
+                brailleStatus.appendChild(document.createElement('br'));
+                brailleStatus.appendChild(refreshButton);
             }
             return;
         }
@@ -377,8 +389,7 @@ const uiController = {
                 brailleStatus.textContent = 'Retrying database load...';
                 brailleStatus.className = 'status';
                 retryButton.style.display = 'none';
-                brailleStatus.appendChild(document.createElement('br'));
-                brailleStatus.appendChild(retryButton);
+                retryButton.disabled = true;
                 
                 try {
                     const success = await brailleTranslator.init();
@@ -391,6 +402,7 @@ const uiController = {
                         brailleStatus.textContent = 'Failed to load Braille database';
                         brailleStatus.className = 'status offline';
                         retryButton.style.display = 'inline-block';
+                        retryButton.disabled = false;
                         showDatabaseDebugInfo();
                     }
                 } catch (error) {
@@ -398,11 +410,15 @@ const uiController = {
                     brailleStatus.textContent = `Error loading database: ${error.message}`;
                     brailleStatus.className = 'status offline';
                     retryButton.style.display = 'inline-block';
+                    retryButton.disabled = false;
                     showDatabaseDebugInfo();
                 }
             });
             
             try {
+                // Display more detailed loading status
+                brailleStatus.innerHTML = 'Loading Braille database...<br><small>(Attempting to fetch database file)</small>';
+                
                 const success = await brailleTranslator.init();
                 if (success) {
                     const dbSize = brailleTranslator.getDatabaseSize();

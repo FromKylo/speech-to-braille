@@ -1068,3 +1068,47 @@ details[open] summary {
     font-weight: bold;
     color: #333;
 }
+
+/* Additional style overrides for requested changes */
+
+/* Always show speaking indicators */
+#speaking-indicator {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Disable animations for phase transitions */
+.phase-container {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Remove animation from indicators */
+.blink-recording,
+.blink-output {
+    animation: none !important;
+}
+
+/* Ensure final text remains hidden */
+#final-text {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Make sure interim text is visible */
+#interim-text {
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Keep braille results visible */
+.braille-result {
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Remove status dot animations */
+.status-dot.blinking {
+    animation: none !important;
+}

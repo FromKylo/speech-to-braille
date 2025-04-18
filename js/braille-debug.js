@@ -1,6 +1,6 @@
 /**
- * Braille Database Debugging Tool
- * Fixed version to properly handle database lookup issues
+ * Braille Database Debugging Tool - Fixed Version
+ * Helps diagnose and test the braille database functionality
  */
 
 (function() {
@@ -18,9 +18,11 @@
             <h4>Braille Database Debug</h4>
             <div>
                 <input type="text" id="braille-debug-word" placeholder="Type word to test">
-                <button id="braille-debug-search">Search Database</button>
+                <button id="braille-debug-search" class="action-button">Search Database</button>
+                <button id="braille-debug-init" class="action-button" style="margin-left: 10px;">Initialize Database</button>
             </div>
             <div id="braille-debug-result" style="margin-top:10px;"></div>
+            <div id="braille-debug-status" style="margin-top:10px; padding: 5px; background: #f0f0f0;"></div>
         `;
         
         // Find a place to add our debug UI
@@ -41,6 +43,12 @@
                 searchButton.addEventListener('click', searchBrailleWord);
             }
             
+            // Add event listener for the init button
+            const initButton = document.getElementById('braille-debug-init');
+            if (initButton) {
+                initButton.addEventListener('click', initBrailleTranslator);
+            }
+            
             // Also add enter key event for the input
             const wordInput = document.getElementById('braille-debug-word');
             if (wordInput) {
@@ -50,6 +58,9 @@
                     }
                 });
             }
+
+            // Update initial status
+            updateDebugStatus();
         } else {
             console.error('Troubleshooting section not found');
         }
@@ -77,7 +88,15 @@
         
         // Check if database is loaded and if the search function exists
         if (!brailleTranslator.isDatabaseLoaded || !brailleTranslator.isDatabaseLoaded()) {
-            resultDiv.innerHTML = '<p style="color:#dc3545">Braille database not loaded yet</p>';
+            resultDiv.innerHTML = `
+                <p style="color:#dc3545">Braille database not loaded yet</p>
+                <button id="load-db-now" class="action-button">Load Database Now</button>
+            `;
+            
+            const loadDbButton = document.getElementById('load-db-now');
+            if (loadDbButton) {
+                loadDbButton.addEventListener('click', initBrailleTranslator);
+            }
             return;
         }
         
@@ -98,26 +117,27 @@
                 <p style="color:#28a745"><strong>Match found:</strong></p>
                 <ul>
                     <li><strong>Word:</strong> ${match.word}</li>
-                    <li><strong>Braille Symbol:</strong> ${match.braille}</li>
+                    <li><strong>Braille Symbol:</strong> ${match.braille || 'N/A'}</li>
                     <li><strong>Array:</strong> ${JSON.stringify(match.array)}</li>
-                    <li><strong>Language:</strong> ${match.language}</li>
+                    <li><strong>Language:</strong> ${match.language || 'UEB'}</li>
                 </ul>
             `;
             
             // Also add a "Use this" button to set the current match
             const useButton = document.createElement('button');
             useButton.textContent = 'Use This Match';
+            useButton.className = 'action-button';
             useButton.style.backgroundColor = '#28a745';
-            useButton.style.color = 'white';
-            useButton.style.border = 'none';
-            useButton.style.padding = '5px 10px';
-            useButton.style.borderRadius = '4px';
-            useButton.style.cursor = 'pointer';
             
             useButton.addEventListener('click', function() {
                 if (window.app && typeof app.processSpeechForBraille === 'function') {
                     app.processSpeechForBraille(match.word);
                     resultDiv.innerHTML += '<p style="color:#28a745">Match applied!</p>';
+                    
+                    // Ensure text-to-speech reads the word
+                    if (window.textToSpeech && typeof textToSpeech.speak === 'function') {
+                        textToSpeech.speak(match.word);
+                    }
                 }
             });
             
@@ -130,14 +150,80 @@
         }
     }
     
-    // Add database statistics
-    function showDatabaseStats() {
+    // Manually trigger braille translator initialization
+    async function initBrailleTranslator() {
+        const statusDiv = document.getElementById('braille-debug-status');
+        if (!statusDiv) return;
+        
+        statusDiv.innerHTML = '<p style="color:#ffc107">Initializing braille translator...</p>';
+        
         if (!window.brailleTranslator) {
+            statusDiv.innerHTML = `
+                <p style="color:#dc3545">Error: Braille translator module is not defined. Check console for errors.</p>
+                <p>Try reloading the page, or check if braille-translator.js is properly loaded.</p>
+            `;
             return;
         }
         
-        const dbSize = brailleTranslator.getDatabaseSize ? 
-            brailleTranslator.getDatabaseSize() : 'Unknown';
+        try {
+            const success = await window.brailleTranslator.init();
+            if (success) {
+                const dbSize = window.brailleTranslator.getDatabaseSize ? 
+                    window.brailleTranslator.getDatabaseSize() : 'Unknown';
+                    
+                statusDiv.innerHTML = `
+                    <p style="color:#28a745">Braille database loaded successfully!</p>
+                    <p>Database size: ${dbSize} entries</p>
+                `;
+                showDatabaseStats();
+            } else {
+                statusDiv.innerHTML = `
+                    <p style="color:#dc3545">Failed to load braille database.</p>
+                    <p>Check console for detailed error messages.</p>
+                `;
+            }
+        } catch (error) {
+            statusDiv.innerHTML = `
+                <p style="color:#dc3545">Error initializing braille translator: ${error.message}</p>
+                <p>Check console for more details.</p>
+            `;
+            console.error('Error initializing braille translator:', error);
+        }
+    }
+    
+    // Update the debug status information
+    function updateDebugStatus() {
+        const statusDiv = document.getElementById('braille-debug-status');
+        if (!statusDiv) return;
+        
+        if (!window.brailleTranslator) {
+            statusDiv.innerHTML = '<p style="color:#dc3545">Braille translator not available</p>';
+            return;
+        }
+        
+        if (window.brailleTranslator.isDatabaseLoaded && window.brailleTranslator.isDatabaseLoaded()) {
+            const dbSize = window.brailleTranslator.getDatabaseSize ? 
+                window.brailleTranslator.getDatabaseSize() : 'Unknown';
+                
+            statusDiv.innerHTML = `
+                <p style="color:#28a745">Braille database is loaded</p>
+                <p>Database size: ${dbSize} entries</p>
+            `;
+        } else {
+            statusDiv.innerHTML = `
+                <p style="color:#ffc107">Braille database not loaded yet</p>
+                <p>Click "Initialize Database" to load it manually</p>
+            `;
+        }
+    }
+    
+    // Add database statistics
+    function showDatabaseStats() {
+        if (!window.brailleTranslator || !window.brailleTranslator.getDatabaseSize) {
+            return;
+        }
+        
+        const dbSize = window.brailleTranslator.getDatabaseSize();
             
         const container = document.createElement('div');
         container.innerHTML = `
@@ -149,13 +235,19 @@
         
         const debugUI = document.getElementById('braille-debug-ui');
         if (debugUI) {
+            const existingStats = debugUI.querySelector('.database-stats');
+            if (existingStats) {
+                existingStats.remove();
+            }
+            
+            container.className = 'database-stats';
             debugUI.appendChild(container);
         }
     }
     
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("Initializing fixed Braille Debug Tool");
+        console.log("Initializing Braille Debug Tool");
         // Wait a bit for other scripts to initialize
         setTimeout(() => {
             createDebugUI();
