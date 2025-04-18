@@ -11,6 +11,10 @@ let cycleMode = 'listening'; // 'listening' or 'output'
 let cycleTimer = null;
 const CYCLE_DURATION = 5000; // 5 seconds for each phase
 
+// Add these variables at the top of your app.js module scope
+let lastProcessedInterimText = '';
+let interimProcessingTimeout = null;
+
 // Initialize the application
 function initApp() {
     console.log('Initializing application...');
@@ -112,6 +116,25 @@ function setupSpeechRecognitionEvents() {
         speechRecognition.on('partialresult', (text) => {
             console.log('Speech recognition partial result:', text);
             uiController.updateInterimText(text);
+            
+            // Process interim results if enabled in config
+            if (window.config?.behavior?.processInterimResults) {
+                // Cancel any pending timeout to avoid processing the same text multiple times
+                if (interimProcessingTimeout) {
+                    clearTimeout(interimProcessingTimeout);
+                }
+                
+                // Only process if text is different from last processed text
+                if (text !== lastProcessedInterimText && text.trim().length > 0) {
+                    // Set a timeout to give recognition time to stabilize
+                    interimProcessingTimeout = setTimeout(() => {
+                        // Process the interim text
+                        processInterimSpeechForBraille(text);
+                        // Remember what we processed to avoid duplicates
+                        lastProcessedInterimText = text;
+                    }, window.config?.behavior?.interimResultDelay || 600);
+                }
+            }
         });
         
         speechRecognition.on('error', (error) => {
@@ -458,6 +481,49 @@ function processSpeechForBraille(text) {
         }
         
         return null; // Return null to indicate no match
+    }
+}
+
+// Add this new function to process interim speech results
+function processInterimSpeechForBraille(text) {
+    if (!brailleTranslator.isDatabaseLoaded()) {
+        console.warn('Braille database not loaded yet');
+        return null;
+    }
+    
+    // Split the text into words
+    const words = text.trim().split(/\s+/);
+    
+    // Get the last word as it's most likely what the user is currently saying
+    const lastWord = words[words.length - 1];
+    
+    // Only process words that meet minimum length requirements
+    const minLength = window.config?.behavior?.minimumInterimWordLength || 2;
+    if (lastWord && lastWord.length >= minLength) {
+        console.log('Processing interim word:', lastWord);
+        
+        // Use the existing processSpeechForBraille function with just the last word
+        const result = processSpeechForBraille(lastWord);
+        
+        if (result) {
+            console.log('Found interim match for:', lastWord);
+            // Visual indicator that we're using an interim result
+            const interimIndicator = document.createElement('div');
+            interimIndicator.textContent = '🔍 Interim match';
+            interimIndicator.style.color = '#4285f4';
+            interimIndicator.style.fontSize = '0.8rem';
+            interimIndicator.style.margin = '5px 0';
+            
+            const matchedWord = document.getElementById('matched-word');
+            if (matchedWord && matchedWord.parentNode) {
+                const existingIndicator = matchedWord.parentNode.querySelector('.interim-indicator');
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+                interimIndicator.className = 'interim-indicator';
+                matchedWord.parentNode.insertBefore(interimIndicator, matchedWord.nextSibling);
+            }
+        }
     }
 }
 

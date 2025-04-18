@@ -475,7 +475,51 @@ const uiController = {
     },
     
     updateInterimText: function(text) {
-        if (interimTextElement) interimTextElement.textContent = text;
+        if (!interimTextElement) return;
+        
+        // Add special styling for interim text
+        interimTextElement.textContent = text;
+        
+        // Highlight the last word being processed
+        if (window.config?.behavior?.processInterimResults && text.trim()) {
+            const words = text.trim().split(/\s+/);
+            const lastWord = words[words.length - 1];
+            
+            if (lastWord && lastWord.length >= (window.config?.behavior?.minimumInterimWordLength || 2)) {
+                // Create a highlighted version
+                const highlightedText = text.slice(0, text.lastIndexOf(lastWord)) + 
+                    '<span class="highlight-word">' + lastWord + '</span>';
+                interimTextElement.innerHTML = highlightedText;
+            }
+        }
+    },
+
+    // Add a new method to specifically update from interim results
+    updateFromInterimMatch: function(result) {
+        this.showBrailleMatch(result);
+        
+        // Add a visual indicator that this is from interim results
+        const brailleResult = document.getElementById('braille-result');
+        if (brailleResult) {
+            const existingBadge = brailleResult.querySelector('.interim-badge');
+            if (!existingBadge) {
+                const badge = document.createElement('div');
+                badge.className = 'interim-badge';
+                badge.textContent = 'Live Result';
+                badge.style.backgroundColor = '#4285f4';
+                badge.style.color = 'white';
+                badge.style.padding = '2px 8px';
+                badge.style.borderRadius = '12px';
+                badge.style.fontSize = '0.7rem';
+                badge.style.display = 'inline-block';
+                badge.style.margin = '5px';
+                
+                const header = brailleResult.querySelector('h3');
+                if (header) {
+                    header.appendChild(badge);
+                }
+            }
+        }
     },
     
     clearInterimText: function() {

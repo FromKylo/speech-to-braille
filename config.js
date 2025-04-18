@@ -17,7 +17,10 @@ window.config = {
     behavior: {
         loopListeningIfNoMatch: true,
         autoPronounceOnMatch: true,
-        debugMode: true
+        debugMode: true,
+        processInterimResults: true,    // Process partial speech results
+        interimResultDelay: 600,        // Milliseconds to wait before processing interim results
+        minimumInterimWordLength: 2     // Minimum length of words to process from interim results
     },
     
     // Speech recognition settings
