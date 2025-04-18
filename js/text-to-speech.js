@@ -278,62 +278,33 @@ function useFallbackSpeech(text, callback) {
 }
 
 // Function to speak text with the selected voice
-function speakText(text, callback) {
-    if (!window.speechSynthesis) {
-        console.warn("Speech synthesis not available");
-        if (callback) setTimeout(callback, 500);
-        return;
-    }
+function speakText(text, callback, settings = {}) {
+    if (!text) return;
     
-    // Stop any current speech to prevent conflicts
-    stopSpeaking();
+    console.log('Adding to speech queue:', text);
     
-    // Add small delay to ensure previous speech is fully stopped
-    setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = defaultVoiceSettings.lang;
-        utterance.pitch = defaultVoiceSettings.pitch;
-        utterance.rate = defaultVoiceSettings.rate;
-        utterance.volume = defaultVoiceSettings.volume;
-        
-        // Set the default voice if available
-        if (cachedVoice) {
-            utterance.voice = cachedVoice;
-        }
-        
-        // Set up speaking indicator
-        const speakingIndicator = document.getElementById('speaking-indicator');
-        if (speakingIndicator) {
-            speakingIndicator.classList.remove('hidden');
-        }
-        isSpeaking = true;
-        
-        // Use our wrapper function instead of directly calling speak
-        synthesizeSpeech(utterance)
-            .then(() => {
-                isSpeaking = false;
-                if (speakingIndicator) {
-                    speakingIndicator.classList.add('hidden');
-                }
-                if (callback && typeof callback === 'function') {
-                    setTimeout(callback, 300); // Add delay before callback
-                }
-            })
-            .catch(error => {
-                console.error('Speech synthesis failed:', error);
-                isSpeaking = false;
-                if (speakingIndicator) {
-                    speakingIndicator.classList.add('hidden');
-                }
-                
-                // Use fallback text display
-                useFallbackSpeech(text, () => {
-                    if (callback && typeof callback === 'function') {
-                        setTimeout(callback, 300);
-                    }
-                });
-            });
-    }, 100); // Small delay before starting new speech
+    // Emit event that TTS is about to speak - signal to mute microphone
+    const startEvent = new CustomEvent('tts-speaking-started');
+    document.dispatchEvent(startEvent);
+    
+    // Add to queue with settings
+    speechQueue.push({
+        text: text,
+        callback: function() {
+            // When speech is done, emit event that it's complete
+            const endEvent = new CustomEvent('tts-speaking-ended');
+            document.dispatchEvent(endEvent);
+            
+            // Call the original callback if provided
+            if (callback && typeof callback === 'function') {
+                callback();
+            }
+        },
+        settings: settings || {}
+    });
+    
+    // Process queue if not already speaking
+    processSpeechQueue();
 }
 
 // Stop any ongoing speech
@@ -769,10 +740,23 @@ function speakText(text, callback, settings = {}) {
     
     console.log('Adding to speech queue:', text);
     
+    // Emit event that TTS is about to speak - signal to mute microphone
+    const startEvent = new CustomEvent('tts-speaking-started');
+    document.dispatchEvent(startEvent);
+    
     // Add to queue with settings
     speechQueue.push({
         text: text,
-        callback: callback,
+        callback: function() {
+            // When speech is done, emit event that it's complete
+            const endEvent = new CustomEvent('tts-speaking-ended');
+            document.dispatchEvent(endEvent);
+            
+            // Call the original callback if provided
+            if (callback && typeof callback === 'function') {
+                callback();
+            }
+        },
         settings: settings || {}
     });
     
@@ -837,15 +821,19 @@ function useFallbackSpeech(text, callback) {
     }, 1500);
 }
 
+// Add a function to check if TTS is currently speaking
+function isSpeaking() {
+    return isSpeaking || 
+           (window.speechSynthesis && window.speechSynthesis.speaking);
+}
+
 // Export functions to the window
 window.textToSpeech = {
     speak: speakText,
     speakMatchedWord: speakMatchedWord,
     resetBrailleMatchStatus: resetBrailleMatchStatus,
-    wasBrailleMatchFound: wasBrailleMatchFound
-};
-
-window.textToSpeech = {
+    wasBrailleMatchFound: wasBrailleMatchFound,
+    isSpeaking: isSpeaking,
     resetBrailleMatchStatus,
     introCompleted: () => introCompleted,
     wasBrailleMatchFound,

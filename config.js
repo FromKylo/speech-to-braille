@@ -20,7 +20,8 @@ window.config = {
         debugMode: true,
         processInterimResults: true,    // Process partial speech results
         interimResultDelay: 600,        // Milliseconds to wait before processing interim results
-        minimumInterimWordLength: 2     // Minimum length of words to process from interim results
+        minimumInterimWordLength: 2,    // Minimum length of words to process from interim results
+        showListeningPhaseTimer: false  // Option to hide/show timer during listening phase
     },
     
     // Speech recognition settings

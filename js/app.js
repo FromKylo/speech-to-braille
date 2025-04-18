@@ -371,6 +371,11 @@ function processSpeechForBraille(text) {
         // We found a match!
         console.log('Found braille match for:', result.word);
         
+        // Suspend microphone immediately to prevent feedback
+        if (window.phaseControl && typeof phaseControl.suspendMicrophone === 'function') {
+            phaseControl.suspendMicrophone();
+        }
+        
         // Debug the raw array content to verify what we're receiving
         console.log('Raw braille array for ' + result.word + ':', result.array);
         
@@ -738,7 +743,9 @@ window.app = {
     loadLocalModel,
     startSpeechRecognition,
     stopSpeechRecognition,
+    pauseSpeechRecognition,
     processSpeechForBraille,
+    processInterimSpeechForBraille,
     forceReload,
     startListeningCycle,
     getCurrentCycleMode: () => cycleMode
@@ -757,41 +764,69 @@ function startListeningPhase() {
   if (window.phaseControl) {
     window.phaseControl.showPhase('recording');
   }
-}
-
+}   window.phaseControl.showPhase('output');
+  }
 function startOutputPhase() {
   console.log('Deferring to phase controller for output phase');
-  if (window.phaseControl) {
-    window.phaseControl.showPhase('output');
-  }
-}
-
-// Modify your section transition function or event handlers to speak introduction automatically
-function showIntroductionSection() {
+  if (window.phaseControl) {ion or event handlers to speak introduction automatically
+}{
+ally
+// Modify your section transition function or event handlers to speak introduction automaticallyf (window.speakIntroduction) {
+function showIntroductionSection() {    window.speakIntroduction();
     // Speak introduction automatically
     if (window.speakIntroduction) {
         window.speakIntroduction();
-    }
-    
-    // Defer to phase controller
+    }f (window.phaseControl) {
+           window.phaseControl.showPhase('introduction');
+    // Defer to phase controller    }
     if (window.phaseControl) {
         window.phaseControl.showPhase('introduction');
-    }
-}
-
+    }ically speak matched words
+}andleWordMatch(matchedWord) {
+// Your existing code to handle matched word
 // Modify your word matching function to automatically speak matched words
 function handleWordMatch(matchedWord) {
     // Your existing code to handle matched word
-    // ...
-    
-    // Update the UI
+    // ...d('matched-word');
+    f (matchedWordElement) {
+    // Update the UI    matchedWordElement.textContent = matchedWord;
     const matchedWordElement = document.getElementById('matched-word');
     if (matchedWordElement) {
         matchedWordElement.textContent = matchedWord;
-    }
-    
-    // Automatically speak the matched word
-    if (window.speakMatchedWord) {
-        window.speakMatchedWord(matchedWord);
+    }f (window.speakMatchedWord) {
+           window.speakMatchedWord(matchedWord);
+    // Automatically speak the matched word    }
+
+
+
+
+
+}    }        window.speakMatchedWord(matchedWord);    if (window.speakMatchedWord) {}
+
+// Add this to the app module
+
+// Function to temporarily pause speech recognition without fully stopping
+function pauseSpeechRecognition() {
+    console.log('Pausing speech recognition');
+    if (recognitionActive && typeof speechRecognition !== 'undefined') {
+        if (typeof speechRecognition.pauseRecognition === 'function') {
+            speechRecognition.pauseRecognition();
+        } else {
+            // If no pause method, just stop it
+            stopSpeechRecognition();
+        }
     }
 }
+
+// Expand the app.js public API to include the new method
+window.app = {
+    loadLocalModel,
+    startSpeechRecognition,
+    stopSpeechRecognition,
+    pauseSpeechRecognition,
+    processSpeechForBraille,
+    processInterimSpeechForBraille,
+    forceReload,
+    startListeningCycle,
+    getCurrentCycleMode: () => cycleMode
+};

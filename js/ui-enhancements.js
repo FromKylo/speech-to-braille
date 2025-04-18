@@ -26,6 +26,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Start observing DOM changes to apply same enhancements to dynamically added elements
     observeDOMChanges();
+    
+    // Set up the listening timer toggle state
+    const timerToggle = document.getElementById('listening-timer-toggle');
+    if (timerToggle) {
+        timerToggle.checked = window.config?.behavior?.showListeningPhaseTimer !== false;
+    }
 });
 
 // Ensure all cards have consistent padding
@@ -147,3 +153,27 @@ function observeDOMChanges() {
     
     observer.observe(document.body, { childList: true, subtree: true });
 }
+
+/**
+ * Toggle the listening phase timer visibility
+ * @param {boolean} show Whether to show the timer or not
+ */
+function toggleListeningTimer(show) {
+    if (window.config && window.config.behavior) {
+        window.config.behavior.showListeningPhaseTimer = show;
+        
+        // If we're currently in the recording phase, update the timer visibility
+        const currentPhase = window.phaseControl?.getCurrentPhase();
+        if (currentPhase === 'recording') {
+            const recordingTimer = document.getElementById('recording-timer');
+            if (recordingTimer) {
+                recordingTimer.style.display = show ? 'flex' : 'none';
+            }
+        }
+        
+        console.log(`Listening phase timer ${show ? 'enabled' : 'disabled'}`);
+    }
+}
+
+// Make the function globally available
+window.toggleListeningTimer = toggleListeningTimer;

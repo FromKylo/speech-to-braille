@@ -33,6 +33,33 @@
     color: #721c24;
 }
 
+.mic-status.muted {
+    background-color: #ffc107;
+    color: #212121;
+    animation: pulse 1.5s infinite;
+}
+
+.mic-status::before {
+    margin-right: 5px;
+}
+
+.mic-status.active::before {
+    content: "🎤";
+}
+
+.mic-status.inactive::before {
+    content: "🎤";
+    opacity: 0.5;
+}
+
+.mic-status.muted::before {
+    content: "🔇";
+}
+
+.mic-status.error::before {
+    content: "❌";
+}
+
 @keyframes pulse {
     0% { opacity: 1; }
     50% { opacity: 0.8; }

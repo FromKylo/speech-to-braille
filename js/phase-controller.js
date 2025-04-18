@@ -7,6 +7,7 @@
     // Variables for phase control
     let currentPhase = 'introduction';
     let phaseTimer = null;
+    let microphoneSuspended = false;
     
     // Phase elements
     let introPhase, recordingPhase, outputPhase;
@@ -88,8 +89,23 @@
         window.phaseControl = {
             showPhase,
             getCurrentPhase: () => currentPhase,
-            updateTimingCSS: updateTimingCSS  // Expose for dynamic updates
+            updateTimingCSS: updateTimingCSS,  // Expose for dynamic updates
+            suspendMicrophone,
+            resumeMicrophone
         };
+
+        // Add event listeners for text-to-speech events to prevent mic feedback
+        document.addEventListener('tts-speaking-started', function() {
+            console.log('TTS speaking started - suspending microphone');
+            suspendMicrophone();
+        });
+        
+        document.addEventListener('tts-speaking-ended', function() {
+            console.log('TTS speaking ended - resuming microphone if in recording phase');
+            if (currentPhase === 'recording') {
+                resumeMicrophone();
+            }
+        });
     });
     
     // Initialize phase elements
@@ -224,6 +240,11 @@
                         console.log('Starting speech recognition for recording phase');
                         app.startSpeechRecognition();
                         updateRecognitionStatus(true);
+                        
+                        // Make sure microphone is active (unless TTS is speaking)
+                        if (!isTTSSpeaking()) {
+                            resumeMicrophone();
+                        }
                     }
                 }, 300);
                 
@@ -260,6 +281,9 @@
                 console.log(`Starting output phase timer for ${window.config.timings.outputPhase}s`);
                 startPhaseTimer(outputTimer, 'recording', window.config.timings.outputPhase);
                 
+                // Always suspend microphone in output phase to prevent feedback
+                suspendMicrophone();
+                
                 // Play output sound
                 if (window.textToSpeech && textToSpeech.playOutputAudio) {
                     textToSpeech.playOutputAudio();
@@ -290,48 +314,53 @@
     
     // Timer countdown function
     function startPhaseTimer(timerElement, nextPhase, duration) {
-        // Make sure duration is a number and at least 1 second
-        duration = Math.max(1, parseInt(duration) || 5);
+        if (!timerElement) return;
+
+        // If this is the recording timer and timer is disabled, hide it
+        const isListeningPhase = nextPhase === 'output'; // Timer for listening phase leads to output
+        const showListeningTimer = window.config?.behavior?.showListeningPhaseTimer !== false;
         
-        if (phaseTimer) {
-            clearInterval(phaseTimer);
-            console.log('Cleared existing timer');
-        }
-        
-        if (!timerElement) {
-            console.error('Timer element not found for phase: ' + nextPhase);
-            // Set a fallback timeout even if the timer element isn't found
-            console.log(`Setting fallback timeout for ${duration} seconds`);
-            phaseTimer = setTimeout(() => {
-                showPhase(nextPhase);
-            }, duration * 1000);
+        if (isListeningPhase && !showListeningTimer) {
+            timerElement.style.display = 'none'; // Hide the timer element
+            
+            // Still set up the timer functionality without visual display
+            let timeLeft = duration;
+            phaseTimer = setInterval(() => {
+                timeLeft -= 1;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(phaseTimer);
+                    phaseTimer = null;
+                    showPhase(nextPhase);
+                }
+            }, 1000);
+            
             return;
         }
+
+        // Reset timer display for other phases or if listening timer is enabled
+        if (isListeningPhase && showListeningTimer) {
+            timerElement.style.display = 'flex';
+        } else if (!isListeningPhase) {
+            timerElement.style.display = 'flex';
+        }
         
-        console.log(`Starting phase timer with duration: ${duration}s`);
-        
+        // Continue with existing timer functionality
         let timeLeft = duration;
         timerElement.textContent = timeLeft;
-        
-        // Update the timer appearance
         timerElement.style.background = `conic-gradient(#4285f4 0%, transparent 0%)`;
         
         phaseTimer = setInterval(() => {
             timeLeft -= 1;
+            timerElement.textContent = timeLeft;
             
-            // Update the timer
-            if (timerElement) {
-                timerElement.textContent = timeLeft;
-                
-                // Update the background conic gradient to show progress
-                const progress = (1 - timeLeft/duration) * 100;
-                timerElement.style.background = `conic-gradient(#4285f4 ${progress}%, transparent ${progress}%)`;
-            }
+            // Update visual timer indicator
+            const progressDegrees = (1 - timeLeft / duration) * 360;
+            timerElement.style.background = `conic-gradient(#4285f4 ${progressDegrees}deg, transparent ${progressDegrees}deg)`;
             
-            // If timer is done, move to next phase
             if (timeLeft <= 0) {
                 clearInterval(phaseTimer);
-                console.log(`Timer complete after ${duration}s, transitioning to ${nextPhase}`);
+                phaseTimer = null;
                 showPhase(nextPhase);
             }
         }, 1000);
@@ -388,6 +417,65 @@
             }
         }
         return false;
+    }
+
+    // New function to suspend microphone to prevent feedback
+    function suspendMicrophone() {
+        if (microphoneSuspended) return;
+        microphoneSuspended = true;
+        
+        // Log the action for debugging
+        console.log('Suspending microphone to prevent feedback');
+        
+        // Pause speech recognition if active
+        if (window.speechRecognition && typeof speechRecognition.pauseRecognition === 'function') {
+            speechRecognition.pauseRecognition();
+            console.log('Speech recognition paused via pauseRecognition()');
+        } else if (window.app && typeof app.stopSpeechRecognition === 'function') {
+            app.stopSpeechRecognition();
+            console.log('Speech recognition stopped via stopSpeechRecognition()');
+        }
+        
+        // Update UI to show microphone is muted
+        const micStatus = document.getElementById('mic-status');
+        if (micStatus) {
+            micStatus.textContent = 'Mic: Muted';
+            micStatus.className = 'mic-status muted';
+        }
+    }
+    
+    // New function to resume microphone after TTS is complete
+    function resumeMicrophone() {
+        if (!microphoneSuspended) return;
+        microphoneSuspended = false;
+        
+        // Only resume microphone if we're in recording phase
+        if (currentPhase !== 'recording') {
+            console.log('Not resuming microphone because current phase is', currentPhase);
+            return;
+        }
+        
+        console.log('Resuming microphone after TTS completion');
+        
+        // Restart speech recognition
+        if (window.app && typeof app.startSpeechRecognition === 'function') {
+            app.startSpeechRecognition();
+            console.log('Speech recognition restarted');
+        }
+        
+        // Update UI to show microphone is active
+        const micStatus = document.getElementById('mic-status');
+        if (micStatus) {
+            micStatus.textContent = 'Mic: Active';
+            micStatus.className = 'mic-status active';
+        }
+    }
+    
+    // Helper to check if TTS is currently speaking
+    function isTTSSpeaking() {
+        return window.textToSpeech && 
+               typeof textToSpeech.isSpeaking === 'function' && 
+               textToSpeech.isSpeaking();
     }
 })();
 

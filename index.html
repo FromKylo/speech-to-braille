@@ -23,7 +23,6 @@
     <!-- CSS files -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/figma-ui.css">
-    <link rel="stylesheet" href="css/speech-fixes.css">
     <link rel="stylesheet" href="css/ui-enhancements.css">
     <link rel="stylesheet" href="css/speech-highlights.css">
     <style>
@@ -311,6 +310,14 @@
                         <p>Output phase: <span id="output-time">7</span>s</p>
                         <p>Current phase: <span id="current-phase-time">0</span>s</p>
                         <button id="refresh-timings-btn" class="action-button">Refresh Timings</button>
+                        
+                        <div class="timing-controls">
+                            <p>
+                                <label for="listening-timer-toggle">Show Listening Phase Timer:</label>
+                                <input type="checkbox" id="listening-timer-toggle" 
+                                    onchange="toggleListeningTimer(this.checked)">
+                            </p>
+                        </div>
                     </div>
                 </details>
             </div>
