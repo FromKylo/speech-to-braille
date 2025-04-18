@@ -184,6 +184,38 @@ void processIncomingData(const uint8_t* data, size_t length) {
 }
 
 /**
+ * Activate braille dots based on array inputs
+ */
+void activateDots(int dots[6]) {
+  // For now, we'll just set the first cell with the pattern
+  for (int i = 0; i < NUM_PINS; i++) {
+    digitalWrite(braillePins[0][i], dots[i] ? HIGH : LOW);
+  }
+  
+  // Update tracking variables
+  outputActive = true;
+  lastOutputTime = millis();
+  currentPhase = PHASE_OUTPUT;
+  Serial.println("Braille dots activated");
+}
+
+/**
+ * Process legacy binary braille array format
+ */
+void processBrailleArray(const uint8_t* data, size_t length) {
+  // Legacy format support - simple array of 6 bits
+  if (length == 6) {
+    int dots[6];
+    for (int i = 0; i < 6; i++) {
+      dots[i] = data[i] > 0 ? 1 : 0;
+    }
+    activateDots(dots);
+  } else {
+    Serial.println("Invalid legacy data format length");
+  }
+}
+
+/**
  * Send acknowledgment with timing information
  */
 void sendAcknowledgment(const char* messageId, unsigned long originalTimestamp, unsigned long processingTime) {
@@ -200,8 +232,8 @@ void sendAcknowledgment(const char* messageId, unsigned long originalTimestamp, 
   
   // Send via BLE
   if (deviceConnected) {
-    pTxCharacteristic->setValue((uint8_t*)buffer, bytes);
-    pTxCharacteristic->notify();
+    pCharacteristic->setValue((uint8_t*)buffer, bytes);
+    pCharacteristic->notify();
     Serial.print("Sent acknowledgment for message: ");
     Serial.println(messageId);
   }
