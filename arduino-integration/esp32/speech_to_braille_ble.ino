@@ -18,7 +18,6 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
-#include <ArduinoJson.h>
 
 // BLE service and characteristic UUIDs (must match web app)
 #define BRAILLE_SERVICE_UUID        "19b10000-e8f2-537e-4f6c-d104768a1214"
@@ -26,16 +25,16 @@
 
 // Define the GPIO pins for each braille cell (using the same structure as Version1.ino)
 const int braillePins[3][6] = {
-  {2, 3, 4, 5, 6, 7},     // Braille Cell 1
-  {8, 9, 10, 11, 12, 13},     // Braille Cell 2
-  {17, 20, 21, 22, 23, 24}  // Braille Cell 3
+  {13, 12, 11, 10, 9, 8}, // Braille Cell 1
+  {7, 6, 5, 4, 3, 2},    // Braille Cell 2
+  {24, 23, 22, 21, 20, 17}  // Braille Cell 3
 };
 const int NUM_CELLS = 3;
 const int NUM_PINS = 6;
 
-// Define the LED pin for connection status
-const int STATUS_LED_PIN = 13;
-const int HEARTBEAT_INTERVAL = 1000; // 1 second interval for blink when not connected
+// Heartbeat
+const int STATUS_LED_PIN = 15; // Green LED ito boss
+const int HEARTBEAT_INTERVAL = 500; // 1 second interval for blink when not connected
 unsigned long lastHeartbeatTime = 0;
 bool ledState = false;
 
@@ -94,94 +93,11 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
     if (value.length() > 0) {
       Serial.println("Received data from BLE client");
       
-      // Process the incoming data
-      processIncomingData((uint8_t*)value.data(), value.length());
+      // Process the incoming binary data directly
+      processBrailleArray((uint8_t*)value.data(), value.length());
     }
   }
 };
-
-/**
- * Process incoming BLE data with JSON format and timing measurement
- */
-void processIncomingData(const uint8_t* data, size_t length) {
-  // Current timestamp on ESP32
-  unsigned long receiveTime = millis();
-  
-  // Check if data is in JSON format
-  if (data[0] == '{') {
-    // Try to parse as JSON
-    StaticJsonDocument<512> doc;
-    DeserializationError error = deserializeJson(doc, data, length);
-    
-    if (!error) {
-      // Successfully parsed JSON
-      JsonVariant typeVar = doc["type"];
-      JsonVariant idVar = doc["id"];
-      JsonVariant dataVar = doc["data"];
-      JsonVariant timestampVar = doc["sentTimestamp"];
-      
-      if (typeVar.isNull() || idVar.isNull()) {
-        Serial.println("Invalid JSON format: missing type or id");
-        return;
-      }
-      
-      const char* type = typeVar.as<const char*>();
-      const char* messageId = idVar.as<const char*>();
-      unsigned long sentTimestamp = timestampVar.as<unsigned long>();
-      
-      // Calculate processing time (approximate one-way latency)
-      unsigned long processingTime = 0;
-      
-      // Handle timestamp discrepancies
-      if (sentTimestamp > 0) {
-        // If the webapp timestamp is meaningful, calculate the difference
-        // Note: this is a very rough estimate due to clock differences
-        processingTime = receiveTime - (sentTimestamp % 86400000); // Mod by milliseconds in a day to handle rollover
-      }
-      
-      Serial.print("Received message ID: ");
-      Serial.println(messageId);
-      Serial.print("Message type: ");
-      Serial.println(type);
-      
-      // Process based on type
-      if (strcmp(type, "braille") == 0) {
-        if (!dataVar.isNull() && dataVar.is<JsonArray>()) {
-          // Process the braille dot array
-          JsonArray array = dataVar.as<JsonArray>();
-          int dots[6] = {0, 0, 0, 0, 0, 0};
-          
-          int i = 0;
-          for (JsonVariant value : array) {
-            if (i < 6 && value.is<int>()) {
-              dots[i] = value.as<int>();
-            }
-            i++;
-          }
-          
-          // Activate the specified dots
-          activateDots(dots);
-          
-          // Send acknowledgment with timing information
-          sendAcknowledgment(messageId, sentTimestamp, processingTime);
-        } else {
-          Serial.println("Invalid braille data format");
-        }
-      } else {
-        Serial.print("Unknown message type: ");
-        Serial.println(type);
-      }
-    } else {
-      Serial.print("JSON parsing error: ");
-      Serial.println(error.c_str());
-    }
-  } else {
-    // Handle legacy format (array of bytes)
-    processBrailleArray(data, length);
-    
-    // No acknowledgment for legacy format
-  }
-}
 
 /**
  * Activate braille dots based on array inputs
@@ -200,10 +116,10 @@ void activateDots(int dots[6]) {
 }
 
 /**
- * Process legacy binary braille array format
+ * Process binary braille array format
  */
 void processBrailleArray(const uint8_t* data, size_t length) {
-  // Check if this is likely the new format with phase byte at the start
+  // Check if this is likely the format with phase byte at the start
   if (length == 7) {
     // First byte is phase indicator, next 6 are dot states
     uint8_t phase = data[0];
@@ -250,39 +166,15 @@ void processBrailleArray(const uint8_t* data, size_t length) {
     Serial.println("Processed 2-byte format (phase + packed bits)");
   }
   else {
-    Serial.print("Invalid legacy data format length: ");
+    Serial.print("Invalid data format length: ");
     Serial.println(length);
-  }
-}
-
-/**
- * Send acknowledgment with timing information
- */
-void sendAcknowledgment(const char* messageId, unsigned long originalTimestamp, unsigned long processingTime) {
-  StaticJsonDocument<256> response;
-  response["type"] = "ACK";
-  response["id"] = messageId;
-  response["originalTimestamp"] = originalTimestamp;
-  response["deviceProcessingTime"] = processingTime;
-  response["deviceTimestamp"] = millis();
-  
-  // Serialize to buffer
-  char buffer[256];
-  size_t bytes = serializeJson(response, buffer);
-  
-  // Send via BLE
-  if (deviceConnected) {
-    pCharacteristic->setValue((uint8_t*)buffer, bytes);
-    pCharacteristic->notify();
-    Serial.print("Sent acknowledgment for message: ");
-    Serial.println(messageId);
   }
 }
 
 void setup() {
   // Initialize serial for debugging
   Serial.begin(115200);
-  Serial.println("Starting Speech-to-Braille BLE Device with Phase Support");
+  Serial.println("Starting Speech-to-Braille BLE Device with Legacy Format");
 
   // Initialize braille pins as outputs and set to LOW
   for (int cell = 0; cell < NUM_CELLS; cell++) {
@@ -350,12 +242,35 @@ void loop() {
     oldDeviceConnected = deviceConnected;
   }
   
-  // Heartbeat LED when not connected
+  // Sequential pin activation when not connected - loop through all braille pins
   if (!deviceConnected) {
     unsigned long currentTime = millis();
     if (currentTime - lastHeartbeatTime >= HEARTBEAT_INTERVAL) {
+      // Calculate which pin to activate based on sequence
+      static int sequence = 0;
+      int totalPins = NUM_CELLS * NUM_PINS;
+      
+      // Turn off all pins
+      for (int cell = 0; cell < NUM_CELLS; cell++) {
+        for (int pin = 0; pin < NUM_PINS; pin++) {
+          digitalWrite(braillePins[cell][pin], LOW);
+        }
+      }
+      
+      // Calculate which pin to light up
+      int cellIndex = sequence / NUM_PINS;
+      int pinIndex = sequence % NUM_PINS;
+      
+      // Turn on just this pin
+      digitalWrite(braillePins[cellIndex][pinIndex], HIGH);
+      
+      // Move to next in sequence
+      sequence = (sequence + 1) % totalPins;
+      
+      // Toggle the status LED
       ledState = !ledState;
       digitalWrite(STATUS_LED_PIN, ledState ? HIGH : LOW);
+      
       lastHeartbeatTime = currentTime;
     }
   }

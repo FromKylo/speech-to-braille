@@ -213,71 +213,42 @@ const bleController = (function() {
      * @returns {Promise<boolean>} - Whether the transmission was successful
      */
     function sendBrailleData(brailleArray) {
-        return new Promise((resolve, reject) => {
-            if (!isConnected || !brailleCharacteristic) {
-                console.warn('Cannot send braille data - not connected to BLE device');
-                return resolve(false);
-            }
-            
-            try {
-                // Create a unique message ID for this transmission
-                const messageId = Date.now() + '-' + Math.floor(Math.random() * 1000);
-                
-                // Create the payload with timing information
-                const payload = {
-                    id: messageId,
-                    type: 'braille',
-                    data: brailleArray,
-                    sentTimestamp: Date.now()
-                };
-                
-                // Track this transmission for acknowledgment
-                pendingTransmissions.set(messageId, {
-                    sentTime: Date.now(),
-                    payload: payload,
-                    resolve: resolve
+        // Convert braille array to 6-byte array format
+        const byteArray = prepareLegacyBrailleData(brailleArray);
+        
+        // Send via BLE
+        return sendDataToBLE(byteArray);
+    }
+
+    // Convert braille array to legacy 6-byte format
+    function prepareLegacyBrailleData(brailleArray) {
+        // Initialize 6-element array with zeros
+        const dots = [0, 0, 0, 0, 0, 0];
+        
+        // If brailleArray is provided and valid
+        if (Array.isArray(brailleArray)) {
+            // Handle single cell braille (most common case)
+            if (!Array.isArray(brailleArray[0])) {
+                // For each dot number in the array (e.g. [1,3,5])
+                brailleArray.forEach(dot => {
+                    // Set corresponding array position to 1 (dot positions are 1-based)
+                    if (dot >= 1 && dot <= 6) {
+                        dots[dot - 1] = 1;
+                    }
                 });
-                
-                // Convert to JSON and then to bytes
-                const jsonData = JSON.stringify(payload);
-                const encoder = new TextEncoder();
-                const data = encoder.encode(jsonData);
-                
-                console.log(`Sending BLE data with ID ${messageId}:`, jsonData);
-                
-                // Write the value with response
-                brailleCharacteristic.writeValue(data)
-                    .then(() => {
-                        console.log(`Data sent successfully for message ${messageId}`);
-                        
-                        // Set a timeout to clean up pending transmissions that don't get acknowledged
-                        setTimeout(() => {
-                            if (pendingTransmissions.has(messageId)) {
-                                console.warn(`Message ${messageId} was not acknowledged within timeout`);
-                                pendingTransmissions.delete(messageId);
-                                // Still resolve as success since we don't want to fail the operation
-                                resolve(true);
-                            }
-                        }, 5000); // 5 second timeout
-                    })
-                    .catch(error => {
-                        console.error('Error sending data to ESP32:', error);
-                        pendingTransmissions.delete(messageId);
-                        reject(error);
-                    });
-                    
-                // For backward compatibility, also send the simple array format
-                // This can be removed once the ESP32 code is updated
-                if (brailleCharacteristic_legacy) {
-                    // Simple array format (as before)
-                    brailleCharacteristic_legacy.writeValue(new Uint8Array(brailleArray))
-                        .catch(error => console.warn('Legacy transmission failed:', error));
-                }
-            } catch (error) {
-                console.error('Error formatting or sending BLE data:', error);
-                reject(error);
             }
-        });
+            // Handle multi-cell braille (contractions)
+            else if (brailleArray.length > 0) {
+                // Use only the first cell for now
+                brailleArray[0].forEach(dot => {
+                    if (dot >= 1 && dot <= 6) {
+                        dots[dot - 1] = 1;
+                    }
+                });
+            }
+        }
+        
+        return new Uint8Array(dots);
     }
 
     /**
