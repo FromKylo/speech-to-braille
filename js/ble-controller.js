@@ -156,48 +156,36 @@ const bleController = (function() {
     }
     
     // Helper function to convert braille array to a proper format for sending
-    // The ESP32 expects a byte array with each element representing the state of a braille cell
+    // The ESP32 expects a 2-byte format: phase byte + 6-bit data byte (one per cell)
     function prepareBrailleData(brailleArray, includePhase = true) {
-        let cellBytes = [];
+        let cellByte = 0;
         
         // Handle nested arrays for multi-cell braille (contractions)
         if (Array.isArray(brailleArray) && Array.isArray(brailleArray[0])) {
-            // Convert each cell to a byte
-            cellBytes = brailleArray.map(cell => {
-                let byte = 0;
-                // Set bits for each dot in the cell
-                for (const dot of cell) {
-                    // Dots are 1-based (1-6), so we subtract 1 for 0-based bit position
-                    if (dot >= 1 && dot <= 6) {
-                        byte |= (1 << (dot - 1));
-                    }
+            // Only use the first cell to avoid sending more than 2 bytes
+            const cell = brailleArray[0];
+            // Set bits for each dot in the cell
+            for (const dot of cell) {
+                // Dots are 1-based (1-6), so we subtract 1 for 0-based bit position
+                if (dot >= 1 && dot <= 6) {
+                    cellByte |= (1 << (dot - 1));
                 }
-                return byte;
-            });
+            }
+            console.log('Using only first cell from multi-cell array:', cell);
         } 
         // Handle single cell braille
         else if (Array.isArray(brailleArray)) {
-            let byte = 0;
             // Set bits for each dot in the cell
             for (const dot of brailleArray) {
                 if (dot >= 1 && dot <= 6) {
-                    byte |= (1 << (dot - 1));
+                    cellByte |= (1 << (dot - 1));
                 }
             }
-            cellBytes = [byte];
-        }
-        // Handle empty array
-        else {
-            cellBytes = [0];
         }
         
-        // If including phase (default), add phase byte at the beginning
-        if (includePhase) {
-            const phaseValue = (currentPhase === 'output') ? PHASE_OUTPUT : PHASE_NOT_OUTPUT;
-            return new Uint8Array([phaseValue, ...cellBytes]);
-        } else {
-            return new Uint8Array(cellBytes);
-        }
+        // Always return exactly 2 bytes: phase byte + cell byte
+        const phaseValue = (currentPhase === 'output') ? PHASE_OUTPUT : PHASE_NOT_OUTPUT;
+        return new Uint8Array([phaseValue, cellByte]);
     }
     
     // Add these properties to the class or module
@@ -209,7 +197,7 @@ const bleController = (function() {
     let minLatency = Number.MAX_VALUE;
 
     /**
-     * Send braille data to the ESP32 using the 6-bit format
+     * Send braille data to the ESP32 using only the 6-bit format
      * @param {Array} brailleArray - Array of dot indices that should be raised
      * @returns {Promise<boolean>} - Whether the transmission was successful
      */
@@ -218,7 +206,9 @@ const bleController = (function() {
         const byteArray = prepareBrailleData(brailleArray);
         
         console.log('Sending braille data using 2-byte format:', 
-            Array.from(byteArray).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+            Array.from(byteArray).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+            'Binary for dots:', (byteArray.length > 1 ? 
+                byteArray[1].toString(2).padStart(6, '0') : '000000'));
         
         if (isConnected && brailleCharacteristic) {
             return brailleCharacteristic.writeValue(byteArray)
@@ -232,37 +222,6 @@ const bleController = (function() {
                 });
         }
         return Promise.resolve(false);
-    }
-
-    // Convert braille array to legacy 6-byte format
-    function prepareLegacyBrailleData(brailleArray) {
-        // Initialize 6-element array with zeros
-        const dots = [0, 0, 0, 0, 0, 0];
-        
-        // If brailleArray is provided and valid
-        if (Array.isArray(brailleArray)) {
-            // Handle single cell braille (most common case)
-            if (!Array.isArray(brailleArray[0])) {
-                // For each dot number in the array (e.g. [1,3,5])
-                brailleArray.forEach(dot => {
-                    // Set corresponding array position to 1 (dot positions are 1-based)
-                    if (dot >= 1 && dot <= 6) {
-                        dots[dot - 1] = 1;
-                    }
-                });
-            }
-            // Handle multi-cell braille (contractions)
-            else if (brailleArray.length > 0) {
-                // Use only the first cell for now
-                brailleArray[0].forEach(dot => {
-                    if (dot >= 1 && dot <= 6) {
-                        dots[dot - 1] = 1;
-                    }
-                });
-            }
-        }
-        
-        return new Uint8Array(dots);
     }
 
     /**

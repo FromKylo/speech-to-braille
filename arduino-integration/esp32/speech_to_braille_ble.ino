@@ -3,7 +3,7 @@
  * 
  * This sketch receives braille array data from the Speech-to-Braille web app
  * via Bluetooth Low Energy (BLE) and controls braille pins accordingly.
- * Updated to prioritize 6-bit format (2-byte format with phase + dots as bits)
+ * Uses only 2-byte format with 6-bit representation: phase byte + dots as bits
  */
 
 #include <BLEDevice.h>
@@ -114,7 +114,7 @@ void activateDots(int dots[6]) {
 
 /**
  * Process binary braille array format
- * Prioritizes the 2-byte format (phase byte + 6-bit dots byte)
+ * Only accepts the 2-byte format (phase byte + 6-bit dots byte)
  */
 void processBrailleArray(const uint8_t* data, size_t length) {
   Serial.print("[");
@@ -130,7 +130,7 @@ void processBrailleArray(const uint8_t* data, size_t length) {
   }
   Serial.println();
   
-  // 2-byte format (preferred): first byte is phase, second byte has dot states in bits
+  // Only accept 2-byte format: first byte is phase, second byte has dot states in bits
   if (length == 2) {
     uint8_t phase = data[0];
     uint8_t dotBits = data[1];
@@ -154,42 +154,17 @@ void processBrailleArray(const uint8_t* data, size_t length) {
     Serial.println();
     activateDots(dots);
   }
-  // 7-byte legacy format: phase byte + 6 individual dot bytes
-  else if (length == 7) {
-    uint8_t phase = data[0];
-    int dots[6];
-    
-    // Extract the 6 dot values following the phase byte
-    for (int i = 0; i < 6; i++) {
-      dots[i] = data[i+1] > 0 ? 1 : 0;
-    }
-    
-    // Update phase if provided
-    currentPhase = phase;
-    
-    Serial.print("Processing 7-byte format - Phase: ");
-    Serial.println(phase == PHASE_OUTPUT ? "OUTPUT" : "NOT_OUTPUT");
-    activateDots(dots);
-  }
-  // 6-byte legacy format (just 6 dots)
-  else if (length == 6) {
-    int dots[6];
-    for (int i = 0; i < 6; i++) {
-      dots[i] = data[i] > 0 ? 1 : 0;
-    }
-    Serial.println("Processing 6-byte legacy format");
-    activateDots(dots);
-  }
   else {
     Serial.print("Invalid data format length: ");
     Serial.println(length);
+    Serial.println("Only 2-byte format (phase byte + 6-bit data byte) is supported");
   }
 }
 
 void setup() {
   // Initialize serial for debugging
   Serial.begin(115200);
-  Serial.println("Starting Speech-to-Braille BLE Device with Legacy Format");
+  Serial.println("Starting Speech-to-Braille BLE Device with 6-bit Format");
 
   // Initialize braille pins as outputs and set to LOW
   for (int cell = 0; cell < NUM_CELLS; cell++) {
