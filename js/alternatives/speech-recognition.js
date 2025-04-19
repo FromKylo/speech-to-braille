@@ -46,8 +46,14 @@ class SpeechRecognitionManager {
             try {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 this.recognition = new SpeechRecognition();
+                
+                // Configure recognition parameters
                 this.recognition.continuous = true;
                 this.recognition.interimResults = true;
+                this.recognition.maxAlternatives = 3;
+                
+                // Set language to English (default)
+                this.recognition.lang = 'en-US';
                 
                 // Set up event handlers with improved error handling
                 this.recognition.onstart = () => {
@@ -56,6 +62,9 @@ class SpeechRecognitionManager {
                     this._recognitionActive = true;
                     this.triggerEvent('start');
                     this.updateUIState(true);
+                    
+                    // Update visual indicators to show actively listening
+                    this.updateListeningIndicators(true);
                 };
                 
                 this.recognition.onresult = (event) => {
@@ -739,6 +748,47 @@ class SpeechRecognitionManager {
                 this.recordingIndicator.classList.add('recording-off');
             }
         }
+    }
+
+    /**
+     * Update visual indicators to show active listening status
+     * @param {boolean} isListening Whether the microphone is actively listening
+     */
+    updateListeningIndicators(isListening) {
+        // Update recording indicator element
+        const recordingIndicator = document.getElementById('recording-indicator');
+        if (recordingIndicator) {
+            if (isListening) {
+                recordingIndicator.textContent = '● Recording';
+                recordingIndicator.classList.add('blink-recording');
+            } else {
+                recordingIndicator.textContent = '○ Not Recording';
+                recordingIndicator.classList.remove('blink-recording');
+            }
+        }
+        
+        // Update microphone level indicator visibility
+        const micLevelContainer = document.querySelector('.mic-volume-container');
+        if (micLevelContainer) {
+            micLevelContainer.style.display = isListening ? 'block' : 'none';
+        }
+        
+        // Update the speech-status-indicator if it exists
+        const speechStatusIndicator = document.getElementById('speech-status-indicator');
+        if (speechStatusIndicator) {
+            if (isListening) {
+                speechStatusIndicator.textContent = 'Listening - Speak now';
+                speechStatusIndicator.className = 'status-indicator-large active';
+            } else {
+                speechStatusIndicator.textContent = 'Speech recognition inactive';
+                speechStatusIndicator.className = 'status-indicator-large inactive';
+            }
+        }
+        
+        // Dispatch an event for other components to respond to listening state
+        document.dispatchEvent(new CustomEvent('listeningStateChanged', {
+            detail: { isListening }
+        }));
     }
 
     /**

@@ -127,11 +127,12 @@ const bleController = (function() {
         // Notify Arduino of phase change if connected
         if (isConnected && brailleCharacteristic) {
             try {
-                // Use 6-byte format for consistency (all dots lowered)
-                const dots = [0, 0, 0, 0, 0, 0];
-                const byteArray = new Uint8Array(dots);
+                // Use 2-byte format with 6-bit representation (phase byte + empty dots byte)
+                const phaseValue = (phase === 'output') ? PHASE_OUTPUT : PHASE_NOT_OUTPUT;
+                const byteArray = new Uint8Array([phaseValue, 0x00]); // Second byte is all dots lowered
                 
-                console.log('Sending phase update to Arduino using 6-byte format');
+                console.log('Sending phase update to Arduino using 2-byte format:', 
+                    Array.from(byteArray).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
                 await brailleCharacteristic.writeValue(byteArray);
                 
                 // If not in output phase, ensure braille display is cleared
@@ -208,29 +209,29 @@ const bleController = (function() {
     let minLatency = Number.MAX_VALUE;
 
     /**
-     * Send braille data to the ESP32 using only the 6-byte format
+     * Send braille data to the ESP32 using the 6-bit format
      * @param {Array} brailleArray - Array of dot indices that should be raised
      * @returns {Promise<boolean>} - Whether the transmission was successful
      */
     function sendBrailleData(brailleArray) {
-        // Convert braille array to 6-byte array format
-        const byteArray = BrailleData(brailleArray);
+        // Convert braille array to 2-byte packed format (phase + 6 bits)
+        const byteArray = prepareBrailleData(brailleArray);
         
-        // Send via BLE directly if sendDataToBLE is not implemented
-        if (typeof sendDataToBLE !== 'function') {
-            if (isConnected && brailleCharacteristic) {
-                return brailleCharacteristic.writeValue(byteArray)
-                    .then(() => true)
-                    .catch(error => {
-                        console.error('Error sending braille data to BLE:', error);
-                        return false;
-                    });
-            }
-            return Promise.resolve(false);
+        console.log('Sending braille data using 2-byte format:', 
+            Array.from(byteArray).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+        
+        if (isConnected && brailleCharacteristic) {
+            return brailleCharacteristic.writeValue(byteArray)
+                .then(() => {
+                    console.log('Braille data sent successfully in 6-bit format');
+                    return true;
+                })
+                .catch(error => {
+                    console.error('Error sending braille data to BLE:', error);
+                    return false;
+                });
         }
-        
-        // Use sendDataToBLE if it exists
-        return sendDataToBLE(byteArray);
+        return Promise.resolve(false);
     }
 
     // Convert braille array to legacy 6-byte format

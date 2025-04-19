@@ -3,6 +3,7 @@
  * 
  * This sketch receives braille array data from the Speech-to-Braille web app
  * via Bluetooth Low Energy (BLE) and controls braille pins accordingly.
+ * Updated to prioritize 6-bit format (2-byte format with phase + dots as bits)
  */
 
 #include <BLEDevice.h>
@@ -23,7 +24,7 @@ const int NUM_CELLS = 3;
 const int NUM_PINS = 6;
 
 // Heartbeat
-const int STATUS_LED_PIN = 15; // Green LED ito boss
+const int STATUS_LED_PIN = 15; // Green LED status indicator
 const int HEARTBEAT_INTERVAL = 1200;
 unsigned long lastHeartbeatTime = 0;
 bool ledState = false;
@@ -83,7 +84,7 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
     if (value.length() > 0) {
       Serial.println("Received data from BLE client");
       
-      // Process the incoming binary data directly - prioritizing 6-byte format
+      // Process the incoming binary data directly - prioritizing 6-bit format
       processBrailleArray((uint8_t*)value.data(), value.length());
     }
   }
@@ -113,6 +114,7 @@ void activateDots(int dots[6]) {
 
 /**
  * Process binary braille array format
+ * Prioritizes the 2-byte format (phase byte + 6-bit dots byte)
  */
 void processBrailleArray(const uint8_t* data, size_t length) {
   Serial.print("[");
@@ -128,42 +130,13 @@ void processBrailleArray(const uint8_t* data, size_t length) {
   }
   Serial.println();
   
-  // Check if this is likely the format with phase byte at the start
-  if (length == 7) {
-    // First byte is phase indicator, next 6 are dot states
-    uint8_t phase = data[0];
-    int dots[6];
-    
-    // Extract the 6 dot values following the phase byte
-    for (int i = 0; i < 6; i++) {
-      dots[i] = data[i+1] > 0 ? 1 : 0;
-    }
-    
-    // Update phase if provided
-    currentPhase = phase;
-    
-    // Activate dots
-    Serial.print("Processing 7-byte format - Phase: ");
-    Serial.println(phase == PHASE_OUTPUT ? "OUTPUT" : "NOT_OUTPUT");
-    activateDots(dots);
-  }
-  // Original legacy format (just 6 dots)
-  else if (length == 6) {
-    int dots[6];
-    for (int i = 0; i < 6; i++) {
-      dots[i] = data[i] > 0 ? 1 : 0;
-    }
-    Serial.println("Processing 6-byte legacy format");
-    activateDots(dots);
-  }
-  // Single byte packed format (bits represent dots)
-  else if (length == 2) {
-    // First byte is phase, second byte has dot states in bits
+  // 2-byte format (preferred): first byte is phase, second byte has dot states in bits
+  if (length == 2) {
     uint8_t phase = data[0];
     uint8_t dotBits = data[1];
     int dots[6];
     
-    // Extract individual bits for each dot
+    // Extract individual bits for each dot (bit 0 = dot 1, bit 1 = dot 2, etc.)
     for (int i = 0; i < 6; i++) {
       dots[i] = (dotBits & (1 << i)) ? 1 : 0;
     }
@@ -179,6 +152,32 @@ void processBrailleArray(const uint8_t* data, size_t length) {
       Serial.print((dotBits & (1 << i)) ? "1" : "0");
     }
     Serial.println();
+    activateDots(dots);
+  }
+  // 7-byte legacy format: phase byte + 6 individual dot bytes
+  else if (length == 7) {
+    uint8_t phase = data[0];
+    int dots[6];
+    
+    // Extract the 6 dot values following the phase byte
+    for (int i = 0; i < 6; i++) {
+      dots[i] = data[i+1] > 0 ? 1 : 0;
+    }
+    
+    // Update phase if provided
+    currentPhase = phase;
+    
+    Serial.print("Processing 7-byte format - Phase: ");
+    Serial.println(phase == PHASE_OUTPUT ? "OUTPUT" : "NOT_OUTPUT");
+    activateDots(dots);
+  }
+  // 6-byte legacy format (just 6 dots)
+  else if (length == 6) {
+    int dots[6];
+    for (int i = 0; i < 6; i++) {
+      dots[i] = data[i] > 0 ? 1 : 0;
+    }
+    Serial.println("Processing 6-byte legacy format");
     activateDots(dots);
   }
   else {

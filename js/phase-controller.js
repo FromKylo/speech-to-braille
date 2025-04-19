@@ -237,15 +237,25 @@
                 
                 // Start speech recognition - add a small delay to ensure UI is ready
                 setTimeout(() => {
+                    // Try both app approach and direct approach
                     if (window.app && app.startSpeechRecognition) {
-                        console.log('Starting speech recognition for recording phase');
+                        console.log('Starting speech recognition for recording phase via app');
                         app.startSpeechRecognition();
                         updateRecognitionStatus(true);
-                        
-                        // Make sure microphone is active (unless TTS is speaking)
-                        if (!isTTSSpeaking()) {
-                            resumeMicrophone();
-                        }
+                    } else if (window.speechRecognition) {
+                        // Direct approach if app method fails
+                        console.log('Starting speech recognition directly via speechRecognition object');
+                        speechRecognition.startRecognition().catch(err => {
+                            console.error('Error starting speech recognition:', err);
+                        });
+                        updateRecognitionStatus(true);
+                    } else {
+                        console.error('No speech recognition method available!');
+                    }
+                    
+                    // Make sure microphone is active (unless TTS is speaking)
+                    if (!isTTSSpeaking()) {
+                        resumeMicrophone();
                     }
                 }, 300);
                 
