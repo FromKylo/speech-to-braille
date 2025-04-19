@@ -117,9 +117,21 @@
             min-height: 30px;
         }
         
-        /* Hide the braille dot display */
+        /* Hide the braille dot display but keep the braille symbol */
         .braille-dot-display {
             display: none !important;
+        }
+        
+        /* Hide braille cell elements but keep the braille symbol visible */
+        .braille-cell {
+            display: none !important;
+        }
+        
+        /* Make sure the braille symbol is visible and prominent */
+        .braille-symbol {
+            display: block !important;
+            font-size: 4rem !important;
+            margin: 15px auto !important;
         }
         
         /* Remove status-dot blinking */
@@ -357,18 +369,29 @@
                 <div class="card">
                     <h2>Speech Recognition</h2>
                     <div class="recording-header">
-                        <div id="recording-indicator" class="blink-recording">● Recording (3s)</div>
+                        <div id="recording-indicator" class="blink-recording">● Recording</div>
                         <div class="countdown-timer" id="recording-timer">3</div>
                     </div>
                     
-                    <p>Speak into your microphone and I'll listen for words to convert to braille.</p>
+                    <p>Speak into your microphone and I'll listen for words to convert to braille!</p>
                     
                     <!-- Current sentence display -->
                     <div class="speech-output-container">
                         <h3>Current Sentence:</h3>
                         <div id="speech-output" class="speech-output-box">
-                            <p id="interim-text"></p>
+                            <p id="interim-text" class="enhanced-interim-text"></p>
                             <p id="final-text"></p>
+                        </div>
+                        
+                        <!-- Microphone volume indicator placed directly below partial results -->
+                        <div class="mic-volume-container">
+                            <div class="mic-volume-label">
+                                <span class="mic-icon">🎤</span>
+                                <span>Microphone Level</span>
+                            </div>
+                            <div class="mic-level-meter">
+                                <div id="mic-level-bar" class="mic-level-bar"></div>
+                            </div>
                         </div>
                     </div>
                     
@@ -385,7 +408,7 @@
                 <div class="card">
                     <h2>Braille Translation</h2>
                     <div class="output-header">
-                        <div id="output-indicator" class="blink-output">◉ Output (7s)</div>
+                        <div id="output-indicator" class="blink-output">◉ Output</div>
                         <div class="countdown-timer" id="output-timer">7</div>
                     </div>
                     <div id="braille-status" class="status hidden">
@@ -609,7 +632,7 @@
     <!-- Only load config.js once from the root directory -->
     <!-- <script src="js/config.js"></script> --> <!-- Removing duplicate reference -->
     <script src="js/alternatives/speech-recognition.js"></script>
-    <script src="js/speechRecognition.js"></script>
+    <!-- Removing references to non-existent files -->
     <script src="js/braille-translator.js"></script>
     <script src="js/text-to-speech.js"></script>
     <script src="utils/braille-array-formatter.js"></script>
@@ -628,8 +651,7 @@
     <script src="js/speech-diagnostics.js"></script>
     <!-- Add Figma UI script before closing body tag -->
     <script src="js/figma-ui.js"></script>
-    <script src="js/test-speech.js"></script>
-    <script src="js/ui.js"></script>
+    <!-- Removing references to non-existent files -->
     
     <!-- Phase controller (Must be loaded last) -->
     <script src="js/phase-controller.js"></script>

@@ -41,6 +41,36 @@
     padding-left: 8px;
 }
 
+/* Enhanced interim text styles */
+.enhanced-interim-text {
+    min-height: 40px !important;
+    padding: 10px !important;
+    border-left: 4px solid #4285f4 !important;
+    background-color: #f0f8ff !important;
+    border-radius: 4px !important;
+    font-size: 1.3rem !important;
+    color: #333 !important;
+    margin-bottom: 10px !important;
+    transition: all 0.3s ease !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.enhanced-interim-text:empty {
+    color: #666 !important;
+    border-left-color: #ccc !important;
+    background-color: #f9f9f9 !important;
+    min-height: 40px !important;
+}
+
+.enhanced-interim-text:empty::before {
+    content: "Listening... Speak now";
+    color: #777;
+    font-style: italic;
+    opacity: 0.8;
+}
+
 /* Speech recognition enhancement styles - migrated from speech-fixes.css */
 #speech-recognition-error {
     background-color: #f8d7da;
@@ -387,4 +417,85 @@
     text-align: right;
     font-family: monospace;
     font-weight: 500;
+}
+
+/* Microphone volume indicator styles */
+.mic-volume-container {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f5f9ff;
+    border-radius: 6px;
+    border: 1px solid #e0e9ff;
+}
+
+.mic-volume-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #444;
+    font-size: 0.9rem;
+}
+
+.mic-icon {
+    margin-right: 8px;
+    color: #4285f4;
+    font-size: 1.1em;
+}
+
+.mic-level-meter {
+    height: 10px;
+    background-color: #e4e4e4;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.mic-level-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, #4285f4, #34a853);
+    border-radius: 10px;
+    transition: width 0.1s ease-out;
+    position: relative;
+}
+
+.mic-level-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 50%,
+        transparent 100%
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 600px) {
+    .enhanced-interim-text {
+        font-size: 1.1rem !important;
+        padding: 8px !important;
+    }
+    
+    .mic-volume-container {
+        padding: 8px;
+    }
+}
+
+#interim-text:not(:empty) {
+    border-left-color: #4285f4;
+    background-color: #f0f8ff;
+    padding-left: 8px;
 }

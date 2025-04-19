@@ -417,29 +417,9 @@
                             }
                         }
                         
-                        // If we're in output phase and a match was found, speak it
-                        if (currentPhase === 'output' && window.textToSpeech) {
-                            if (textToSpeech.wasBrailleMatchFound && 
-                                textToSpeech.wasBrailleMatchFound()) {
-                                
-                                // Find the matched word from the UI with fallback options
-                                const matchedWordElement = document.getElementById('matched-word');
-                                if (matchedWordElement && matchedWordElement.textContent &&
-                                    matchedWordElement.textContent !== 'Loading...' &&
-                                    matchedWordElement.textContent !== 'None') {
-                                    
-                                    console.log('Speaking matched word in output phase:', 
-                                        matchedWordElement.textContent);
-                                    
-                                    // Use enhanced speaking method with retry
-                                    if (window.textToSpeech.speakMatchedWord) {
-                                        window.textToSpeech.speakMatchedWord(matchedWordElement.textContent);
-                                    } else if (window.textToSpeech.speak) {
-                                        window.textToSpeech.speak(matchedWordElement.textContent);
-                                    }
-                                }
-                            }
-                        }
+                        // Always check for match and speak it automatically
+                        // This ensures TTS is triggered without requiring manual interaction
+                        speakMatchedWordIfAvailable();
                     }, 500);
                     
                     // Also ensure braille visualizer is updated
@@ -455,6 +435,41 @@
                     return false;
                 }
             }
+        }
+        return false;
+    }
+
+    // New function to automatically find and speak matched words
+    function speakMatchedWordIfAvailable() {
+        // Always try to find and speak the matched word
+        const matchedWordElement = document.getElementById('matched-word');
+        if (matchedWordElement && matchedWordElement.textContent &&
+            matchedWordElement.textContent !== 'Loading...' &&
+            matchedWordElement.textContent !== 'None') {
+            
+            console.log('Auto-speaking matched word:', matchedWordElement.textContent);
+            
+            // Use enhanced speaking method with retry (first try specific method, then fallback)
+            if (window.textToSpeech && window.textToSpeech.speakMatchedWord) {
+                window.textToSpeech.speakMatchedWord(matchedWordElement.textContent);
+            } else if (window.textToSpeech && window.textToSpeech.speak) {
+                window.textToSpeech.speak(matchedWordElement.textContent);
+            } else {
+                console.warn('Text-to-speech not available for matched word');
+            }
+            
+            // Also make sure the speaking indicator is visible
+            const speakingIndicator = document.getElementById('speaking-indicator');
+            if (speakingIndicator) {
+                speakingIndicator.classList.remove('hidden');
+                // Ensure it's hidden after a reasonable time if TTS fails
+                setTimeout(() => {
+                    speakingIndicator.classList.add('hidden');
+                }, 5000);
+            }
+            
+            // Return success
+            return true;
         }
         return false;
     }

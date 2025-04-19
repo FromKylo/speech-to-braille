@@ -85,6 +85,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { once: false });
     });
 
+    // Immediately simulate user interaction to bypass browser restrictions
+    console.log('Forcing audio initialization without user interaction');
+    hasUserInteracted = true; // Set this to true from the beginning
+    
+    // Try multiple audio initialization methods
+    initializeAudioImmediately();
+
     // Wait a bit to avoid conflicts with speech-init.js
     setTimeout(() => {
         initSpeechSynthesis().then(() => {
@@ -848,3 +855,83 @@ window.textToSpeech = {
 window.speakMatchedWord = speakMatchedWord;
 window.stopSpeaking = stopSpeaking;
 window.speakText = speakText;
+
+// Aggressive audio initialization function
+function initializeAudioImmediately() {
+    // Method 1: Try using AudioContext
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            const audioCtx = new AudioContext();
+            audioCtx.resume().then(() => {
+                console.log('AudioContext resumed successfully');
+                // Create and play a short silent sound
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                gainNode.gain.value = 0.01; // Almost silent
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start(0);
+                oscillator.stop(0.1);
+            });
+        }
+    } catch (e) {
+        console.warn('AudioContext initialization failed:', e);
+    }
+    
+    // Method 2: Try multiple silent audio elements with different approaches
+    try {
+        // Base64 encoded silent audio
+        const silentSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+        silentSound.setAttribute('playsinline', 'true');
+        silentSound.volume = 0.01;
+        silentSound.play().catch(e => console.warn('Silent audio play failed:', e));
+        
+        // Another attempt with autoplay attribute
+        const silentSound2 = document.createElement('audio');
+        silentSound2.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+        silentSound2.autoplay = true;
+        silentSound2.muted = true;
+        silentSound2.setAttribute('playsinline', 'true');
+        document.body.appendChild(silentSound2);
+        setTimeout(() => {
+            if (silentSound2.parentNode) silentSound2.parentNode.removeChild(silentSound2);
+        }, 1000);
+    } catch (e) {
+        console.warn('Silent audio initialization failed:', e);
+    }
+    
+    // Method 3: Simulate a user interaction
+    try {
+        // Create and dispatch fake user interaction events
+        ['mousedown', 'mouseup', 'click', 'touchstart', 'touchend'].forEach(eventType => {
+            document.dispatchEvent(new Event(eventType, {bubbles: true}));
+        });
+    } catch (e) {
+        console.warn('Synthetic event dispatch failed:', e);
+    }
+    
+    // Method 4: Try to preload actual sound effects
+    try {
+        const recordingSound = document.getElementById('listening-mode-sound');
+        const outputSound = document.getElementById('output-mode-sound');
+        
+        if (recordingSound) {
+            recordingSound.load();
+            recordingSound.volume = 0.1;
+            recordingSound.muted = false;
+            recordingSound.play().catch(e => console.warn('Recording sound preload failed:', e));
+            setTimeout(() => recordingSound.pause(), 50);
+        }
+        
+        if (outputSound) {
+            outputSound.load();
+            outputSound.volume = 0.1;
+            outputSound.muted = false;
+            outputSound.play().catch(e => console.warn('Output sound preload failed:', e));
+            setTimeout(() => outputSound.pause(), 50);
+        }
+    } catch (e) {
+        console.warn('Sound effects preload failed:', e);
+    }
+}
