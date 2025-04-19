@@ -829,7 +829,7 @@ function useFallbackSpeech(text, callback) {
 }
 
 // Add a function to check if TTS is currently speaking
-function isSpeaking() {
+function checkSpeakingStatus() {
     return isSpeaking || 
            (window.speechSynthesis && window.speechSynthesis.speaking);
 }
@@ -840,7 +840,7 @@ window.textToSpeech = {
     speakMatchedWord: speakMatchedWord,
     resetBrailleMatchStatus: resetBrailleMatchStatus,
     wasBrailleMatchFound: wasBrailleMatchFound,
-    isSpeaking: isSpeaking,
+    isSpeaking: checkSpeakingStatus,
     resetBrailleMatchStatus,
     introCompleted: () => introCompleted,
     wasBrailleMatchFound,

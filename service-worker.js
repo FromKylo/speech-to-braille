@@ -108,6 +108,11 @@ self.addEventListener('activate', event => {
 
 // Fetch event with improved caching strategy
 self.addEventListener('fetch', event => {
+  // Don't intercept requests that won't work well with service worker caching
+  if (event.request.cache === 'only-if-cached' && event.request.mode !== 'same-origin') {
+    return;
+  }
+
   const requestUrl = new URL(event.request.url);
   
   // For API requests, don't use cache
@@ -133,21 +138,21 @@ self.addEventListener('fetch', event => {
           
           return fetch(event.request)
             .then(response => {
+              // Don't cache if response status isn't 200 OK
+              if (!response || !response.ok || response.status !== 200) {
+                console.log(`Not caching non-200 response for: ${event.request.url} (status: ${response.status})`);
+                return response;
+              }
+              
               // Clone the response before using it
               const responseToCache = response.clone();
               
               caches.open(CACHE_NAME).then(cache => {
-                // Add this fix in the part where the cache is updated
-                // When putting responses in cache, check status code first
-                if (response && response.ok && response.status === 200) {
-                  try {
-                    console.log('Caching new resource:', event.request.url);
-                    cache.put(event.request, responseToCache);
-                  } catch (cacheError) {
-                    console.warn('Failed to cache resource:', event.request.url, cacheError);
-                  }
-                } else if (response) {
-                  console.log('Not caching partial response for:', event.request.url, `(status: ${response.status})`);
+                try {
+                  console.log('Caching new resource:', event.request.url);
+                  cache.put(event.request, responseToCache);
+                } catch (cacheError) {
+                  console.warn('Failed to cache resource:', event.request.url, cacheError);
                 }
               });
               
@@ -166,12 +171,16 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        // Cache successful responses
-        if (response.ok) {
+        // Only cache successful full responses (status 200)
+        if (response && response.ok && response.status === 200) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then(cache => {
             if (event.request.url.startsWith(self.location.origin)) {
-              cache.put(event.request, responseClone);
+              try {
+                cache.put(event.request, responseClone);
+              } catch (e) {
+                console.warn('Cache put failed:', e);
+              }
             }
           });
         }

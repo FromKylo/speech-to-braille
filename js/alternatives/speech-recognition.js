@@ -661,9 +661,24 @@ class SpeechRecognitionManager {
             }
         }
         
-        // Update UI with transcripts
-        this.updateInterimDisplay(interimTranscript);
+        // Process interim results for better visibility
+        if (window.processInterimResult && typeof window.processInterimResult === 'function') {
+            window.processInterimResult(interimTranscript);
+        } else {
+            // Fallback to basic update if enhanced function isn't available
+            const interimElement = document.getElementById('interim-text');
+            if (interimElement) {
+                interimElement.textContent = interimTranscript;
+            }
+        }
+        
+        // Process final results
         if (finalTranscript) {
+            const finalElement = document.getElementById('final-text');
+            if (finalElement) {
+                finalElement.textContent = finalTranscript;
+            }
+            
             this.processFinalTranscript(finalTranscript);
         }
         

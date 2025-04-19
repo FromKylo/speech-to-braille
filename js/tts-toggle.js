@@ -28,30 +28,69 @@
     
     // Patch the TTS functions to ensure they always work
     function patchTTSFunctions() {
-        // Wait until textToSpeech is available
-        if (!window.textToSpeech) {
-            console.log('Waiting for textToSpeech to be available...');
-            setTimeout(patchTTSFunctions, 500);
-            return;
+        // Set a maximum number of retry attempts to avoid infinite loop
+        const MAX_RETRY_ATTEMPTS = 10;
+        let attempts = 0;
+        
+        function attemptPatch() {
+            attempts++;
+            
+            // Wait until textToSpeech is available or max attempts reached
+            if (!window.textToSpeech) {
+                if (attempts <= MAX_RETRY_ATTEMPTS) {
+                    console.log(`Waiting for textToSpeech to be available... (Attempt ${attempts}/${MAX_RETRY_ATTEMPTS})`);
+                    setTimeout(attemptPatch, 500);
+                } else {
+                    console.warn("TextToSpeech not available after maximum attempts. Creating fallback implementation.");
+                    
+                    // Create a minimal fallback implementation
+                    window.textToSpeech = {
+                        speak: function(text) {
+                            console.log("TextToSpeech fallback - would speak:", text);
+                            // Create visual feedback since audio isn't available
+                            const indicator = document.createElement('div');
+                            indicator.textContent = `🔊 "${text}"`;
+                            indicator.style.position = 'fixed';
+                            indicator.style.bottom = '20px';
+                            indicator.style.left = '20px';
+                            indicator.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                            indicator.style.color = 'white';
+                            indicator.style.padding = '10px';
+                            indicator.style.borderRadius = '5px';
+                            indicator.style.zIndex = '9999';
+                            document.body.appendChild(indicator);
+                            setTimeout(() => indicator.remove(), 3000);
+                        },
+                        speakMatchedWord: function(word) {
+                            this.speak(word);
+                        },
+                        isTTSEnabled: function() { return true; }
+                    };
+                }
+                return;
+            }
+            
+            console.log('TTS successfully initialized, ensuring functions are always enabled');
+            
+            // Save original functions in case we need them
+            const originalSpeak = window.textToSpeech.speak || function(text) { console.log("Would speak:", text); };
+            const originalSpeakMatchedWord = window.textToSpeech.speakMatchedWord || function(word) { originalSpeak(word); };
+            
+            // Ensure the functions are properly called
+            window.textToSpeech.speak = function(text, callback, settings) {
+                return originalSpeak.call(window.textToSpeech, text, callback, settings);
+            };
+            
+            window.textToSpeech.speakMatchedWord = function(word) {
+                return originalSpeakMatchedWord.call(window.textToSpeech, word);
+            };
+            
+            // Add the isTTSEnabled function to the public API (always returns true)
+            window.textToSpeech.isTTSEnabled = isTTSAllowed;
         }
         
-        console.log('Ensuring TTS functions are always enabled');
-        
-        // Save original functions in case we need them
-        const originalSpeak = window.textToSpeech.speak;
-        const originalSpeakMatchedWord = window.textToSpeech.speakMatchedWord;
-        
-        // Ensure the functions are properly called
-        window.textToSpeech.speak = function(text, callback, settings) {
-            return originalSpeak.call(this, text, callback, settings);
-        };
-        
-        window.textToSpeech.speakMatchedWord = function(word) {
-            return originalSpeakMatchedWord.call(this, word);
-        };
-        
-        // Add the isTTSEnabled function to the public API (always returns true)
-        window.textToSpeech.isTTSEnabled = isTTSAllowed;
+        // Start the patching process
+        attemptPatch();
     }
     
     // Expose these functions globally

@@ -33,14 +33,13 @@ const brailleTranslator = (function() {
     // Function to load the Braille database from the CSV file
     async function loadDatabase() {
         try {
-            // Try multiple path possibilities to handle different server configurations
+            // Prioritize local paths first, then try external paths as fallback
             const possiblePaths = [
-                '/ueb-philb-braille-database.csv',
-                './ueb-philb-braille-database.csv',
+                './ueb-philb-braille-database.csv',  // Local path - prioritize this
                 '../ueb-philb-braille-database.csv',
-                '/workspaces/speech-to-braille/ueb-philb-braille-database.csv',
-                window.location.origin + '/ueb-philb-braille-database.csv',
-                window.location.origin + '/speech-to-braille/ueb-philb-braille-database.csv'
+                '/ueb-philb-braille-database.csv',
+                window.location.origin + '/ueb-philb-braille-database.csv'
+                // Removed the external path that was failing with 404
             ];
             
             let response = null;
@@ -52,7 +51,7 @@ const brailleTranslator = (function() {
                 try {
                     console.log(`Attempting to load Braille database from: ${path}`);
                     response = await fetch(path, { 
-                        cache: 'no-store',
+                        cache: 'no-cache',
                         headers: {
                             'Cache-Control': 'no-cache',
                             'Pragma': 'no-cache'
