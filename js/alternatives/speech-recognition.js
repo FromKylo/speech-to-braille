@@ -740,6 +740,124 @@ class SpeechRecognitionManager {
             }
         }
     }
+
+    /**
+     * Setup mobile-specific optimizations for speech recognition
+     * This addresses many of the issues on Android and iOS devices
+     */
+    setupMobileOptimization() {
+        console.log('Setting up mobile-specific optimizations for speech recognition');
+        
+        // 1. Configure recognition settings for mobile
+        if (this.recognition) {
+            // Improve interim results frequency
+            this.recognition.interimResults = true;
+            
+            // Increase max alternatives for better word matching
+            if ('maxAlternatives' in this.recognition) {
+                this.recognition.maxAlternatives = 3;
+            }
+            
+            // Shorter continuous sessions to prevent freezing
+            this.recognition.continuous = false;
+        }
+        
+        // 2. Modify the restart behavior for more reliable recognition
+        this._mobileRestartDelay = 600; // ms between sessions (slightly longer than desktop)
+        
+        // 3. Patch the recognition handlers for mobile devices
+        this.patchMobileRecognitionHandlers();
+        
+        // 4. Mark as optimized
+        this.isMobileOptimized = true;
+        
+        return true;
+    }
+    
+    /**
+     * Apply mobile-specific patches to recognition event handlers
+     * This addresses Chrome/Android specific quirks
+     */
+    patchMobileRecognitionHandlers() {
+        if (!this.recognition) return false;
+        
+        // Store original handlers before patching
+        const originalOnEnd = this.recognition.onend;
+        const originalOnError = this.recognition.onerror;
+        
+        // Enhanced error handler for mobile devices
+        this.recognition.onerror = (event) => {
+            console.log('Mobile speech recognition error:', event.error);
+            
+            // On mobile, network errors are common but temporary
+            // Don't treat them as fatal errors
+            if (event.error === 'network') {
+                console.log('Network error detected on mobile - will auto-retry');
+                this._pendingRestart = true;
+                
+                // Dispatch a user-friendly warning
+                document.dispatchEvent(new CustomEvent('mobileSpeechWarning', {
+                    detail: 'Network delay detected. Optimizing...'
+                }));
+                
+                // Don't call original handler for network errors on mobile
+                return;
+            }
+            
+            // "no-speech" errors are very common on mobile - handle gracefully
+            if (event.error === 'no-speech') {
+                console.log('No speech detected on mobile - continuing');
+                // Don't flag as error, just continue
+                return;
+            }
+            
+            // For other errors, call the original handler
+            if (originalOnError) {
+                originalOnError.call(this.recognition, event);
+            }
+        };
+        
+        // Enhanced end handler with mobile-specific restart logic
+        this.recognition.onend = () => {
+            console.log('Mobile speech recognition ended');
+            
+            // Set short timeout before restarting to prevent rapid cycling
+            if (this.isRecording || this._pendingRestart) {
+                console.log('Scheduling mobile-optimized restart');
+                this._pendingRestart = false;
+                
+                setTimeout(() => {
+                    if (this.isRecording) {
+                        console.log('Executing mobile-optimized restart');
+                        try {
+                            // Short sentences are better on mobile, so use non-continuous mode
+                            this.recognition.continuous = false;
+                            this.recognition.start();
+                            this._recognitionActive = true;
+                        } catch (e) {
+                            console.error('Mobile restart error:', e);
+                            this.triggerEvent('error', e.message);
+                            
+                            // If already started error, wait longer before next attempt
+                            if (e.message && e.message.includes('already started')) {
+                                setTimeout(() => {
+                                    this.stopRecognition();
+                                    setTimeout(() => this.startRecognition(), 800);
+                                }, 500);
+                            }
+                        }
+                    }
+                }, this._mobileRestartDelay);
+            }
+            
+            // Also call original handler
+            if (originalOnEnd) {
+                originalOnEnd.call(this.recognition);
+            }
+        };
+        
+        return true;
+    }
 }
 
 // Initialize on page load
